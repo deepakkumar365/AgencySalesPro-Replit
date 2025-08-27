@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, flash, session
 from sqlalchemy import func
 from datetime import datetime, timedelta
 from app import db
-from models import Agency, User, Order, Product, Customer, ActivityLog
+from models import Agency, User, Order, Product, Customer, ActivityLog, Location
 from super_admin import super_admin_bp
 from auth.utils import login_required, role_required
 
@@ -128,6 +128,48 @@ def reports():
     return render_template('super_admin/reports.html',
                          agency_performance=agency_performance,
                          user_activity=user_activity)
+
+@super_admin_bp.route('/create_agency_admin', methods=['GET', 'POST'])
+@login_required
+@role_required('super_admin')
+def create_agency_admin():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        agency_id = request.form.get('agency_id')
+        
+        # Validation
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists', 'error')
+            return redirect(url_for('super_admin.create_agency_admin'))
+        
+        if User.query.filter_by(email=email).first():
+            flash('Email already exists', 'error')
+            return redirect(url_for('super_admin.create_agency_admin'))
+        
+        # Create agency admin
+        new_admin = User(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            role='agency_admin',
+            agency_id=agency_id,
+            is_active=True
+        )
+        new_admin.set_password(password)
+        
+        db.session.add(new_admin)
+        db.session.commit()
+        
+        flash(f'Agency admin {username} created successfully!', 'success')
+        return redirect(url_for('super_admin.manage_users'))
+    
+    agencies = Agency.query.filter_by(is_active=True).all()
+    return render_template('super_admin/create_agency_admin.html', agencies=agencies)
 
 @super_admin_bp.route('/export_data')
 @login_required

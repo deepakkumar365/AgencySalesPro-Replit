@@ -126,6 +126,63 @@ def agency_users(agency_id):
     
     return render_template('agency/users.html', agency=agency, users=users)
 
+@agency_bp.route('/<int:agency_id>/create_user', methods=['GET', 'POST'])
+@login_required
+@role_required('agency_admin')
+@log_activity('create_user')
+def create_user(agency_id):
+    user_role = session.get('role')
+    current_agency_id = session.get('agency_id')
+    
+    # Check permissions
+    if current_agency_id != agency_id:
+        flash('You can only create users for your own agency', 'error')
+        return redirect(url_for('agency.list_agencies'))
+    
+    agency = Agency.query.get_or_404(agency_id)
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        role = request.form.get('role')
+        
+        # Validation
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists', 'error')
+            return render_template('agency/create_user.html', agency=agency)
+        
+        if User.query.filter_by(email=email).first():
+            flash('Email already exists', 'error')
+            return render_template('agency/create_user.html', agency=agency)
+        
+        # Agency admin can only create staff and salesperson roles
+        if role not in ['staff', 'salesperson']:
+            flash('You can only create staff and salesperson users', 'error')
+            return render_template('agency/create_user.html', agency=agency)
+        
+        # Create user
+        new_user = User(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            role=role,
+            agency_id=agency_id,
+            is_active=True
+        )
+        new_user.set_password(password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash(f'{role.title()} {username} created successfully!', 'success')
+        return redirect(url_for('agency.agency_users', agency_id=agency_id))
+    
+    return render_template('agency/create_user.html', agency=agency)
+
 @agency_bp.route('/<int:agency_id>/delete', methods=['POST'])
 @login_required
 @role_required('super_admin')
