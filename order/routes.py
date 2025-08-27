@@ -15,14 +15,89 @@ def list_orders(current_agency_id=None):
     user_role = session.get('role')
     user_id = session.get('user_id')
     
+    # Start with base query
     if user_role == 'super_admin':
-        orders = Order.query.all()
+        query = Order.query
     elif user_role == 'salesperson':
-        orders = Order.query.filter_by(salesperson_id=user_id).all()
+        query = Order.query.filter_by(salesperson_id=user_id)
     else:
-        orders = Order.query.filter_by(agency_id=current_agency_id).all()
+        query = Order.query.filter_by(agency_id=current_agency_id)
     
-    return render_template('order/list.html', orders=orders)
+    # Apply filters
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+    agency_filter = request.args.get('agency')
+    location_filter = request.args.get('location')
+    customer_filter = request.args.get('customer')
+    salesperson_filter = request.args.get('salesperson')
+    status_filter = request.args.get('status')
+    
+    if date_from:
+        try:
+            from datetime import datetime
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(Order.created_at >= date_from_obj)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            from datetime import datetime
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
+            query = query.filter(Order.created_at <= date_to_obj)
+        except ValueError:
+            pass
+    
+    if agency_filter and user_role == 'super_admin':
+        query = query.filter(Order.agency_id == agency_filter)
+    
+    if location_filter:
+        query = query.join(Customer).filter(Customer.location_id == location_filter)
+    
+    if customer_filter:
+        query = query.filter(Order.customer_id == customer_filter)
+    
+    if salesperson_filter:
+        query = query.filter(Order.salesperson_id == salesperson_filter)
+    
+    if status_filter:
+        query = query.filter(Order.status == status_filter)
+    
+    orders = query.order_by(Order.created_at.desc()).all()
+    
+    # Get filter options
+    agencies = []
+    if user_role == 'super_admin':
+        agencies = Agency.query.filter_by(is_active=True).all()
+    
+    locations = []
+    customers = []
+    salespersons = []
+    
+    if user_role == 'super_admin':
+        locations = Location.query.filter_by(is_active=True).all()
+        customers = Customer.query.filter_by(is_active=True).all()
+        salespersons = User.query.filter(User.role.in_(['salesperson', 'staff', 'agency_admin'])).all()
+    else:
+        locations = Location.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+        customers = Customer.query.join(Location).filter(Location.agency_id == current_agency_id, Customer.is_active == True).all()
+        salespersons = User.query.filter_by(agency_id=current_agency_id).filter(User.role.in_(['salesperson', 'staff', 'agency_admin'])).all()
+    
+    return render_template('order/list.html', 
+                         orders=orders,
+                         agencies=agencies,
+                         locations=locations,
+                         customers=customers,
+                         salespersons=salespersons,
+                         filters={
+                             'date_from': date_from,
+                             'date_to': date_to,
+                             'agency': agency_filter,
+                             'location': location_filter,
+                             'customer': customer_filter,
+                             'salesperson': salesperson_filter,
+                             'status': status_filter
+                         })
 
 @order_bp.route('/create', methods=['GET', 'POST'])
 @login_required

@@ -21,11 +21,112 @@
     </div>
 </div>
 
+<!-- Filters -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-filter me-2"></i>Filters
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="date_from" class="form-label">Date From</label>
+                        <input type="date" class="form-control" id="date_from" name="date_from" value="{{ filters.date_from or '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="date_to" class="form-label">Date To</label>
+                        <input type="date" class="form-control" id="date_to" name="date_to" value="{{ filters.date_to or '' }}">
+                    </div>
+                    
+                    {% if session.role == 'super_admin' and agencies %}
+                    <div class="col-md-3">
+                        <label for="agency" class="form-label">Agency</label>
+                        <select class="form-select" id="agency" name="agency">
+                            <option value="">All Agencies</option>
+                            {% for agency in agencies %}
+                            <option value="{{ agency.id }}" {{ 'selected' if filters.agency == agency.id|string else '' }}>
+                                {{ agency.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="col-md-3">
+                        <label for="location" class="form-label">Location</label>
+                        <select class="form-select" id="location" name="location">
+                            <option value="">All Locations</option>
+                            {% for location in locations %}
+                            <option value="{{ location.id }}" {{ 'selected' if filters.location == location.id|string else '' }}>
+                                {{ location.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label for="customer" class="form-label">Customer</label>
+                        <select class="form-select" id="customer" name="customer">
+                            <option value="">All Customers</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.id }}" {{ 'selected' if filters.customer == customer.id|string else '' }}>
+                                {{ customer.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label for="salesperson" class="form-label">Salesperson</label>
+                        <select class="form-select" id="salesperson" name="salesperson">
+                            <option value="">All Salespersons</option>
+                            {% for salesperson in salespersons %}
+                            <option value="{{ salesperson.id }}" {{ 'selected' if filters.salesperson == salesperson.id|string else '' }}>
+                                {{ salesperson.full_name or salesperson.username }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="">All Status</option>
+                            <option value="pending" {{ 'selected' if filters.status == 'pending' else '' }}>Pending</option>
+                            <option value="confirmed" {{ 'selected' if filters.status == 'confirmed' else '' }}>Confirmed</option>
+                            <option value="shipped" {{ 'selected' if filters.status == 'shipped' else '' }}>Shipped</option>
+                            <option value="delivered" {{ 'selected' if filters.status == 'delivered' else '' }}>Delivered</option>
+                            <option value="cancelled" {{ 'selected' if filters.status == 'cancelled' else '' }}>Cancelled</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3 d-flex align-items-end">
+                        <div class="btn-group w-100">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-1"></i>Filter
+                            </button>
+                            <a href="{{ url_for('order.list_orders') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>Clear
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-12">
         <div class="card">
             <div class="card-body">
                 {% if orders %}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">{{ orders|length }} order{{ 's' if orders|length != 1 else '' }} found</h6>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead>

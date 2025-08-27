@@ -11,12 +11,69 @@ from utils.decorators import log_activity
 def list_customers(current_agency_id=None):
     user_role = session.get('role')
     
+    # Start with base query
     if user_role == 'super_admin':
-        customers = Customer.query.join(Location).all()
+        query = Customer.query.join(Location)
     else:
-        customers = Customer.query.join(Location).filter(Location.agency_id == current_agency_id).all()
+        query = Customer.query.join(Location).filter(Location.agency_id == current_agency_id)
     
-    return render_template('customer/list.html', customers=customers)
+    # Apply filters
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+    agency_filter = request.args.get('agency')
+    location_filter = request.args.get('location')
+    status_filter = request.args.get('status')
+    
+    if date_from:
+        try:
+            from datetime import datetime
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(Customer.created_at >= date_from_obj)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            from datetime import datetime
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
+            query = query.filter(Customer.created_at <= date_to_obj)
+        except ValueError:
+            pass
+    
+    if agency_filter and user_role == 'super_admin':
+        query = query.filter(Location.agency_id == agency_filter)
+    
+    if location_filter:
+        query = query.filter(Customer.location_id == location_filter)
+    
+    if status_filter == 'active':
+        query = query.filter(Customer.is_active == True)
+    elif status_filter == 'inactive':
+        query = query.filter(Customer.is_active == False)
+    
+    customers = query.order_by(Customer.created_at.desc()).all()
+    
+    # Get filter options
+    agencies = []
+    locations = []
+    
+    if user_role == 'super_admin':
+        agencies = Agency.query.filter_by(is_active=True).all()
+        locations = Location.query.filter_by(is_active=True).all()
+    else:
+        locations = Location.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+    
+    return render_template('customer/list.html', 
+                         customers=customers,
+                         agencies=agencies,
+                         locations=locations,
+                         filters={
+                             'date_from': date_from,
+                             'date_to': date_to,
+                             'agency': agency_filter,
+                             'location': location_filter,
+                             'status': status_filter
+                         })
 
 @customer_bp.route('/create', methods=['GET', 'POST'])
 @login_required

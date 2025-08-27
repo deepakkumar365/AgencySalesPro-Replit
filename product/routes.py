@@ -16,12 +16,72 @@ from utils.excel_utils import export_products_to_excel, import_products_from_exc
 def list_products(current_agency_id=None):
     user_role = session.get('role')
     
+    # Start with base query
     if user_role == 'super_admin':
-        products = Product.query.all()
+        query = Product.query
     else:
-        products = Product.query.filter_by(agency_id=current_agency_id).all()
+        query = Product.query.filter_by(agency_id=current_agency_id)
     
-    return render_template('product/list.html', products=products)
+    # Apply filters
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+    agency_filter = request.args.get('agency')
+    category_filter = request.args.get('category')
+    status_filter = request.args.get('status')
+    
+    if date_from:
+        try:
+            from datetime import datetime
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+            query = query.filter(Product.created_at >= date_from_obj)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            from datetime import datetime
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
+            query = query.filter(Product.created_at <= date_to_obj)
+        except ValueError:
+            pass
+    
+    if agency_filter and user_role == 'super_admin':
+        query = query.filter(Product.agency_id == agency_filter)
+    
+    if category_filter:
+        query = query.filter(Product.category == category_filter)
+    
+    if status_filter == 'active':
+        query = query.filter(Product.is_active == True)
+    elif status_filter == 'inactive':
+        query = query.filter(Product.is_active == False)
+    
+    products = query.order_by(Product.created_at.desc()).all()
+    
+    # Get filter options
+    agencies = []
+    if user_role == 'super_admin':
+        agencies = Agency.query.filter_by(is_active=True).all()
+    
+    # Get unique categories
+    if user_role == 'super_admin':
+        categories = db.session.query(Product.category.distinct()).filter(Product.category.isnot(None)).all()
+    else:
+        categories = db.session.query(Product.category.distinct()).filter(Product.agency_id == current_agency_id, Product.category.isnot(None)).all()
+    
+    categories = [cat[0] for cat in categories if cat[0]]
+    
+    return render_template('product/list.html', 
+                         products=products,
+                         agencies=agencies,
+                         categories=categories,
+                         filters={
+                             'date_from': date_from,
+                             'date_to': date_to,
+                             'agency': agency_filter,
+                             'category': category_filter,
+                             'status': status_filter
+                         })
 
 @product_bp.route('/create', methods=['GET', 'POST'])
 @login_required
