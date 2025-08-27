@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Salespersons - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-user-tie me-2"></i>Salespersons
+            </h1>
+            {% if session.role in ['super_admin', 'agency_admin'] %}
+            <a href="{{ url_for('salesperson.create_salesperson') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Add Salesperson
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if salespersons %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Agency</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for salesperson in salespersons %}
+                            <tr>
+                                <td>
+                                    <strong>{{ salesperson.full_name or salesperson.username }}</strong>
+                                    {% if salesperson.last_login %}
+                                    <br><small class="text-muted">Last login: {{ salesperson.last_login.strftime('%Y-%m-%d') }}</small>
+                                    {% endif %}
+                                </td>
+                                <td><code>{{ salesperson.username }}</code></td>
+                                <td>{{ salesperson.email }}</td>
+                                <td>{{ salesperson.agency.name if salesperson.agency else '-' }}</td>
+                                <td>
+                                    {% if salesperson.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ salesperson.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    {% if session.role in ['super_admin', 'agency_admin'] %}
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('salesperson.edit_salesperson', salesperson_id=salesperson.id) }}" 
+                                           class="btn btn-outline-primary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        
+                                        <form method="POST" action="{{ url_for('salesperson.toggle_salesperson_status', salesperson_id=salesperson.id) }}" class="d-inline">
+                                            <button type="submit" 
+                                                    class="btn btn-outline-{{ 'warning' if salesperson.is_active else 'success' }}"
+                                                    title="{{ 'Deactivate' if salesperson.is_active else 'Activate' }}"
+                                                    onclick="return confirm('Are you sure?')">
+                                                <i class="fas fa-{{ 'pause' if salesperson.is_active else 'play' }}"></i>
+                                            </button>
+                                        </form>
+                                        
+                                        <form method="POST" action="{{ url_for('salesperson.delete_salesperson', salesperson_id=salesperson.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-outline-danger" title="Delete"
+                                                    onclick="return confirm('Are you sure you want to delete this salesperson?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-user-tie fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No salespersons found</h5>
+                    {% if session.role in ['super_admin', 'agency_admin'] %}
+                    <p class="text-muted">Start by adding your first salesperson.</p>
+                    <a href="{{ url_for('salesperson.create_salesperson') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Add Salesperson
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

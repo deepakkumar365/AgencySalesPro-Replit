@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Activity Log - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-history me-2"></i>Activity Log
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if activities.items %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>Description</th>
+                                <th>IP Address</th>
+                                <th>Date/Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in activities.items %}
+                            <tr>
+                                <td>
+                                    <strong>{{ activity.user.username }}</strong>
+                                    <br><small class="text-muted">{{ activity.user.role.replace('_', ' ').title() }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ activity.action }}</span>
+                                </td>
+                                <td>{{ activity.description or '-' }}</td>
+                                <td><code>{{ activity.ip_address or '-' }}</code></td>
+                                <td>{{ activity.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if activities.pages > 1 %}
+                <nav aria-label="Activity log pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if activities.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('super_admin.view_activities', page=activities.prev_num) }}">Previous</a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page_num in activities.iter_pages() %}
+                        {% if page_num %}
+                        {% if page_num != activities.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('super_admin.view_activities', page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">…</span>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                        
+                        {% if activities.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('super_admin.view_activities', page=activities.next_num) }}">Next</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No activities found</h5>
+                    <p class="text-muted">User activities will appear here as they happen.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

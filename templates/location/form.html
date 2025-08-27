@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if location else 'Create' }} Location - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-map-marker-alt me-2"></i>{{ 'Edit' if location else 'Create' }} Location
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Location Name *</label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               value="{{ location.name if location else '' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Address</label>
+                        <textarea class="form-control" id="address" name="address" rows="3">{{ location.address if location else '' }}</textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="city" class="form-label">City</label>
+                            <input type="text" class="form-control" id="city" name="city" 
+                                   value="{{ location.city if location else '' }}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="state" class="form-label">State</label>
+                            <input type="text" class="form-control" id="state" name="state" 
+                                   value="{{ location.state if location else '' }}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="zip_code" class="form-label">ZIP Code</label>
+                            <input type="text" class="form-control" id="zip_code" name="zip_code" 
+                                   value="{{ location.zip_code if location else '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Phone</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" 
+                               value="{{ location.phone if location else '' }}">
+                    </div>
+                    
+                    {% if session.role == 'super_admin' %}
+                    <div class="mb-3">
+                        <label for="agency_id" class="form-label">Agency *</label>
+                        <select class="form-select" id="agency_id" name="agency_id" required>
+                            <option value="">Select Agency</option>
+                            {% for agency in agencies %}
+                            <option value="{{ agency.id }}" 
+                                    {{ 'selected' if location and location.agency_id == agency.id else '' }}>
+                                {{ agency.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('location.list_locations') }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>{{ 'Update' if location else 'Create' }} Location
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

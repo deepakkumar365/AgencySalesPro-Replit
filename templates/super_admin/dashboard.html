@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Super Admin Dashboard - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt me-2"></i>Super Admin Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-building fa-2x text-primary mb-2"></i>
+                <h3 class="card-title">{{ stats.total_agencies }}</h3>
+                <p class="card-text">Total Agencies</p>
+                <small class="text-muted">{{ stats.active_agencies }} Active</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-users fa-2x text-success mb-2"></i>
+                <h3 class="card-title">{{ stats.total_users }}</h3>
+                <p class="card-text">Total Users</p>
+                <small class="text-muted">{{ stats.active_users }} Active</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-shopping-cart fa-2x text-info mb-2"></i>
+                <h3 class="card-title">{{ stats.total_orders }}</h3>
+                <p class="card-text">Total Orders</p>
+                <small class="text-muted">{{ stats.pending_orders }} Pending</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-box fa-2x text-warning mb-2"></i>
+                <h3 class="card-title">{{ stats.total_products }}</h3>
+                <p class="card-text">Total Products</p>
+                <small class="text-muted">{{ stats.total_customers }} Customers</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Orders by Status</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="orderStatusChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Monthly Order Trends</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="monthlyOrdersChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Tables Row -->
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Top Agencies</h5>
+            </div>
+            <div class="card-body">
+                {% if top_agencies %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Agency</th>
+                                <th>Orders</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for agency_name, order_count in top_agencies %}
+                            <tr>
+                                <td>{{ agency_name }}</td>
+                                <td><span class="badge bg-primary">{{ order_count }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Activities</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_activities %}
+                <div class="list-group list-group-flush">
+                    {% for activity in recent_activities %}
+                    <div class="list-group-item border-0 px-0">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>{{ activity.user.username }}</strong>
+                                <small class="text-muted">{{ activity.action }}</small>
+                            </div>
+                            <small class="text-muted">{{ activity.created_at.strftime('%m/%d %H:%M') }}</small>
+                        </div>
+                        {% if activity.description %}
+                        <small class="text-muted">{{ activity.description }}</small>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No recent activities</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('agency.create_agency') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-building me-2"></i>Add Agency
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-user-plus me-2"></i>Add User
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('super_admin.reports') }}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-chart-bar me-2"></i>View Reports
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('super_admin.view_activities') }}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-history me-2"></i>Activity Log
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Order Status Chart
+const orderStatusData = {
+    labels: [{% for status, count in order_stats %}'{{ status.title() }}'{{ ',' if not loop.last else '' }}{% endfor %}],
+    datasets: [{
+        data: [{% for status, count in order_stats %}{{ count }}{{ ',' if not loop.last else '' }}{% endfor %}],
+        backgroundColor: [
+            '#ffc107', // warning - pending
+            '#0dcaf0', // info - confirmed
+            '#0d6efd', // primary - shipped
+            '#198754', // success - delivered
+            '#dc3545'  // danger - cancelled
+        ]
+    }]
+};
+
+const orderStatusConfig = {
+    type: 'doughnut',
+    data: orderStatusData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+            }
+        }
+    }
+};
+
+new Chart(document.getElementById('orderStatusChart'), orderStatusConfig);
+
+// Monthly Orders Chart
+const monthlyOrdersData = {
+    labels: [{% for month, count in monthly_orders %}'{{ month }}'{{ ',' if not loop.last else '' }}{% endfor %}],
+    datasets: [{
+        label: 'Orders',
+        data: [{% for month, count in monthly_orders %}{{ count }}{{ ',' if not loop.last else '' }}{% endfor %}],
+        borderColor: '#0d6efd',
+        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+        tension: 0.1
+    }]
+};
+
+const monthlyOrdersConfig = {
+    type: 'line',
+    data: monthlyOrdersData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+};
+
+new Chart(document.getElementById('monthlyOrdersChart'), monthlyOrdersConfig);
+</script>
+{% endblock %}

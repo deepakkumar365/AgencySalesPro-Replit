@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Order {{ order.order_number }} - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-shopping-cart me-2"></i>Order {{ order.order_number }}
+            </h1>
+            <div class="btn-group">
+                {% if order.status in ['pending', 'confirmed'] %}
+                {% if session.role == 'salesperson' and order.salesperson_id == session.user_id or session.role != 'salesperson' %}
+                <a href="{{ url_for('order.edit_order', order_id=order.id) }}" class="btn btn-primary">
+                    <i class="fas fa-edit me-2"></i>Edit Order
+                </a>
+                {% endif %}
+                {% endif %}
+                <a href="{{ url_for('order.list_orders') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Orders
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Order Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>Order Number:</strong></td>
+                            <td>{{ order.order_number }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Customer:</strong></td>
+                            <td>{{ order.customer.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Location:</strong></td>
+                            <td>{{ order.customer.location.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Agency:</strong></td>
+                            <td>{{ order.agency.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Salesperson:</strong></td>
+                            <td>{{ order.salesperson.full_name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Order Date:</strong></td>
+                            <td>{{ order.order_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                        {% if order.delivery_date %}
+                        <tr>
+                            <td><strong>Delivery Date:</strong></td>
+                            <td>{{ order.delivery_date.strftime('%Y-%m-%d') }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if order.notes %}
+                        <tr>
+                            <td><strong>Notes:</strong></td>
+                            <td>{{ order.notes }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Order Items</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>SKU</th>
+                                <th>Quantity</th>
+                                <th>Unit Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order.order_items %}
+                            <tr>
+                                <td>{{ item.product.name }}</td>
+                                <td><code>{{ item.product.sku }}</code></td>
+                                <td>{{ item.quantity }}</td>
+                                <td>${{ "%.2f"|format(item.unit_price) }}</td>
+                                <td>${{ "%.2f"|format(item.total_price) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="4">Subtotal</th>
+                                <th>${{ "%.2f"|format(order.order_items|sum(attribute='total_price')) }}</th>
+                            </tr>
+                            {% if order.discount > 0 %}
+                            <tr>
+                                <th colspan="4">Discount</th>
+                                <th>-${{ "%.2f"|format(order.discount) }}</th>
+                            </tr>
+                            {% endif %}
+                            {% if order.tax > 0 %}
+                            <tr>
+                                <th colspan="4">Tax</th>
+                                <th>${{ "%.2f"|format(order.tax) }}</th>
+                            </tr>
+                            {% endif %}
+                            <tr class="table-primary">
+                                <th colspan="4">Total Amount</th>
+                                <th>${{ "%.2f"|format(order.total_amount) }}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Order Status</h5>
+            </div>
+            <div class="card-body">
+                {% set status_class = {
+                    'pending': 'warning',
+                    'confirmed': 'info',
+                    'shipped': 'primary',
+                    'delivered': 'success',
+                    'cancelled': 'danger'
+                } %}
+                <div class="text-center mb-3">
+                    <span class="badge bg-{{ status_class.get(order.status, 'secondary') }} fs-6">
+                        {{ order.status.title() }}
+                    </span>
+                </div>
+                
+                {% if session.role != 'salesperson' or order.salesperson_id == session.user_id %}
+                <form method="POST" action="{{ url_for('order.update_order_status', order_id=order.id) }}">
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Update Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="pending" {{ 'selected' if order.status == 'pending' else '' }}>Pending</option>
+                            <option value="confirmed" {{ 'selected' if order.status == 'confirmed' else '' }}>Confirmed</option>
+                            {% if session.role != 'salesperson' %}
+                            <option value="shipped" {{ 'selected' if order.status == 'shipped' else '' }}>Shipped</option>
+                            <option value="delivered" {{ 'selected' if order.status == 'delivered' else '' }}>Delivered</option>
+                            {% endif %}
+                            <option value="cancelled" {{ 'selected' if order.status == 'cancelled' else '' }}>Cancelled</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Update Status</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Customer Info</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>{{ order.customer.name }}</strong></p>
+                {% if order.customer.email %}
+                <p><i class="fas fa-envelope me-2"></i>{{ order.customer.email }}</p>
+                {% endif %}
+                {% if order.customer.phone %}
+                <p><i class="fas fa-phone me-2"></i>{{ order.customer.phone }}</p>
+                {% endif %}
+                {% if order.customer.address %}
+                <p><i class="fas fa-map-marker-alt me-2"></i>{{ order.customer.address }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

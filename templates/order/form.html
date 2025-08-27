@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Create Order - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-shopping-cart me-2"></i>Create Order
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="orderForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="customer_id" class="form-label">Customer *</label>
+                            <select class="form-select" id="customer_id" name="customer_id" required>
+                                <option value="">Select Customer</option>
+                                {% for customer in customers %}
+                                <option value="{{ customer.id }}">
+                                    {{ customer.name }} - {{ customer.location.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="delivery_date" class="form-label">Delivery Date</label>
+                            <input type="date" class="form-control" id="delivery_date" name="delivery_date">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Order Items *</label>
+                        <div id="orderItems">
+                            <div class="order-item border rounded p-3 mb-3">
+                                <div class="row">
+                                    <div class="col-md-8 mb-2">
+                                        <select class="form-select" name="products" required>
+                                            <option value="">Select Product</option>
+                                            {% for product in products %}
+                                            <option value="{{ product.id }}" data-price="{{ product.price }}">
+                                                {{ product.name }} - ${{ "%.2f"|format(product.price) }} (Stock: {{ product.stock_quantity }})
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 mb-2">
+                                        <input type="number" class="form-control" name="quantities" 
+                                               placeholder="Quantity" min="1" required>
+                                    </div>
+                                    <div class="col-md-1 mb-2">
+                                        <button type="button" class="btn btn-outline-danger remove-item" disabled>
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary" id="addItem">
+                            <i class="fas fa-plus me-2"></i>Add Item
+                        </button>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="discount" class="form-label">Discount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" class="form-control" id="discount" 
+                                       name="discount" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="tax" class="form-label">Tax</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" class="form-control" id="tax" 
+                                       name="tax" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Estimated Total</label>
+                            <div class="form-control-plaintext">
+                                <strong id="totalAmount">$0.00</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('order.list_orders') }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Create Order
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const orderItemsContainer = document.getElementById('orderItems');
+    const addItemBtn = document.getElementById('addItem');
+    
+    function updateRemoveButtons() {
+        const items = orderItemsContainer.querySelectorAll('.order-item');
+        items.forEach((item, index) => {
+            const removeBtn = item.querySelector('.remove-item');
+            removeBtn.disabled = items.length === 1;
+        });
+    }
+    
+    function calculateTotal() {
+        let total = 0;
+        const items = orderItemsContainer.querySelectorAll('.order-item');
+        
+        items.forEach(item => {
+            const select = item.querySelector('select[name="products"]');
+            const quantityInput = item.querySelector('input[name="quantities"]');
+            
+            if (select.value && quantityInput.value) {
+                const price = parseFloat(select.options[select.selectedIndex].dataset.price || 0);
+                const quantity = parseInt(quantityInput.value || 0);
+                total += price * quantity;
+            }
+        });
+        
+        const discount = parseFloat(document.getElementById('discount').value || 0);
+        const tax = parseFloat(document.getElementById('tax').value || 0);
+        
+        total = total - discount + tax;
+        document.getElementById('totalAmount').textContent = '$' + total.toFixed(2);
+    }
+    
+    addItemBtn.addEventListener('click', function() {
+        const newItem = orderItemsContainer.querySelector('.order-item').cloneNode(true);
+        newItem.querySelector('select').value = '';
+        newItem.querySelector('input').value = '';
+        
+        const removeBtn = newItem.querySelector('.remove-item');
+        removeBtn.addEventListener('click', function() {
+            newItem.remove();
+            updateRemoveButtons();
+            calculateTotal();
+        });
+        
+        orderItemsContainer.appendChild(newItem);
+        updateRemoveButtons();
+    });
+    
+    orderItemsContainer.addEventListener('change', calculateTotal);
+    orderItemsContainer.addEventListener('input', calculateTotal);
+    document.getElementById('discount').addEventListener('input', calculateTotal);
+    document.getElementById('tax').addEventListener('input', calculateTotal);
+    
+    orderItemsContainer.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-item')) {
+            e.target.closest('.order-item').remove();
+            updateRemoveButtons();
+            calculateTotal();
+        }
+    });
+    
+    updateRemoveButtons();
+});
+</script>
+{% endblock %}

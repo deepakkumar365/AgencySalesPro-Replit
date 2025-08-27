@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-chart-bar me-2"></i>System Reports
+        </h1>
+    </div>
+</div>
+
+<!-- Agency Performance Report -->
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Agency Performance Report</h5>
+            </div>
+            <div class="card-body">
+                {% if agency_performance %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Agency</th>
+                                <th>Code</th>
+                                <th>Orders</th>
+                                <th>Revenue</th>
+                                <th>Products</th>
+                                <th>Customers</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for agency in agency_performance %}
+                            <tr>
+                                <td><strong>{{ agency.name }}</strong></td>
+                                <td><code>{{ agency.code }}</code></td>
+                                <td>{{ agency.total_orders or 0 }}</td>
+                                <td>${{ "%.2f"|format(agency.total_revenue or 0) }}</td>
+                                <td>{{ agency.total_products or 0 }}</td>
+                                <td>{{ agency.total_customers or 0 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No agency performance data available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Activity Report -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">User Activity Report</h5>
+            </div>
+            <div class="card-body">
+                {% if user_activity %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Role</th>
+                                <th>Agency</th>
+                                <th>Activities</th>
+                                <th>Last Activity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in user_activity %}
+                            <tr>
+                                <td><strong>{{ user.username }}</strong></td>
+                                <td>
+                                    <span class="badge bg-info">{{ user.role.replace('_', ' ').title() }}</span>
+                                </td>
+                                <td>{{ user.agency_name or '-' }}</td>
+                                <td>{{ user.activity_count or 0 }}</td>
+                                <td>
+                                    {% if user.last_activity %}
+                                    {{ user.last_activity.strftime('%Y-%m-%d %H:%M') }}
+                                    {% else %}
+                                    <span class="text-muted">Never</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No user activity data available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Export Options -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Export Options</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('super_admin.export_data') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-download me-2"></i>Export All Data
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('agency.list_agencies') }}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-building me-2"></i>Export Agencies
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('order.export_orders') }}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-shopping-cart me-2"></i>Export Orders
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('product.export_products') }}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-box me-2"></i>Export Products
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

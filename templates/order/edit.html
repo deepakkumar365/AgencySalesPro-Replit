@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Order {{ order.order_number }} - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-edit me-2"></i>Edit Order {{ order.order_number }}
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Customer</label>
+                            <input type="text" class="form-control" value="{{ order.customer.name }}" readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="delivery_date" class="form-label">Delivery Date</label>
+                            <input type="date" class="form-control" id="delivery_date" name="delivery_date"
+                                   value="{{ order.delivery_date.strftime('%Y-%m-%d') if order.delivery_date else '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Order Items</label>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Quantity</th>
+                                        <th>Unit Price</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in order.order_items %}
+                                    <tr>
+                                        <td>{{ item.product.name }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>${{ "%.2f"|format(item.unit_price) }}</td>
+                                        <td>${{ "%.2f"|format(item.total_price) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <small class="text-muted">Note: Product items cannot be modified after order creation.</small>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="discount" class="form-label">Discount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" class="form-control" id="discount" 
+                                       name="discount" value="{{ order.discount }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="tax" class="form-label">Tax</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" step="0.01" class="form-control" id="tax" 
+                                       name="tax" value="{{ order.tax }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Current Total</label>
+                            <div class="form-control-plaintext">
+                                <strong>${{ "%.2f"|format(order.total_amount) }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3">{{ order.notes or '' }}</textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('order.view_order', order_id=order.id) }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Update Order
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

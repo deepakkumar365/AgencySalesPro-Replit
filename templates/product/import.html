@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Import Products - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-upload me-2"></i>Import Products
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6 class="alert-heading">Import Guidelines:</h6>
+                    <ul class="mb-0">
+                        <li>Supported formats: Excel (.xlsx, .xls) and CSV (.csv)</li>
+                        <li>Required columns: Name, SKU, Price</li>
+                        <li>Optional columns: Description, Cost, Stock Quantity, Category</li>
+                        <li>Duplicate SKUs will be skipped</li>
+                    </ul>
+                </div>
+                
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-4">
+                        <label for="file" class="form-label">Select File</label>
+                        <input type="file" class="form-control" id="file" name="file" 
+                               accept=".xlsx,.xls,.csv" required>
+                        <div class="form-text">Choose an Excel or CSV file containing product data.</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('product.list_products') }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload me-2"></i>Import Products
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer">
+                <h6>Sample CSV Format:</h6>
+                <pre class="mb-0"><code>Name,SKU,Price,Description,Cost,Stock Quantity,Category
+Widget A,WGT-001,29.99,Premium widget,15.50,100,Electronics
+Widget B,WGT-002,19.99,Standard widget,10.00,50,Electronics</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

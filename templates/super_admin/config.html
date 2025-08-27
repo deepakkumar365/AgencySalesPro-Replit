@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}System Configuration - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-cog me-2"></i>System Configuration
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">System Settings</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="system_name" class="form-label">System Name</label>
+                        <input type="text" class="form-control" id="system_name" name="system_name" 
+                               value="AgencySales Pro">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="default_currency" class="form-label">Default Currency</label>
+                        <select class="form-select" id="default_currency" name="default_currency">
+                            <option value="USD" selected>USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="timezone" class="form-label">Default Timezone</label>
+                        <select class="form-select" id="timezone" name="timezone">
+                            <option value="UTC" selected>UTC</option>
+                            <option value="America/New_York">Eastern Time (US & Canada)</option>
+                            <option value="America/Chicago">Central Time (US & Canada)</option>
+                            <option value="America/Denver">Mountain Time (US & Canada)</option>
+                            <option value="America/Los_Angeles">Pacific Time (US & Canada)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="email_notifications" 
+                                   name="email_notifications" checked>
+                            <label class="form-check-label" for="email_notifications">
+                                Enable Email Notifications
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="auto_backup" 
+                                   name="auto_backup" checked>
+                            <label class="form-check-label" for="auto_backup">
+                                Enable Automatic Backups
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Save Configuration
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Database Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>Database Type:</strong></td>
+                            <td>SQLite</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Database Size:</strong></td>
+                            <td>~1.2 MB</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Last Backup:</strong></td>
+                            <td>2024-01-15 10:30:00 UTC</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">System Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-info">
+                        <i class="fas fa-download me-2"></i>Backup Database
+                    </button>
+                    <button type="button" class="btn btn-outline-warning">
+                        <i class="fas fa-upload me-2"></i>Restore Database
+                    </button>
+                    <button type="button" class="btn btn-outline-success">
+                        <i class="fas fa-sync me-2"></i>Clear Cache
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary">
+                        <i class="fas fa-chart-line me-2"></i>System Health
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">System Information</h5>
+            </div>
+            <div class="card-body">
+                <small>
+                    <strong>Version:</strong> 1.0.0<br>
+                    <strong>Python:</strong> 3.9+<br>
+                    <strong>Flask:</strong> 2.3+<br>
+                    <strong>Uptime:</strong> 2 days, 14 hours<br>
+                    <strong>Last Update:</strong> 2024-01-15
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
