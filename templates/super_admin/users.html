@@ -67,6 +67,17 @@
                                 </td>
                                 <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
                                 <td>
+                                    <a href="{{ url_for('super_admin.edit_user', user_id=user.id) }}" 
+                                       class="btn btn-sm btn-outline-primary me-1"
+                                       title="Edit User">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('super_admin.reset_password', user_id=user.id) }}" 
+                                       class="btn btn-sm btn-outline-warning me-1"
+                                       title="Reset Password"
+                                       onclick="return confirm('Reset password for this user?')">
+                                        <i class="fas fa-key"></i>
+                                    </a>
                                     <form method="POST" action="{{ url_for('super_admin.toggle_user_status', user_id=user.id) }}" class="d-inline">
                                         <button type="submit" 
                                                 class="btn btn-sm btn-outline-{{ 'warning' if user.is_active else 'success' }}"

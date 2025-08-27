@@ -183,6 +183,82 @@ def create_user(agency_id):
     
     return render_template('agency/create_user.html', agency=agency)
 
+@agency_bp.route('/<int:agency_id>/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+@role_required('agency_admin')
+@log_activity('edit_user')
+def edit_user(agency_id, user_id):
+    current_agency_id = session.get('agency_id')
+    
+    # Check permissions
+    if current_agency_id != agency_id:
+        flash('You can only edit users from your own agency', 'error')
+        return redirect(url_for('agency.list_agencies'))
+    
+    agency = Agency.query.get_or_404(agency_id)
+    user = User.query.filter_by(id=user_id, agency_id=agency_id).first_or_404()
+    
+    # Agency admin cannot edit other agency admins
+    if user.role == 'agency_admin':
+        flash('You cannot edit other agency administrators', 'error')
+        return redirect(url_for('agency.agency_users', agency_id=agency_id))
+    
+    if request.method == 'POST':
+        user.first_name = request.form.get('first_name')
+        user.last_name = request.form.get('last_name')
+        user.email = request.form.get('email')
+        role = request.form.get('role')
+        
+        # Check if email is unique (excluding current user)
+        existing = User.query.filter_by(email=user.email).first()
+        if existing and existing.id != user.id:
+            flash('Email already exists', 'error')
+            return render_template('agency/edit_user.html', agency=agency, user=user)
+        
+        # Agency admin can only assign staff and salesperson roles
+        if role not in ['staff', 'salesperson']:
+            flash('You can only assign staff and salesperson roles', 'error')
+            return render_template('agency/edit_user.html', agency=agency, user=user)
+        
+        user.role = role
+        
+        # Handle password change if provided
+        new_password = request.form.get('new_password')
+        if new_password:
+            user.set_password(new_password)
+        
+        db.session.commit()
+        flash(f'User {user.username} updated successfully!', 'success')
+        return redirect(url_for('agency.agency_users', agency_id=agency_id))
+    
+    return render_template('agency/edit_user.html', agency=agency, user=user)
+
+@agency_bp.route('/<int:agency_id>/users/<int:user_id>/toggle_status', methods=['POST'])
+@login_required
+@role_required('agency_admin')
+@log_activity('toggle_user_status')
+def toggle_user_status(agency_id, user_id):
+    current_agency_id = session.get('agency_id')
+    
+    # Check permissions
+    if current_agency_id != agency_id:
+        flash('You can only manage users from your own agency', 'error')
+        return redirect(url_for('agency.list_agencies'))
+    
+    user = User.query.filter_by(id=user_id, agency_id=agency_id).first_or_404()
+    
+    # Agency admin cannot deactivate other agency admins
+    if user.role == 'agency_admin':
+        flash('You cannot deactivate other agency administrators', 'error')
+        return redirect(url_for('agency.agency_users', agency_id=agency_id))
+    
+    user.is_active = not user.is_active
+    db.session.commit()
+    
+    status = 'activated' if user.is_active else 'deactivated'
+    flash(f'User {status} successfully!', 'success')
+    return redirect(url_for('agency.agency_users', agency_id=agency_id))
+
 @agency_bp.route('/<int:agency_id>/delete', methods=['POST'])
 @login_required
 @role_required('super_admin')

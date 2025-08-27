@@ -171,6 +171,67 @@ def create_agency_admin():
     agencies = Agency.query.filter_by(is_active=True).all()
     return render_template('super_admin/create_agency_admin.html', agencies=agencies)
 
+@super_admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+@role_required('super_admin')
+def edit_user(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    if request.method == 'POST':
+        user.first_name = request.form.get('first_name')
+        user.last_name = request.form.get('last_name')
+        user.email = request.form.get('email')
+        role = request.form.get('role')
+        agency_id = request.form.get('agency_id')
+        
+        # Check if email is unique (excluding current user)
+        existing = User.query.filter_by(email=user.email).first()
+        if existing and existing.id != user.id:
+            flash('Email already exists', 'error')
+            agencies = Agency.query.filter_by(is_active=True).all()
+            return render_template('super_admin/edit_user.html', user=user, agencies=agencies)
+        
+        user.role = role
+        user.agency_id = agency_id if agency_id else None
+        
+        # Handle password change if provided
+        new_password = request.form.get('new_password')
+        if new_password:
+            user.set_password(new_password)
+        
+        db.session.commit()
+        flash(f'User {user.username} updated successfully!', 'success')
+        return redirect(url_for('super_admin.manage_users'))
+    
+    agencies = Agency.query.filter_by(is_active=True).all()
+    return render_template('super_admin/edit_user.html', user=user, agencies=agencies)
+
+@super_admin_bp.route('/users/<int:user_id>/reset_password', methods=['GET', 'POST'])
+@login_required
+@role_required('super_admin')
+def reset_password(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    if request.method == 'POST':
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if new_password != confirm_password:
+            flash('Passwords do not match', 'error')
+            return render_template('super_admin/reset_password.html', user=user)
+        
+        if len(new_password) < 6:
+            flash('Password must be at least 6 characters long', 'error')
+            return render_template('super_admin/reset_password.html', user=user)
+        
+        user.set_password(new_password)
+        db.session.commit()
+        
+        flash(f'Password reset successfully for {user.username}!', 'success')
+        return redirect(url_for('super_admin.manage_users'))
+    
+    return render_template('super_admin/reset_password.html', user=user)
+
 @super_admin_bp.route('/export_data')
 @login_required
 @role_required('super_admin')
