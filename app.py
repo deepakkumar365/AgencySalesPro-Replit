@@ -84,6 +84,63 @@ def create_app():
             db.session.add(admin)
             db.session.commit()
             logging.info("Default super admin created: admin/admin123")
+        
+        # Create sample agency and users for testing
+        if not Agency.query.first():
+            # Create sample agency
+            sample_agency = Agency(
+                name='Sample Marketing Agency',
+                code='SMA001',
+                address='123 Business Street, City, State 12345',
+                phone='(555) 123-4567',
+                email='info@sampleagency.com',
+                is_active=True
+            )
+            db.session.add(sample_agency)
+            db.session.commit()
+            
+            # Create agency admin
+            agency_admin = User(
+                username='agency_admin',
+                email='admin@sampleagency.com',
+                password_hash=generate_password_hash('admin123'),
+                first_name='John',
+                last_name='Manager',
+                role='agency_admin',
+                agency_id=sample_agency.id,
+                is_active=True
+            )
+            
+            # Create agency staff
+            agency_staff = User(
+                username='agency_staff',
+                email='staff@sampleagency.com',
+                password_hash=generate_password_hash('staff123'),
+                first_name='Jane',
+                last_name='Staff',
+                role='staff',
+                agency_id=sample_agency.id,
+                is_active=True
+            )
+            
+            # Create salesperson
+            salesperson = User(
+                username='salesperson',
+                email='sales@sampleagency.com',
+                password_hash=generate_password_hash('sales123'),
+                first_name='Mike',
+                last_name='Sales',
+                role='salesperson',
+                agency_id=sample_agency.id,
+                is_active=True
+            )
+            
+            db.session.add_all([agency_admin, agency_staff, salesperson])
+            db.session.commit()
+            logging.info("Sample agency and users created:")
+            logging.info("  Agency Admin: agency_admin/admin123")
+            logging.info("  Staff: agency_staff/staff123")
+            logging.info("  Salesperson: salesperson/sales123")
     
     return app
 

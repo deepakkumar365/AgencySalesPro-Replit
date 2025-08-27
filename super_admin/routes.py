@@ -34,9 +34,9 @@ def dashboard():
     # Get monthly order trends (last 6 months)
     six_months_ago = datetime.utcnow() - timedelta(days=180)
     monthly_orders = db.session.query(
-        func.strftime('%Y-%m', Order.created_at).label('month'),
+        func.date_trunc('month', Order.created_at).label('month'),
         func.count(Order.id).label('count')
-    ).filter(Order.created_at >= six_months_ago).group_by('month').all()
+    ).filter(Order.created_at >= six_months_ago).group_by(func.date_trunc('month', Order.created_at)).all()
     
     # Get top agencies by orders
     top_agencies = db.session.query(
