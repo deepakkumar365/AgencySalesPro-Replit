@@ -100,11 +100,11 @@
                         <thead>
                             <tr>
                                 <th>Name</th>
-                                <th>Contact</th>
+                                <th class="d-none-mobile">Contact</th>
                                 <th>Location</th>
-                                <th>Agency</th>
+                                <th class="d-none-mobile">Agency</th>
                                 <th>Status</th>
-                                <th>Created</th>
+                                <th class="d-none-mobile">Created</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -117,7 +117,7 @@
                                     <br><small class="text-muted">{{ customer.address }}</small>
                                     {% endif %}
                                 </td>
-                                <td>
+                                <td class="d-none-mobile">
                                     {% if customer.email %}
                                     <div><i class="fas fa-envelope me-1"></i>{{ customer.email }}</div>
                                     {% endif %}
@@ -126,7 +126,7 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ customer.location.name }}</td>
-                                <td>{{ customer.location.agency.name }}</td>
+                                <td class="d-none-mobile">{{ customer.location.agency.name }}</td>
                                 <td>
                                     {% if customer.is_active %}
                                     <span class="badge bg-success">Active</span>
@@ -134,7 +134,7 @@
                                     <span class="badge bg-secondary">Inactive</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ customer.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td class="d-none-mobile">{{ customer.created_at.strftime('%Y-%m-%d') }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
                                         <a href="{{ url_for('customer.edit_customer', customer_id=customer.id) }}" 

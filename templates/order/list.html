@@ -133,10 +133,10 @@
                             <tr>
                                 <th>Order #</th>
                                 <th>Customer</th>
-                                <th>Salesperson</th>
+                                <th class="d-none-mobile">Salesperson</th>
                                 <th>Status</th>
-                                <th>Total</th>
-                                <th>Date</th>
+                                <th class="d-none-mobile">Total</th>
+                                <th class="d-none-mobile">Date</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -153,7 +153,7 @@
                                     {{ order.customer.name }}
                                     <br><small class="text-muted">{{ order.customer.location.name }}</small>
                                 </td>
-                                <td>{{ order.salesperson.full_name }}</td>
+                                <td class="d-none-mobile">{{ order.salesperson.full_name }}</td>
                                 <td>
                                     {% set status_class = {
                                         'pending': 'warning',
@@ -166,8 +166,8 @@
                                         {{ order.status.title() }}
                                     </span>
                                 </td>
-                                <td>${{ "%.2f"|format(order.total_amount) }}</td>
-                                <td>{{ order.order_date.strftime('%Y-%m-%d') }}</td>
+                                <td class="d-none-mobile">${{ "%.2f"|format(order.total_amount) }}</td>
+                                <td class="d-none-mobile">{{ order.order_date.strftime('%Y-%m-%d') }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
                                         <a href="{{ url_for('order.view_order', order_id=order.id) }}" 

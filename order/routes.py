@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, flash, session, s
 from datetime import datetime
 import uuid
 from app import db
-from models import Order, OrderItem, Customer, Product, Location, User
+from models import Order, OrderItem, Customer, Product, Location, User, Agency
 from order import order_bp
 from auth.utils import login_required, agency_access_required
 from utils.decorators import log_activity

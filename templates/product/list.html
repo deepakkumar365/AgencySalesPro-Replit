@@ -108,11 +108,11 @@
                         <thead>
                             <tr>
                                 <th>Product</th>
-                                <th>SKU</th>
-                                <th>Price</th>
+                                <th class="d-none-mobile">SKU</th>
+                                <th class="d-none-mobile">Price</th>
                                 <th>Stock</th>
-                                <th>Category</th>
-                                <th>Agency</th>
+                                <th class="d-none-mobile">Category</th>
+                                <th class="d-none-mobile">Agency</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -126,15 +126,15 @@
                                     <br><small class="text-muted">{{ product.description[:50] }}{{ '...' if product.description|length > 50 else '' }}</small>
                                     {% endif %}
                                 </td>
-                                <td><code>{{ product.sku }}</code></td>
-                                <td>${{ "%.2f"|format(product.price) }}</td>
+                                <td class="d-none-mobile"><code>{{ product.sku }}</code></td>
+                                <td class="d-none-mobile">${{ "%.2f"|format(product.price) }}</td>
                                 <td>
                                     <span class="badge bg-{{ 'success' if product.stock_quantity > 10 else 'warning' if product.stock_quantity > 0 else 'danger' }}">
                                         {{ product.stock_quantity }}
                                     </span>
                                 </td>
-                                <td>{{ product.category or '-' }}</td>
-                                <td>{{ product.agency.name }}</td>
+                                <td class="d-none-mobile">{{ product.category or '-' }}</td>
+                                <td class="d-none-mobile">{{ product.agency.name }}</td>
                                 <td>
                                     {% if product.is_active %}
                                     <span class="badge bg-success">Active</span>
