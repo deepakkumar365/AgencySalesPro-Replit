@@ -607,8 +607,8 @@ function updateBulkActions(table) {
  * Setup notification handling
  */
 function setupNotifications() {
-    // Auto-dismiss alerts after 5 seconds
-    const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
+    // Auto-dismiss alerts after 5 seconds (except alert-info which should remain visible)
+    const alerts = document.querySelectorAll('.alert:not(.alert-permanent):not(.alert-info)');
     alerts.forEach(function(alert) {
         setTimeout(function() {
             const bsAlert = new bootstrap.Alert(alert);
