@@ -22,8 +22,7 @@ def dashboard():
         'total_customers': Customer.query.count()
     }
     
-    # Get recent activities
-    recent_activities = ActivityLog.query.order_by(ActivityLog.created_at.desc()).limit(10).all()
+    # Recent activities removed as not required
     
     # Get order statistics by status
     order_stats = db.session.query(
@@ -46,7 +45,6 @@ def dashboard():
     
     return render_template('super_admin/dashboard.html',
                          stats=stats,
-                         recent_activities=recent_activities,
                          order_stats=order_stats,
                          monthly_orders=monthly_orders,
                          top_agencies=top_agencies)

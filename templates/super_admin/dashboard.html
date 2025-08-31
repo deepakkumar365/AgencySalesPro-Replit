@@ -117,35 +117,6 @@
         </div>
     </div>
     
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Recent Activities</h5>
-            </div>
-            <div class="card-body">
-                {% if recent_activities %}
-                <div class="list-group list-group-flush">
-                    {% for activity in recent_activities %}
-                    <div class="list-group-item border-0 px-0">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <strong>{{ activity.user.username }}</strong>
-                                <small class="text-muted">{{ activity.action }}</small>
-                            </div>
-                            <small class="text-muted">{{ activity.created_at.strftime('%m/%d %H:%M') }}</small>
-                        </div>
-                        {% if activity.description %}
-                        <small class="text-muted">{{ activity.description }}</small>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <p class="text-muted">No recent activities</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- Quick Actions -->
