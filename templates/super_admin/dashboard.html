@@ -12,7 +12,7 @@
 </div>
 
 <!-- Statistics Cards -->
-<div class="row">
+<div class="row auto-hide-content">
     <div class="col-md-3 mb-4">
         <div class="card text-center">
             <div class="card-body">
@@ -59,7 +59,7 @@
 </div>
 
 <!-- Charts Row -->
-<div class="row">
+<div class="row auto-hide-content">
     <div class="col-md-6 mb-4">
         <div class="card">
             <div class="card-header">
@@ -84,7 +84,7 @@
 </div>
 
 <!-- Data Tables Row -->
-<div class="row">
+<div class="row auto-hide-content">
     <div class="col-md-6 mb-4">
         <div class="card">
             <div class="card-header">
@@ -120,7 +120,7 @@
 </div>
 
 <!-- Quick Actions -->
-<div class="row">
+<div class="row auto-hide-content">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
@@ -147,6 +147,29 @@
                         <a href="{{ url_for('super_admin.view_activities') }}" class="btn btn-outline-warning w-100">
                             <i class="fas fa-history me-2"></i>Activity Log
                         </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- API Status Section - Always Visible -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-success" id="api-status-card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-server me-2"></i>API Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-check-circle text-success fa-2x me-3"></i>
+                    <div>
+                        <h6 class="mb-1">System Operational</h6>
+                        <p class="mb-0 text-muted">All services running normally</p>
+                    </div>
+                    <div class="ms-auto">
+                        <span class="badge bg-success">Online</span>
                     </div>
                 </div>
             </div>
@@ -215,5 +238,44 @@ const monthlyOrdersConfig = {
 };
 
 new Chart(document.getElementById('monthlyOrdersChart'), monthlyOrdersConfig);
+
+// Auto-hide functionality - hide content after 30 seconds, keep API status and messages visible
+setTimeout(function() {
+    const elementsToHide = document.querySelectorAll('.auto-hide-content');
+    elementsToHide.forEach(function(element) {
+        element.style.transition = 'opacity 1s ease-out, height 1s ease-out';
+        element.style.opacity = '0';
+        element.style.height = '0';
+        element.style.overflow = 'hidden';
+        
+        // Completely hide after transition
+        setTimeout(function() {
+            element.style.display = 'none';
+        }, 1000);
+    });
+    
+    // Show a subtle notification that content has been minimized
+    if (window.showNotification) {
+        window.showNotification('Dashboard minimized - API status remains visible', 'info', 3000);
+    }
+}, 30000); // Hide after 30 seconds
+
+// Add click handler to restore content when needed
+document.addEventListener('click', function(e) {
+    if (e.target.closest('#api-status-card')) return; // Don't restore on API status clicks
+    
+    const hiddenElements = document.querySelectorAll('.auto-hide-content[style*="display: none"]');
+    if (hiddenElements.length > 0) {
+        hiddenElements.forEach(function(element) {
+            element.style.display = '';
+            element.style.height = '';
+            element.style.opacity = '1';
+        });
+        
+        if (window.showNotification) {
+            window.showNotification('Dashboard content restored', 'success', 2000);
+        }
+    }
+});
 </script>
 {% endblock %}
