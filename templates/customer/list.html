@@ -9,9 +9,26 @@
             <h1>
                 <i class="fas fa-user-friends me-2"></i>Customers
             </h1>
-            <a href="{{ url_for('customer.create_customer') }}" class="btn btn-primary">
-                <i class="fas fa-plus me-2"></i>Add Customer
-            </a>
+            <div class="btn-group">
+                <a href="{{ url_for('customer.create_customer') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Add Customer
+                </a>
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+                    <span class="visually-hidden">Toggle Dropdown</span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{{ url_for('customer.import_customers') }}">
+                        <i class="fas fa-upload me-2"></i>Import from CSV
+                    </a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('customer.export_customers') }}">
+                        <i class="fas fa-download me-2"></i>Export to CSV
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{{ url_for('customer.download_customer_template') }}">
+                        <i class="fas fa-file-csv me-2"></i>Download Template
+                    </a></li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>

@@ -9,9 +9,26 @@
             <h1>
                 <i class="fas fa-users-cog me-2"></i>Manage Users
             </h1>
-            <a href="{{ url_for('auth.register') }}" class="btn btn-primary">
-                <i class="fas fa-user-plus me-2"></i>Add User
-            </a>
+            <div class="btn-group">
+                <a href="{{ url_for('auth.register') }}" class="btn btn-primary">
+                    <i class="fas fa-user-plus me-2"></i>Add User
+                </a>
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+                    <span class="visually-hidden">Toggle Dropdown</span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{{ url_for('super_admin.import_users') }}">
+                        <i class="fas fa-upload me-2"></i>Import from CSV
+                    </a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('super_admin.export_users') }}">
+                        <i class="fas fa-download me-2"></i>Export to CSV
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{{ url_for('super_admin.download_user_template') }}">
+                        <i class="fas fa-file-csv me-2"></i>Download Template
+                    </a></li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>

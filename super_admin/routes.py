@@ -1,10 +1,12 @@
-from flask import render_template, request, redirect, url_for, flash, session
+from flask import render_template, request, redirect, url_for, flash, session, make_response
 from sqlalchemy import func
 from datetime import datetime, timedelta
+import csv, io
 from app import db
 from models import Agency, User, Order, Product, Customer, ActivityLog, Location
 from super_admin import super_admin_bp
 from auth.utils import login_required, role_required
+from utils.decorators import log_activity
 
 @super_admin_bp.route('/dashboard')
 @login_required
@@ -229,6 +231,181 @@ def reset_password(user_id):
         return redirect(url_for('super_admin.manage_users'))
     
     return render_template('super_admin/reset_password.html', user=user)
+
+# User Import/Export Routes
+
+@super_admin_bp.route('/users/download_template')
+@login_required
+@role_required('super_admin')
+def download_user_template():
+    """Download CSV template for user import"""
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header row
+    writer.writerow(['username', 'email', 'first_name', 'last_name', 'role', 'agency_code', 'password'])
+    
+    # Write sample data
+    writer.writerow(['sample_user', 'user@example.com', 'John', 'Doe', 'staff', 'AGENCY001', 'password123'])
+    writer.writerow(['sample_admin', 'admin@example.com', 'Jane', 'Smith', 'agency_admin', 'AGENCY001', 'admin123'])
+    
+    # Create response
+    response = make_response(output.getvalue())
+    response.headers['Content-Disposition'] = 'attachment; filename=user_template.csv'
+    response.headers['Content-Type'] = 'text/csv'
+    
+    return response
+
+@super_admin_bp.route('/users/export')
+@login_required
+@role_required('super_admin')
+def export_users():
+    """Export existing users to CSV"""
+    users = User.query.join(Agency).all()
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow(['username', 'email', 'first_name', 'last_name', 'role', 'agency_code', 'is_active', 'created_at', 'last_login'])
+    
+    # Write data
+    for user in users:
+        writer.writerow([
+            user.username,
+            user.email,
+            user.first_name or '',
+            user.last_name or '',
+            user.role,
+            user.agency.code if user.agency else '',
+            'Yes' if user.is_active else 'No',
+            user.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else ''
+        ])
+    
+    response = make_response(output.getvalue())
+    response.headers['Content-Disposition'] = 'attachment; filename=users_export.csv'
+    response.headers['Content-Type'] = 'text/csv'
+    
+    return response
+
+@super_admin_bp.route('/users/import', methods=['GET', 'POST'])
+@login_required
+@role_required('super_admin')
+@log_activity('import_users')
+def import_users():
+    """Import users from CSV file"""
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('No file selected', 'error')
+            return redirect(url_for('super_admin.import_users'))
+        
+        file = request.files['file']
+        if file.filename == '':
+            flash('No file selected', 'error')
+            return redirect(url_for('super_admin.import_users'))
+        
+        if not file.filename.lower().endswith('.csv'):
+            flash('Please upload a CSV file', 'error')
+            return redirect(url_for('super_admin.import_users'))
+        
+        try:
+            # Read CSV file
+            stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+            csv_input = csv.DictReader(stream)
+            
+            success_count = 0
+            error_count = 0
+            errors = []
+            
+            valid_roles = ['super_admin', 'agency_admin', 'staff', 'salesperson']
+            
+            for row_num, row in enumerate(csv_input, start=2):  # Start from 2 to account for header
+                try:
+                    # Validate required fields
+                    required_fields = ['username', 'email', 'role', 'agency_code', 'password']
+                    missing_fields = [field for field in required_fields if not row.get(field, '').strip()]
+                    
+                    if missing_fields:
+                        errors.append(f"Row {row_num}: Missing required fields: {', '.join(missing_fields)}")
+                        error_count += 1
+                        continue
+                    
+                    # Validate role
+                    role = row['role'].strip()
+                    if role not in valid_roles:
+                        errors.append(f"Row {row_num}: Invalid role '{role}'. Must be one of: {', '.join(valid_roles)}")
+                        error_count += 1
+                        continue
+                    
+                    # Find agency by code
+                    agency_code = row['agency_code'].strip()
+                    agency = Agency.query.filter_by(code=agency_code, is_active=True).first()
+                    if not agency:
+                        errors.append(f"Row {row_num}: Agency with code '{agency_code}' not found or inactive")
+                        error_count += 1
+                        continue
+                    
+                    # Check for existing username
+                    existing_user = User.query.filter_by(username=row['username'].strip()).first()
+                    if existing_user:
+                        errors.append(f"Row {row_num}: Username '{row['username'].strip()}' already exists")
+                        error_count += 1
+                        continue
+                    
+                    # Check for existing email
+                    existing_email = User.query.filter_by(email=row['email'].strip()).first()
+                    if existing_email:
+                        errors.append(f"Row {row_num}: Email '{row['email'].strip()}' already exists")
+                        error_count += 1
+                        continue
+                    
+                    # Validate password length
+                    password = row['password'].strip()
+                    if len(password) < 6:
+                        errors.append(f"Row {row_num}: Password must be at least 6 characters long")
+                        error_count += 1
+                        continue
+                    
+                    # Create new user
+                    user = User(
+                        username=row['username'].strip(),
+                        email=row['email'].strip(),
+                        first_name=row.get('first_name', '').strip(),
+                        last_name=row.get('last_name', '').strip(),
+                        role=role,
+                        agency_id=agency.id,
+                        is_active=True
+                    )
+                    user.set_password(password)
+                    
+                    db.session.add(user)
+                    success_count += 1
+                    
+                except Exception as e:
+                    errors.append(f"Row {row_num}: {str(e)}")
+                    error_count += 1
+            
+            if success_count > 0:
+                db.session.commit()
+                flash(f'Successfully imported {success_count} users', 'success')
+            
+            if error_count > 0:
+                flash(f'{error_count} errors occurred during import', 'warning')
+                # Show first 5 errors
+                for error in errors[:5]:
+                    flash(error, 'error')
+                if len(errors) > 5:
+                    flash(f'... and {len(errors) - 5} more errors', 'error')
+            
+            return redirect(url_for('super_admin.manage_users'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error processing file: {str(e)}', 'error')
+            return redirect(url_for('super_admin.import_users'))
+    
+    return render_template('super_admin/import_users.html')
 
 @super_admin_bp.route('/export_data')
 @login_required
