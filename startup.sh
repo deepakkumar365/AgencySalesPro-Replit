@@ -5,6 +5,9 @@
 export FLASK_ENV=${FLASK_ENV:-production}
 export PORT=${PORT:-5000}
 
+# Install pandas and openpyxl if needed (for Excel functionality)
+pip install pandas==2.0.3 openpyxl==3.1.2 || echo "Warning: Excel functionality may not work without pandas and openpyxl"
+
 # Create database tables if they don't exist
 python -c "
 from app import app, db
