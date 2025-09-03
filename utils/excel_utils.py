@@ -1,78 +1,169 @@
-import pandas as pd
 import io
+import csv
+from datetime import datetime
+from openpyxl import Workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.styles import Font, PatternFill
 from app import db
 from models import Product, Order, OrderItem
 
 def export_products_to_excel(products):
-    """Export products to Excel file"""
-    data = []
+    """Export products to Excel file using openpyxl"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Products"
+    
+    # Headers
+    headers = ['ID', 'Name', 'Description', 'SKU', 'Price', 'Cost', 'Stock Quantity', 'Category', 'Agency', 'Active', 'Created At']
+    ws.append(headers)
+    
+    # Style headers
+    header_font = Font(bold=True)
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    
+    # Add data
     for product in products:
-        data.append({
-            'ID': product.id,
-            'Name': product.name,
-            'Description': product.description,
-            'SKU': product.sku,
-            'Price': float(product.price),
-            'Cost': float(product.cost) if product.cost else 0,
-            'Stock Quantity': product.stock_quantity,
-            'Category': product.category,
-            'Agency': product.agency.name,
-            'Active': product.is_active,
-            'Created At': product.created_at.strftime('%Y-%m-%d %H:%M:%S')
-        })
+        row_data = [
+            product.id,
+            product.name,
+            product.description,
+            product.sku,
+            float(product.price),
+            float(product.cost) if product.cost else 0,
+            product.stock_quantity,
+            product.category,
+            product.agency.name,
+            product.is_active,
+            product.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        ]
+        ws.append(row_data)
     
-    df = pd.DataFrame(data)
+    # Auto-size columns
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
     
-    # Create Excel file in memory
+    # Save to BytesIO
     output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Products', index=False)
-    
+    wb.save(output)
     output.seek(0)
     return output
 
 def import_products_from_excel(file, agency_id, user_role):
-    """Import products from Excel file"""
+    """Import products from Excel or CSV file"""
     try:
-        # Read Excel file
-        if file.filename.lower().endswith('.csv'):
-            df = pd.read_csv(file)
-        else:
-            df = pd.read_excel(file)
-        
         imported = 0
         skipped = 0
         
-        for _, row in df.iterrows():
-            # Extract data from row
-            name = row.get('Name') or row.get('name')
-            sku = row.get('SKU') or row.get('sku')
-            price = row.get('Price') or row.get('price')
+        if file.filename.lower().endswith('.csv'):
+            # Handle CSV file
+            content = file.read().decode('utf-8')
+            csv_file = io.StringIO(content)
+            reader = csv.DictReader(csv_file)
             
-            if not all([name, sku, price]):
-                skipped += 1
-                continue
+            for row in reader:
+                # Extract data from row
+                name = row.get('Name') or row.get('name') or ''
+                sku = row.get('SKU') or row.get('sku') or ''
+                price = row.get('Price') or row.get('price') or ''
+                
+                if not all([name.strip(), sku.strip(), price]):
+                    skipped += 1
+                    continue
+                
+                # Check if SKU already exists
+                if Product.query.filter_by(sku=sku.strip()).first():
+                    skipped += 1
+                    continue
+                
+                # Create product
+                try:
+                    product = Product(
+                        name=name.strip(),
+                        description=row.get('Description', '').strip(),
+                        sku=sku.strip(),
+                        price=float(price),
+                        cost=float(row.get('Cost', 0)) if row.get('Cost') else 0,
+                        stock_quantity=int(row.get('Stock Quantity', 0)) if row.get('Stock Quantity') else 0,
+                        category=row.get('Category', '').strip(),
+                        agency_id=agency_id,
+                        is_active=True
+                    )
+                    
+                    db.session.add(product)
+                    imported += 1
+                except (ValueError, TypeError):
+                    skipped += 1
+                    continue
+        
+        else:
+            # Handle Excel file using openpyxl
+            from openpyxl import load_workbook
             
-            # Check if SKU already exists
-            if Product.query.filter_by(sku=sku).first():
-                skipped += 1
-                continue
+            wb = load_workbook(file)
+            ws = wb.active
             
-            # Create product
-            product = Product(
-                name=name,
-                description=row.get('Description', ''),
-                sku=sku,
-                price=float(price),
-                cost=float(row.get('Cost', 0)) if row.get('Cost') else 0,
-                stock_quantity=int(row.get('Stock Quantity', 0)) if row.get('Stock Quantity') else 0,
-                category=row.get('Category', ''),
-                agency_id=agency_id,
-                is_active=True
-            )
+            # Get headers from first row
+            headers = []
+            for cell in ws[1]:
+                headers.append(cell.value)
             
-            db.session.add(product)
-            imported += 1
+            # Process data rows
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not any(row):  # Skip empty rows
+                    continue
+                
+                # Create row dictionary
+                row_dict = {}
+                for i, value in enumerate(row):
+                    if i < len(headers) and headers[i]:
+                        row_dict[headers[i]] = value
+                
+                # Extract data from row
+                name = row_dict.get('Name') or row_dict.get('name') or ''
+                sku = row_dict.get('SKU') or row_dict.get('sku') or ''
+                price = row_dict.get('Price') or row_dict.get('price') or ''
+                
+                if not all([str(name).strip(), str(sku).strip(), price]):
+                    skipped += 1
+                    continue
+                
+                # Check if SKU already exists
+                if Product.query.filter_by(sku=str(sku).strip()).first():
+                    skipped += 1
+                    continue
+                
+                # Create product
+                try:
+                    product = Product(
+                        name=str(name).strip(),
+                        description=str(row_dict.get('Description', '')).strip(),
+                        sku=str(sku).strip(),
+                        price=float(price),
+                        cost=float(row_dict.get('Cost', 0)) if row_dict.get('Cost') else 0,
+                        stock_quantity=int(row_dict.get('Stock Quantity', 0)) if row_dict.get('Stock Quantity') else 0,
+                        category=str(row_dict.get('Category', '')).strip(),
+                        agency_id=agency_id,
+                        is_active=True
+                    )
+                    
+                    db.session.add(product)
+                    imported += 1
+                except (ValueError, TypeError):
+                    skipped += 1
+                    continue
         
         db.session.commit()
         
@@ -90,58 +181,115 @@ def import_products_from_excel(file, agency_id, user_role):
         }
 
 def export_orders_to_excel(orders):
-    """Export orders to Excel file"""
-    data = []
+    """Export orders to Excel file using openpyxl"""
+    wb = Workbook()
+    
+    # Orders details sheet
+    ws_details = wb.active
+    ws_details.title = "Order Details"
+    
+    # Headers for details
+    detail_headers = [
+        'Order ID', 'Order Number', 'Customer', 'Customer Email', 'Customer Phone',
+        'Location', 'Agency', 'Salesperson', 'Product Name', 'Product SKU',
+        'Quantity', 'Unit Price', 'Total Price', 'Order Status', 'Order Total',
+        'Discount', 'Tax', 'Order Date', 'Delivery Date', 'Notes'
+    ]
+    ws_details.append(detail_headers)
+    
+    # Style headers
+    header_font = Font(bold=True)
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    
+    for cell in ws_details[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    
+    # Add order details data
     for order in orders:
         for item in order.order_items:
-            data.append({
-                'Order ID': order.id,
-                'Order Number': order.order_number,
-                'Customer': order.customer.name,
-                'Customer Email': order.customer.email,
-                'Customer Phone': order.customer.phone,
-                'Location': order.customer.location.name,
-                'Agency': order.agency.name,
-                'Salesperson': order.salesperson.full_name,
-                'Product Name': item.product.name,
-                'Product SKU': item.product.sku,
-                'Quantity': item.quantity,
-                'Unit Price': float(item.unit_price),
-                'Total Price': float(item.total_price),
-                'Order Status': order.status,
-                'Order Total': float(order.total_amount),
-                'Discount': float(order.discount),
-                'Tax': float(order.tax),
-                'Order Date': order.order_date.strftime('%Y-%m-%d %H:%M:%S'),
-                'Delivery Date': order.delivery_date.strftime('%Y-%m-%d') if order.delivery_date else '',
-                'Notes': order.notes
-            })
+            row_data = [
+                order.id,
+                order.order_number,
+                order.customer.name,
+                order.customer.email,
+                order.customer.phone,
+                order.customer.location.name,
+                order.agency.name,
+                order.salesperson.full_name,
+                item.product.name,
+                item.product.sku,
+                item.quantity,
+                float(item.unit_price),
+                float(item.total_price),
+                order.status,
+                float(order.total_amount),
+                float(order.discount),
+                float(order.tax),
+                order.order_date.strftime('%Y-%m-%d %H:%M:%S'),
+                order.delivery_date.strftime('%Y-%m-%d') if order.delivery_date else '',
+                order.notes
+            ]
+            ws_details.append(row_data)
     
-    df = pd.DataFrame(data)
+    # Auto-size columns for details
+    for column in ws_details.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws_details.column_dimensions[column_letter].width = adjusted_width
     
-    # Create Excel file in memory
+    # Order summary sheet
+    ws_summary = wb.create_sheet("Order Summary")
+    summary_headers = [
+        'Order Number', 'Customer', 'Agency', 'Salesperson', 'Status',
+        'Total Amount', 'Order Date', 'Items Count'
+    ]
+    ws_summary.append(summary_headers)
+    
+    # Style summary headers
+    for cell in ws_summary[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    
+    # Add summary data
+    order_summary = {}
+    for order in orders:
+        if order.id not in order_summary:
+            row_data = [
+                order.order_number,
+                order.customer.name,
+                order.agency.name,
+                order.salesperson.full_name,
+                order.status,
+                float(order.total_amount),
+                order.order_date.strftime('%Y-%m-%d %H:%M:%S'),
+                len(order.order_items)
+            ]
+            ws_summary.append(row_data)
+            order_summary[order.id] = True
+    
+    # Auto-size columns for summary
+    for column in ws_summary.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws_summary.column_dimensions[column_letter].width = adjusted_width
+    
+    # Save to BytesIO
     output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Orders', index=False)
-        
-        # Create summary sheet
-        summary_data = []
-        order_summary = {}
-        for order in orders:
-            if order.id not in order_summary:
-                order_summary[order.id] = {
-                    'Order Number': order.order_number,
-                    'Customer': order.customer.name,
-                    'Agency': order.agency.name,
-                    'Salesperson': order.salesperson.full_name,
-                    'Status': order.status,
-                    'Total Amount': float(order.total_amount),
-                    'Order Date': order.order_date.strftime('%Y-%m-%d %H:%M:%S'),
-                    'Items Count': len(order.order_items)
-                }
-        
-        summary_df = pd.DataFrame(list(order_summary.values()))
-        summary_df.to_excel(writer, sheet_name='Order Summary', index=False)
-    
+    wb.save(output)
     output.seek(0)
     return output
