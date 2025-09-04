@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}POS Dashboard - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-cash-register me-2"></i>POS Dashboard</h2>
+    <a href="{{ url_for('pos.new_sale') }}" class="btn btn-primary">
+        <i class="fas fa-plus-circle me-2"></i>New Sale
+    </a>
+</div>
+
+<!-- Today's Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-dollar-sign fa-2x me-3"></i>
+                    <div>
+                        <div class="h4 mb-0">${{ "%.2f"|format(today_stats.total_sales) }}</div>
+                        <small>Today's Sales</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-shopping-cart fa-2x me-3"></i>
+                    <div>
+                        <div class="h4 mb-0">{{ today_stats.total_orders }}</div>
+                        <small>Orders Today</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-box fa-2x me-3"></i>
+                    <div>
+                        <div class="h4 mb-0">{{ today_stats.total_items }}</div>
+                        <small>Items Sold</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-chart-line fa-2x me-3"></i>
+                    <div>
+                        <div class="h4 mb-0">${{ "%.2f"|format(today_stats.avg_order_value) }}</div>
+                        <small>Avg Order Value</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Orders -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Recent Orders</h5>
+                <a href="{{ url_for('pos.sales_history') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_orders %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Total</th>
+                                <th>Time</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in recent_orders %}
+                            <tr>
+                                <td>{{ order.order_number }}</td>
+                                <td>{{ order.customer.name }}</td>
+                                <td>${{ "%.2f"|format(order.total_amount) }}</td>
+                                <td>{{ order.created_at.strftime('%H:%M') }}</td>
+                                <td>
+                                    <a href="{{ url_for('pos.receipt', order_id=order.id) }}" 
+                                       class="btn btn-sm btn-outline-primary" target="_blank">
+                                        <i class="fas fa-receipt"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-shopping-cart fa-3x mb-3"></i>
+                    <p>No recent orders</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-md-4">
+        <!-- Low Stock Alerts -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Low Stock Alerts</h6>
+            </div>
+            <div class="card-body">
+                {% if low_stock_products %}
+                <div class="list-group list-group-flush">
+                    {% for product in low_stock_products %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-2">
+                        <div>
+                            <div class="fw-bold">{{ product.name }}</div>
+                            <small class="text-muted">{{ product.sku }}</small>
+                        </div>
+                        <span class="badge bg-warning">{{ product.stock_quantity }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted">
+                    <i class="fas fa-check-circle text-success"></i>
+                    <p class="mb-0">All products in stock</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('pos.new_sale') }}" class="btn btn-primary">
+                        <i class="fas fa-plus-circle me-2"></i>New Sale
+                    </a>
+                    <a href="{{ url_for('pos.sales_history') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-history me-2"></i>Sales History
+                    </a>
+                    {% if session.role in ['agency_admin', 'super_admin'] %}
+                    <a href="{{ url_for('product.list_products') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-box me-2"></i>Manage Products
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh dashboard every 5 minutes
+setTimeout(() => {
+    location.reload();
+}, 300000);
+</script>
+{% endblock %}

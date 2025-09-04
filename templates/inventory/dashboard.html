@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory Dashboard - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-boxes me-2"></i>Inventory Dashboard</h2>
+    <div class="btn-group">
+        <a href="{{ url_for('inventory.stock_levels') }}" class="btn btn-outline-primary">
+            <i class="fas fa-list me-2"></i>Stock Levels
+        </a>
+        <a href="{{ url_for('inventory.adjust_stock', product_id=1) }}" class="btn btn-outline-warning" 
+           onclick="return false;" title="Select a product from stock levels to adjust">
+            <i class="fas fa-edit me-2"></i>Adjust Stock
+        </a>
+        <a href="{{ url_for('inventory.reports') }}" class="btn btn-outline-info">
+            <i class="fas fa-chart-bar me-2"></i>Reports
+        </a>
+    </div>
+</div>
+
+<!-- Key Metrics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-box fa-2x me-3"></i>
+                    <div>
+                        <div class="h4 mb-0">{{ stats.total_products }}</div>
+                        <small>Total Products</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-dollar-sign fa-2x me-3"></i>
+                    <div>
+                        <div class="h4 mb-0">${{ "%.0f"|format(stats.total_inventory_value) }}</div>
+                        <small>Inventory Value</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                    <div>
+                        <div class="h4 mb-0">{{ stats.low_stock_count }}</div>
+                        <small>Low Stock Items</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-times-circle fa-2x me-3"></i>
+                    <div>
+                        <div class="h4 mb-0">{{ stats.out_of_stock_count }}</div>
+                        <small>Out of Stock</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Movement Summary -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>30-Day Movement Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="h3 text-success">{{ stats.total_in_30_days }}</div>
+                        <div class="text-muted">Items In</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="h3 text-danger">{{ stats.total_out_30_days }}</div>
+                        <div class="text-muted">Items Out</div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="progress">
+                        {% set total_movement = stats.total_in_30_days + stats.total_out_30_days %}
+                        {% set in_percentage = (stats.total_in_30_days / total_movement * 100) if total_movement > 0 else 0 %}
+                        <div class="progress-bar bg-success" style="width: {{ in_percentage }}%"></div>
+                        <div class="progress-bar bg-danger" style="width: {{ 100 - in_percentage }}%"></div>
+                    </div>
+                    <small class="text-muted">Movement ratio for the last 30 days</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-tools me-2"></i>Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('inventory.stock_levels', stock_status='low') }}" class="btn btn-outline-warning btn-sm">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Review Low Stock Items
+                    </a>
+                    <a href="{{ url_for('inventory.stock_levels', stock_status='out') }}" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-times-circle me-2"></i>Check Out of Stock
+                    </a>
+                    <a href="{{ url_for('inventory.transaction_history') }}" class="btn btn-outline-info btn-sm">
+                        <i class="fas fa-history me-2"></i>View Transactions
+                    </a>
+                    <a href="{{ url_for('inventory.list_suppliers') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-truck me-2"></i>Manage Suppliers
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Transactions -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Transactions</h5>
+                <a href="{{ url_for('inventory.transaction_history') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_transactions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Type</th>
+                                <th>Change</th>
+                                <th>New Qty</th>
+                                <th>Date</th>
+                                <th>User</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in recent_transactions %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">{{ transaction.product.name }}</div>
+                                    <small class="text-muted">{{ transaction.product.sku }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ transaction.transaction_type|replace('_', ' ')|title }}</span>
+                                </td>
+                                <td>
+                                    {% if transaction.quantity_change > 0 %}
+                                        <span class="text-success">+{{ transaction.quantity_change }}</span>
+                                    {% else %}
+                                        <span class="text-danger">{{ transaction.quantity_change }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ transaction.quantity_after }}</td>
+                                <td>
+                                    <div>{{ transaction.created_at.strftime('%Y-%m-%d') }}</div>
+                                    <small class="text-muted">{{ transaction.created_at.strftime('%H:%M') }}</small>
+                                </td>
+                                <td>
+                                    {% if transaction.created_by_user %}
+                                        {{ transaction.created_by_user.full_name }}
+                                    {% else %}
+                                        System
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-history fa-3x mb-3"></i>
+                    <p>No recent transactions</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Alerts -->
+    <div class="col-md-4">
+        <!-- Low Stock Alerts -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Low Stock Alerts</h6>
+            </div>
+            <div class="card-body">
+                {% if low_stock_products %}
+                <div class="list-group list-group-flush">
+                    {% for product in low_stock_products %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-2">
+                        <div>
+                            <div class="fw-bold">{{ product.name }}</div>
+                            <small class="text-muted">{{ product.sku }}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-warning">{{ product.stock_quantity }}</span>
+                            <div>
+                                <a href="{{ url_for('inventory.adjust_stock', product_id=product.id) }}" 
+                                   class="btn btn-sm btn-outline-primary mt-1">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted">
+                    <i class="fas fa-check-circle text-success"></i>
+                    <p class="mb-0">No low stock items</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Out of Stock Alerts -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-times-circle me-2 text-danger"></i>Out of Stock</h6>
+            </div>
+            <div class="card-body">
+                {% if out_of_stock_products %}
+                <div class="list-group list-group-flush">
+                    {% for product in out_of_stock_products %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-2">
+                        <div>
+                            <div class="fw-bold">{{ product.name }}</div>
+                            <small class="text-muted">{{ product.sku }}</small>
+                        </div>
+                        <div>
+                            <span class="badge bg-danger">0</span>
+                            <div>
+                                <a href="{{ url_for('inventory.adjust_stock', product_id=product.id) }}" 
+                                   class="btn btn-sm btn-outline-primary mt-1">
+                                    <i class="fas fa-plus"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted">
+                    <i class="fas fa-check-circle text-success"></i>
+                    <p class="mb-0">All products in stock</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh dashboard every 5 minutes
+setTimeout(() => {
+    location.reload();
+}, 300000);
+</script>
+{% endblock %}

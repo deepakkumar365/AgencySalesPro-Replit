@@ -1,0 +1,401 @@
+from flask import render_template, request, redirect, url_for, flash, session, jsonify
+from datetime import datetime, timedelta
+from decimal import Decimal
+from app import db
+from models import (
+    Product, Customer, Order, OrderItem, Location, Agency, 
+    Invoice, Payment, PaymentMethod, TaxRule, InventoryTransaction
+)
+from pos import pos_bp
+from auth.utils import login_required, pos_access_required, get_role_permissions
+from utils.decorators import log_activity
+import uuid
+
+@pos_bp.route('/dashboard')
+@login_required
+@pos_access_required
+def dashboard(current_agency_id=None):
+    """POS Dashboard with quick stats and recent transactions"""
+    user_role = session.get('role')
+    user_id = session.get('user_id')
+    
+    # Get today's stats
+    today = datetime.utcnow().date()
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+    
+    # Base query for orders
+    if user_role == 'super_admin':
+        base_query = Order.query
+    elif user_role == 'pos_user':
+        base_query = Order.query.filter_by(salesperson_id=user_id)
+    else:
+        base_query = Order.query.filter_by(agency_id=current_agency_id)
+    
+    # Today's stats
+    today_orders = base_query.filter(
+        Order.created_at >= today_start,
+        Order.created_at <= today_end
+    ).all()
+    
+    today_stats = {
+        'total_sales': sum(order.total_amount for order in today_orders),
+        'total_orders': len(today_orders),
+        'total_items': sum(len(order.order_items) for order in today_orders),
+        'avg_order_value': sum(order.total_amount for order in today_orders) / len(today_orders) if today_orders else 0
+    }
+    
+    # Recent orders (last 10)
+    recent_orders = base_query.order_by(Order.created_at.desc()).limit(10).all()
+    
+    # Low stock alerts for agency
+    if user_role == 'super_admin':
+        low_stock_products = Product.query.filter(Product.stock_quantity <= 10).limit(5).all()
+    else:
+        low_stock_products = Product.query.filter_by(agency_id=current_agency_id).filter(
+            Product.stock_quantity <= 10
+        ).limit(5).all()
+    
+    # Payment methods for agency
+    if user_role == 'super_admin':
+        payment_methods = PaymentMethod.query.filter_by(is_active=True).all()
+    else:
+        payment_methods = PaymentMethod.query.filter_by(
+            agency_id=current_agency_id, is_active=True
+        ).all()
+    
+    return render_template('pos/dashboard.html',
+                         today_stats=today_stats,
+                         recent_orders=recent_orders,
+                         low_stock_products=low_stock_products,
+                         payment_methods=payment_methods)
+
+@pos_bp.route('/sale')
+@login_required
+@pos_access_required
+def new_sale(current_agency_id=None):
+    """Create new POS sale"""
+    user_role = session.get('role')
+    
+    # Get products for the agency
+    if user_role == 'super_admin':
+        products = Product.query.filter_by(is_active=True).all()
+        locations = Location.query.filter_by(is_active=True).all()
+    else:
+        products = Product.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+        locations = Location.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+    
+    # Get payment methods
+    if user_role == 'super_admin':
+        payment_methods = PaymentMethod.query.filter_by(is_active=True).all()
+    else:
+        payment_methods = PaymentMethod.query.filter_by(
+            agency_id=current_agency_id, is_active=True
+        ).all()
+    
+    return render_template('pos/sale.html',
+                         products=products,
+                         locations=locations,
+                         payment_methods=payment_methods)
+
+@pos_bp.route('/api/search_products')
+@login_required
+@pos_access_required
+def search_products(current_agency_id=None):
+    """Search products for POS"""
+    query = request.args.get('q', '').strip()
+    user_role = session.get('role')
+    
+    if not query:
+        return jsonify([])
+    
+    # Base query
+    if user_role == 'super_admin':
+        products = Product.query.filter_by(is_active=True)
+    else:
+        products = Product.query.filter_by(agency_id=current_agency_id, is_active=True)
+    
+    # Search by name or SKU
+    products = products.filter(
+        db.or_(
+            Product.name.ilike(f'%{query}%'),
+            Product.sku.ilike(f'%{query}%')
+        )
+    ).limit(20).all()
+    
+    return jsonify([{
+        'id': p.id,
+        'name': p.name,
+        'sku': p.sku,
+        'price': float(p.price),
+        'stock_quantity': p.stock_quantity,
+        'category': p.category
+    } for p in products])
+
+@pos_bp.route('/api/get_customer')
+@login_required
+@pos_access_required
+def get_customer(current_agency_id=None):
+    """Get or create customer for POS sale"""
+    phone = request.args.get('phone', '').strip()
+    email = request.args.get('email', '').strip()
+    user_role = session.get('role')
+    
+    if not phone and not email:
+        return jsonify({'error': 'Phone or email required'}), 400
+    
+    # Search for existing customer
+    if user_role == 'super_admin':
+        if phone:
+            customer = Customer.query.filter_by(phone=phone).first()
+        else:
+            customer = Customer.query.filter_by(email=email).first()
+    else:
+        if phone:
+            customer = Customer.query.join(Location).filter(
+                Customer.phone == phone,
+                Location.agency_id == current_agency_id
+            ).first()
+        else:
+            customer = Customer.query.join(Location).filter(
+                Customer.email == email,
+                Location.agency_id == current_agency_id
+            ).first()
+    
+    if customer:
+        return jsonify({
+            'id': customer.id,
+            'name': customer.name,
+            'email': customer.email,
+            'phone': customer.phone,
+            'address': customer.address
+        })
+    
+    return jsonify({'error': 'Customer not found'}), 404
+
+@pos_bp.route('/api/create_sale', methods=['POST'])
+@login_required
+@pos_access_required
+@log_activity('pos_sale_created')
+def create_sale(current_agency_id=None):
+    """Create POS sale"""
+    data = request.get_json()
+    user_id = session.get('user_id')
+    user_role = session.get('role')
+    
+    try:
+        # Validate required fields
+        required_fields = ['customer_info', 'items', 'payment_method_id']
+        if not all(field in data for field in required_fields):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Get or create customer
+        customer_info = data['customer_info']
+        location_id = data.get('location_id')
+        
+        # If no location specified, get first location for agency
+        if not location_id:
+            if user_role == 'super_admin':
+                location = Location.query.filter_by(is_active=True).first()
+            else:
+                location = Location.query.filter_by(agency_id=current_agency_id, is_active=True).first()
+            
+            if not location:
+                return jsonify({'error': 'No active location found'}), 400
+            location_id = location.id
+        
+        # Create walk-in customer if needed
+        customer = Customer.query.filter_by(
+            phone=customer_info.get('phone'),
+            location_id=location_id
+        ).first()
+        
+        if not customer:
+            customer = Customer(
+                name=customer_info.get('name', 'Walk-in Customer'),
+                email=customer_info.get('email'),
+                phone=customer_info.get('phone'),
+                address=customer_info.get('address'),
+                location_id=location_id
+            )
+            db.session.add(customer)
+            db.session.flush()  # Get customer ID
+        
+        # Get agency_id from location
+        location = Location.query.get(location_id)
+        agency_id = location.agency_id
+        
+        # Create order
+        order_number = f"POS-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{str(uuid.uuid4())[:8]}"
+        
+        order = Order(
+            order_number=order_number,
+            customer_id=customer.id,
+            agency_id=agency_id,
+            salesperson_id=user_id,
+            status='completed',  # POS sales are immediately completed
+            total_amount=0,  # Will be calculated
+            discount=Decimal(str(data.get('discount', 0))),
+            tax=Decimal(str(data.get('tax', 0))),
+            notes=data.get('notes', ''),
+            order_date=datetime.utcnow()
+        )
+        db.session.add(order)
+        db.session.flush()  # Get order ID
+        
+        # Add order items and update inventory
+        total_amount = Decimal('0')
+        for item_data in data['items']:
+            product = Product.query.get(item_data['product_id'])
+            if not product:
+                return jsonify({'error': f'Product {item_data["product_id"]} not found'}), 400
+            
+            quantity = int(item_data['quantity'])
+            unit_price = Decimal(str(item_data['unit_price']))
+            
+            # Check stock availability
+            if product.stock_quantity < quantity:
+                return jsonify({'error': f'Insufficient stock for {product.name}'}), 400
+            
+            # Create order item
+            order_item = OrderItem(
+                order_id=order.id,
+                product_id=product.id,
+                quantity=quantity,
+                unit_price=unit_price,
+                total_price=quantity * unit_price
+            )
+            db.session.add(order_item)
+            
+            # Update inventory
+            product.stock_quantity -= quantity
+            
+            # Create inventory transaction
+            inventory_transaction = InventoryTransaction(
+                product_id=product.id,
+                transaction_type='sale',
+                quantity_change=-quantity,
+                quantity_before=product.stock_quantity + quantity,
+                quantity_after=product.stock_quantity,
+                unit_cost=product.cost,
+                reference_id=order.id,
+                reference_type='order',
+                notes=f'POS Sale - Order {order_number}',
+                created_by=user_id
+            )
+            db.session.add(inventory_transaction)
+            
+            total_amount += order_item.total_price
+        
+        # Update order total
+        order.total_amount = total_amount + order.tax - order.discount
+        
+        # Create invoice
+        invoice_number = f"INV-{order_number}"
+        invoice = Invoice(
+            invoice_number=invoice_number,
+            order_id=order.id,
+            agency_id=agency_id,
+            customer_id=customer.id,
+            subtotal=total_amount,
+            tax_amount=order.tax,
+            discount_amount=order.discount,
+            total_amount=order.total_amount,
+            status='paid',  # POS sales are immediately paid
+            issue_date=datetime.utcnow(),
+            payment_terms='Cash/Card'
+        )
+        db.session.add(invoice)
+        db.session.flush()  # Get invoice ID
+        
+        # Create payment record
+        payment_number = f"PAY-{order_number}"
+        payment = Payment(
+            payment_number=payment_number,
+            invoice_id=invoice.id,
+            payment_method_id=data['payment_method_id'],
+            amount=order.total_amount,
+            payment_date=datetime.utcnow(),
+            transaction_id=data.get('transaction_id'),
+            status='completed',
+            notes=data.get('payment_notes', ''),
+            processed_by=user_id
+        )
+        db.session.add(payment)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'order_id': order.id,
+            'order_number': order_number,
+            'invoice_id': invoice.id,
+            'total_amount': float(order.total_amount)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@pos_bp.route('/receipt/<int:order_id>')
+@login_required
+@pos_access_required
+def receipt(order_id, current_agency_id=None):
+    """Display receipt for POS sale"""
+    user_role = session.get('role')
+    user_id = session.get('user_id')
+    
+    # Get order with permission check
+    if user_role == 'super_admin':
+        order = Order.query.get_or_404(order_id)
+    elif user_role == 'pos_user':
+        order = Order.query.filter_by(id=order_id, salesperson_id=user_id).first_or_404()
+    else:
+        order = Order.query.filter_by(id=order_id, agency_id=current_agency_id).first_or_404()
+    
+    return render_template('pos/receipt.html', order=order)
+
+@pos_bp.route('/sales_history')
+@login_required
+@pos_access_required
+def sales_history(current_agency_id=None):
+    """View POS sales history"""
+    user_role = session.get('role')
+    user_id = session.get('user_id')
+    
+    # Get date range from query params
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    # Base query
+    if user_role == 'super_admin':
+        query = Order.query
+    elif user_role == 'pos_user':
+        query = Order.query.filter_by(salesperson_id=user_id)
+    else:
+        query = Order.query.filter_by(agency_id=current_agency_id)
+    
+    # Filter by date range if provided
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            query = query.filter(Order.order_date >= start_dt)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            end_dt = end_dt.replace(hour=23, minute=59, second=59)
+            query = query.filter(Order.order_date <= end_dt)
+        except ValueError:
+            pass
+    
+    # Get orders
+    orders = query.order_by(Order.order_date.desc()).paginate(
+        page=request.args.get('page', 1, type=int),
+        per_page=20,
+        error_out=False
+    )
+    
+    return render_template('pos/sales_history.html', orders=orders)

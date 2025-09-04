@@ -18,6 +18,8 @@ class Agency(db.Model):
     locations = db.relationship('Location', backref='agency', lazy=True)
     products = db.relationship('Product', backref='agency', lazy=True)
     orders = db.relationship('Order', backref='agency', lazy=True)
+    invoices = db.relationship('Invoice', backref='agency', lazy=True)
+    suppliers = db.relationship('Supplier', backref='agency', lazy=True)
 
 class User(db.Model):
     __tablename__ = 'ASP_users'
@@ -27,7 +29,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))
-    role = db.Column(db.String(20), nullable=False)  # super_admin, agency_admin, staff, salesperson
+    role = db.Column(db.String(20), nullable=False)  # super_admin, agency_admin, staff, salesperson, pos_user
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'))
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -138,3 +140,184 @@ class ActivityLog(db.Model):
     
     # Relationships
     user = db.relationship('User', backref='activity_logs', lazy=True)
+
+# Billing Module Models
+class Invoice(db.Model):
+    __tablename__ = 'ASP_invoices'
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_number = db.Column(db.String(50), unique=True, nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), nullable=False)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False)
+    subtotal = db.Column(db.Numeric(10, 2), nullable=False)
+    tax_amount = db.Column(db.Numeric(10, 2), default=0)
+    discount_amount = db.Column(db.Numeric(10, 2), default=0)
+    total_amount = db.Column(db.Numeric(10, 2), nullable=False)
+    status = db.Column(db.String(20), default='pending')  # pending, paid, overdue, cancelled
+    issue_date = db.Column(db.DateTime, default=datetime.utcnow)
+    due_date = db.Column(db.DateTime)
+    payment_terms = db.Column(db.String(100))
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    order = db.relationship('Order', backref='invoice', lazy=True)
+    customer = db.relationship('Customer', backref='invoices', lazy=True)
+    payments = db.relationship('Payment', backref='invoice', lazy=True)
+
+class Payment(db.Model):
+    __tablename__ = 'ASP_payments'
+    id = db.Column(db.Integer, primary_key=True)
+    payment_number = db.Column(db.String(50), unique=True, nullable=False)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('ASP_invoices.id'), nullable=False)
+    payment_method_id = db.Column(db.Integer, db.ForeignKey('ASP_payment_methods.id'), nullable=False)
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    payment_date = db.Column(db.DateTime, default=datetime.utcnow)
+    transaction_id = db.Column(db.String(100))  # External payment gateway transaction ID
+    status = db.Column(db.String(20), default='completed')  # completed, pending, failed, refunded
+    notes = db.Column(db.Text)
+    processed_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    payment_method = db.relationship('PaymentMethod', backref='payments', lazy=True)
+    processor = db.relationship('User', backref='processed_payments', lazy=True)
+
+class PaymentMethod(db.Model):
+    __tablename__ = 'ASP_payment_methods'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)  # Cash, Credit Card, Debit Card, Digital Wallet, etc.
+    code = db.Column(db.String(20), unique=True, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    agency_ref = db.relationship('Agency', backref='payment_methods', lazy=True)
+
+class TaxRule(db.Model):
+    __tablename__ = 'ASP_tax_rules'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    rate = db.Column(db.Numeric(5, 4), nullable=False)  # Tax rate as decimal (e.g., 0.0825 for 8.25%)
+    location_id = db.Column(db.Integer, db.ForeignKey('ASP_locations.id'), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    location = db.relationship('Location', backref='tax_rules', lazy=True)
+
+# Inventory Module Models
+class Supplier(db.Model):
+    __tablename__ = 'ASP_suppliers'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    contact_person = db.Column(db.String(100))
+    email = db.Column(db.String(120))
+    phone = db.Column(db.String(20))
+    address = db.Column(db.Text)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    purchase_orders = db.relationship('PurchaseOrder', backref='supplier', lazy=True)
+
+class PurchaseOrder(db.Model):
+    __tablename__ = 'ASP_purchase_orders'
+    id = db.Column(db.Integer, primary_key=True)
+    po_number = db.Column(db.String(50), unique=True, nullable=False)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('ASP_suppliers.id'), nullable=False)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    total_amount = db.Column(db.Numeric(10, 2), default=0)
+    status = db.Column(db.String(20), default='pending')  # pending, sent, received, cancelled
+    order_date = db.Column(db.DateTime, default=datetime.utcnow)
+    expected_delivery = db.Column(db.DateTime)
+    received_date = db.Column(db.DateTime)
+    notes = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    agency_ref = db.relationship('Agency', backref='purchase_orders', lazy=True)
+    creator = db.relationship('User', backref='created_purchase_orders', lazy=True)
+    po_items = db.relationship('PurchaseOrderItem', backref='purchase_order', lazy=True, cascade='all, delete-orphan')
+
+class PurchaseOrderItem(db.Model):
+    __tablename__ = 'ASP_purchase_order_items'
+    id = db.Column(db.Integer, primary_key=True)
+    po_id = db.Column(db.Integer, db.ForeignKey('ASP_purchase_orders.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False)
+    quantity_ordered = db.Column(db.Integer, nullable=False)
+    quantity_received = db.Column(db.Integer, default=0)
+    unit_cost = db.Column(db.Numeric(10, 2), nullable=False)
+    total_cost = db.Column(db.Numeric(10, 2), nullable=False)
+    
+    # Relationships
+    product = db.relationship('Product', backref='po_items', lazy=True)
+
+class InventoryTransaction(db.Model):
+    __tablename__ = 'ASP_inventory_transactions'
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False)
+    transaction_type = db.Column(db.String(20), nullable=False)  # sale, purchase, adjustment, return
+    quantity_change = db.Column(db.Integer, nullable=False)  # Positive for increase, negative for decrease
+    quantity_before = db.Column(db.Integer, nullable=False)
+    quantity_after = db.Column(db.Integer, nullable=False)
+    unit_cost = db.Column(db.Numeric(10, 2))
+    reference_id = db.Column(db.Integer)  # Order ID, PO ID, or Adjustment ID
+    reference_type = db.Column(db.String(20))  # order, purchase_order, adjustment
+    notes = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    product = db.relationship('Product', backref='inventory_transactions', lazy=True)
+    user = db.relationship('User', backref='inventory_transactions', lazy=True)
+
+class StockAdjustment(db.Model):
+    __tablename__ = 'ASP_stock_adjustments'
+    id = db.Column(db.Integer, primary_key=True)
+    adjustment_number = db.Column(db.String(50), unique=True, nullable=False)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    reason = db.Column(db.String(100), nullable=False)  # damage, theft, count_correction, etc.
+    notes = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
+    approved_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'))
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    approved_at = db.Column(db.DateTime)
+    
+    # Relationships
+    agency_ref = db.relationship('Agency', backref='stock_adjustments', lazy=True)
+    creator = db.relationship('User', foreign_keys=[created_by], backref='created_adjustments', lazy=True)
+    approver = db.relationship('User', foreign_keys=[approved_by], backref='approved_adjustments', lazy=True)
+    adjustment_items = db.relationship('StockAdjustmentItem', backref='adjustment', lazy=True, cascade='all, delete-orphan')
+
+class StockAdjustmentItem(db.Model):
+    __tablename__ = 'ASP_stock_adjustment_items'
+    id = db.Column(db.Integer, primary_key=True)
+    adjustment_id = db.Column(db.Integer, db.ForeignKey('ASP_stock_adjustments.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False)
+    quantity_before = db.Column(db.Integer, nullable=False)
+    quantity_change = db.Column(db.Integer, nullable=False)  # Can be positive or negative
+    quantity_after = db.Column(db.Integer, nullable=False)
+    reason = db.Column(db.String(200))
+    
+    # Relationships
+    product = db.relationship('Product', backref='adjustment_items', lazy=True)
+
+class LowStockAlert(db.Model):
+    __tablename__ = 'ASP_low_stock_alerts'
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False)
+    threshold_quantity = db.Column(db.Integer, nullable=False)
+    current_quantity = db.Column(db.Integer, nullable=False)
+    status = db.Column(db.String(20), default='active')  # active, resolved, ignored
+    alerted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    resolved_at = db.Column(db.DateTime)
+    resolved_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'))
+    
+    # Relationships
+    product = db.relationship('Product', backref='stock_alerts', lazy=True)
+    resolver = db.relationship('User', backref='resolved_alerts', lazy=True)

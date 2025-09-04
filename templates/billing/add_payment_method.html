@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Add Payment Method - Billing - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-credit-card me-2"></i>Add Payment Method</h2>
+    <a href="{{ url_for('billing.list_payment_methods') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Payment Methods
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Payment Method Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Payment Method Name <span class="text-danger">*</span></label>
+                        <input type="text" id="name" name="name" class="form-control" 
+                               placeholder="e.g., Cash, Credit Card, Bank Transfer" required>
+                        <div class="form-text">Enter a descriptive name for this payment method</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="method_type" class="form-label">Method Type <span class="text-danger">*</span></label>
+                        <select id="method_type" name="method_type" class="form-select" required>
+                            <option value="">Select Type</option>
+                            <option value="cash">Cash</option>
+                            <option value="credit_card">Credit Card</option>
+                            <option value="debit_card">Debit Card</option>
+                            <option value="bank_transfer">Bank Transfer</option>
+                            <option value="check">Check</option>
+                            <option value="digital_wallet">Digital Wallet</option>
+                            <option value="mobile_payment">Mobile Payment</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description (Optional)</label>
+                        <textarea id="description" name="description" class="form-control" rows="3" 
+                                  placeholder="Additional details about this payment method"></textarea>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" id="is_active" name="is_active" class="form-check-input" checked>
+                        <label for="is_active" class="form-check-label">
+                            Active
+                        </label>
+                        <div class="form-text">Enable this payment method for use in transactions</div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('billing.list_payment_methods') }}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Payment Method
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Help Section -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Payment Method Types</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><strong>Cash:</strong> Physical currency payments</li>
+                            <li><strong>Credit Card:</strong> Visa, MasterCard, etc.</li>
+                            <li><strong>Debit Card:</strong> Direct bank account debit</li>
+                            <li><strong>Bank Transfer:</strong> Wire transfers, ACH</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><strong>Check:</strong> Paper checks</li>
+                            <li><strong>Digital Wallet:</strong> PayPal, Apple Pay</li>
+                            <li><strong>Mobile Payment:</strong> Venmo, Zelle</li>
+                            <li><strong>Other:</strong> Custom payment methods</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

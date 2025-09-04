@@ -1,0 +1,463 @@
+{% extends "base.html" %}
+
+{% block title %}New Sale - POS - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-shopping-cart me-2"></i>New Sale</h2>
+    <a href="{{ url_for('pos.dashboard') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+    </a>
+</div>
+
+<div class="row">
+    <!-- Product Search and Cart -->
+    <div class="col-md-8">
+        <!-- Product Search -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-search me-2"></i>Product Search</h5>
+            </div>
+            <div class="card-body">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" id="product-search" class="form-control" 
+                           placeholder="Search by product name or SKU..." autocomplete="off">
+                </div>
+                <div id="search-results" class="mt-3" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Shopping Cart -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Shopping Cart</h5>
+                <button id="clear-cart" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-trash me-1"></i>Clear
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm" id="cart-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Price</th>
+                                <th>Qty</th>
+                                <th>Total</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cart-items">
+                            <tr id="empty-cart">
+                                <td colspan="5" class="text-center text-muted">
+                                    <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                    <p>Cart is empty. Search and add products to start a sale.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Cart Totals -->
+                <div class="row mt-3" id="cart-totals" style="display: none;">
+                    <div class="col-md-6 offset-md-6">
+                        <table class="table table-sm">
+                            <tr>
+                                <td>Subtotal:</td>
+                                <td class="text-end" id="subtotal">$0.00</td>
+                            </tr>
+                            <tr>
+                                <td>Tax:</td>
+                                <td class="text-end">
+                                    <input type="number" id="tax" class="form-control form-control-sm text-end" 
+                                           value="0" step="0.01" min="0">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Discount:</td>
+                                <td class="text-end">
+                                    <input type="number" id="discount" class="form-control form-control-sm text-end" 
+                                           value="0" step="0.01" min="0">
+                                </td>
+                            </tr>
+                            <tr class="fw-bold">
+                                <td>Total:</td>
+                                <td class="text-end" id="total">$0.00</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer and Payment -->
+    <div class="col-md-4">
+        <!-- Customer Information -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-user me-2"></i>Customer Information</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="customer-name" class="form-label">Name</label>
+                    <input type="text" id="customer-name" class="form-control" 
+                           placeholder="Customer Name" value="Walk-in Customer">
+                </div>
+                <div class="mb-3">
+                    <label for="customer-phone" class="form-label">Phone</label>
+                    <input type="tel" id="customer-phone" class="form-control" 
+                           placeholder="Phone Number">
+                </div>
+                <div class="mb-3">
+                    <label for="customer-email" class="form-label">Email (Optional)</label>
+                    <input type="email" id="customer-email" class="form-control" 
+                           placeholder="Email Address">
+                </div>
+                <button id="find-customer" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-search me-1"></i>Find Existing
+                </button>
+            </div>
+        </div>
+
+        <!-- Payment Method -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-credit-card me-2"></i>Payment Method</h6>
+            </div>
+            <div class="card-body">
+                <select id="payment-method" class="form-select" required>
+                    <option value="">Select Payment Method</option>
+                    {% for method in payment_methods %}
+                    <option value="{{ method.id }}">{{ method.name }}</option>
+                    {% endfor %}
+                </select>
+                
+                <div class="mt-3">
+                    <label for="transaction-id" class="form-label">Transaction ID (Optional)</label>
+                    <input type="text" id="transaction-id" class="form-control" 
+                           placeholder="Transaction/Reference ID">
+                </div>
+            </div>
+        </div>
+
+        <!-- Sale Notes -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-sticky-note me-2"></i>Notes</h6>
+            </div>
+            <div class="card-body">
+                <textarea id="sale-notes" class="form-control" rows="3" 
+                          placeholder="Sale notes (optional)"></textarea>
+            </div>
+        </div>
+
+        <!-- Complete Sale -->
+        <div class="card">
+            <div class="card-body">
+                <button id="complete-sale" class="btn btn-success btn-lg w-100" disabled>
+                    <i class="fas fa-check-circle me-2"></i>Complete Sale
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let cart = [];
+let searchTimeout;
+
+// Product search
+document.getElementById('product-search').addEventListener('input', function(e) {
+    clearTimeout(searchTimeout);
+    const query = e.target.value.trim();
+    
+    if (query.length < 2) {
+        document.getElementById('search-results').style.display = 'none';
+        return;
+    }
+    
+    searchTimeout = setTimeout(() => {
+        fetch(`/pos/api/search_products?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(products => {
+                displaySearchResults(products);
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+            });
+    }, 300);
+});
+
+function displaySearchResults(products) {
+    const resultsDiv = document.getElementById('search-results');
+    
+    if (products.length === 0) {
+        resultsDiv.innerHTML = '<div class="alert alert-info">No products found</div>';
+        resultsDiv.style.display = 'block';
+        return;
+    }
+    
+    let html = '<div class="list-group">';
+    products.forEach(product => {
+        html += `
+            <div class="list-group-item list-group-item-action product-item" 
+                 data-product='${JSON.stringify(product)}'>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-bold">${product.name}</div>
+                        <small class="text-muted">SKU: ${product.sku} | Stock: ${product.stock_quantity}</small>
+                    </div>
+                    <div>
+                        <span class="badge bg-primary">$${product.price.toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    resultsDiv.innerHTML = html;
+    resultsDiv.style.display = 'block';
+    
+    // Add click handlers
+    document.querySelectorAll('.product-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const product = JSON.parse(this.dataset.product);
+            addToCart(product);
+            document.getElementById('product-search').value = '';
+            resultsDiv.style.display = 'none';
+        });
+    });
+}
+
+function addToCart(product) {
+    const existingItem = cart.find(item => item.id === product.id);
+    
+    if (existingItem) {
+        if (existingItem.quantity < product.stock_quantity) {
+            existingItem.quantity++;
+        } else {
+            alert('Insufficient stock available');
+            return;
+        }
+    } else {
+        cart.push({
+            id: product.id,
+            name: product.name,
+            sku: product.sku,
+            price: product.price,
+            quantity: 1,
+            stock_quantity: product.stock_quantity
+        });
+    }
+    
+    updateCartDisplay();
+}
+
+function removeFromCart(productId) {
+    cart = cart.filter(item => item.id !== productId);
+    updateCartDisplay();
+}
+
+function updateQuantity(productId, quantity) {
+    const item = cart.find(item => item.id === productId);
+    if (item) {
+        if (quantity <= 0) {
+            removeFromCart(productId);
+        } else if (quantity <= item.stock_quantity) {
+            item.quantity = quantity;
+            updateCartDisplay();
+        } else {
+            alert('Insufficient stock available');
+        }
+    }
+}
+
+function updateCartDisplay() {
+    const cartItemsDiv = document.getElementById('cart-items');
+    const emptyCart = document.getElementById('empty-cart');
+    const cartTotals = document.getElementById('cart-totals');
+    const completeButton = document.getElementById('complete-sale');
+    
+    if (cart.length === 0) {
+        emptyCart.style.display = '';
+        cartTotals.style.display = 'none';
+        completeButton.disabled = true;
+        return;
+    }
+    
+    emptyCart.style.display = 'none';
+    cartTotals.style.display = 'block';
+    
+    let html = '';
+    let subtotal = 0;
+    
+    cart.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        subtotal += itemTotal;
+        
+        html += `
+            <tr>
+                <td>
+                    <div class="fw-bold">${item.name}</div>
+                    <small class="text-muted">${item.sku}</small>
+                </td>
+                <td>$${item.price.toFixed(2)}</td>
+                <td>
+                    <input type="number" class="form-control form-control-sm" 
+                           value="${item.quantity}" min="1" max="${item.stock_quantity}"
+                           onchange="updateQuantity(${item.id}, parseInt(this.value))">
+                </td>
+                <td>$${itemTotal.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger" 
+                            onclick="removeFromCart(${item.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    cartItemsDiv.innerHTML = html;
+    
+    // Update totals
+    const tax = parseFloat(document.getElementById('tax').value) || 0;
+    const discount = parseFloat(document.getElementById('discount').value) || 0;
+    const total = subtotal + tax - discount;
+    
+    document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
+    document.getElementById('total').textContent = `$${total.toFixed(2)}`;
+    
+    completeButton.disabled = false;
+}
+
+// Tax and discount change handlers
+document.getElementById('tax').addEventListener('input', updateCartDisplay);
+document.getElementById('discount').addEventListener('input', updateCartDisplay);
+
+// Clear cart
+document.getElementById('clear-cart').addEventListener('click', function() {
+    if (confirm('Are you sure you want to clear the cart?')) {
+        cart = [];
+        updateCartDisplay();
+    }
+});
+
+// Find customer
+document.getElementById('find-customer').addEventListener('click', function() {
+    const phone = document.getElementById('customer-phone').value.trim();
+    const email = document.getElementById('customer-email').value.trim();
+    
+    if (!phone && !email) {
+        alert('Please enter phone number or email to search for customer');
+        return;
+    }
+    
+    let url = '/pos/api/get_customer?';
+    if (phone) url += `phone=${encodeURIComponent(phone)}`;
+    if (email) url += `email=${encodeURIComponent(email)}`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Customer not found');
+            } else {
+                document.getElementById('customer-name').value = data.name;
+                document.getElementById('customer-phone').value = data.phone;
+                document.getElementById('customer-email').value = data.email;
+            }
+        })
+        .catch(error => {
+            console.error('Customer search error:', error);
+        });
+});
+
+// Complete sale
+document.getElementById('complete-sale').addEventListener('click', function() {
+    if (cart.length === 0) {
+        alert('Cart is empty');
+        return;
+    }
+    
+    const paymentMethodId = document.getElementById('payment-method').value;
+    if (!paymentMethodId) {
+        alert('Please select a payment method');
+        return;
+    }
+    
+    const saleData = {
+        customer_info: {
+            name: document.getElementById('customer-name').value.trim() || 'Walk-in Customer',
+            phone: document.getElementById('customer-phone').value.trim(),
+            email: document.getElementById('customer-email').value.trim()
+        },
+        items: cart.map(item => ({
+            product_id: item.id,
+            quantity: item.quantity,
+            unit_price: item.price
+        })),
+        payment_method_id: parseInt(paymentMethodId),
+        transaction_id: document.getElementById('transaction-id').value.trim(),
+        tax: parseFloat(document.getElementById('tax').value) || 0,
+        discount: parseFloat(document.getElementById('discount').value) || 0,
+        notes: document.getElementById('sale-notes').value.trim(),
+        payment_notes: ''
+    };
+    
+    this.disabled = true;
+    this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+    
+    fetch('/pos/api/create_sale', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(saleData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Sale completed successfully!');
+            // Open receipt in new window
+            window.open(`/pos/receipt/${data.order_id}`, '_blank');
+            // Reset form
+            cart = [];
+            updateCartDisplay();
+            document.getElementById('customer-name').value = 'Walk-in Customer';
+            document.getElementById('customer-phone').value = '';
+            document.getElementById('customer-email').value = '';
+            document.getElementById('payment-method').value = '';
+            document.getElementById('transaction-id').value = '';
+            document.getElementById('tax').value = '0';
+            document.getElementById('discount').value = '0';
+            document.getElementById('sale-notes').value = '';
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Sale error:', error);
+        alert('An error occurred while processing the sale');
+    })
+    .finally(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="fas fa-check-circle me-2"></i>Complete Sale';
+    });
+});
+
+// Hide search results when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#product-search') && !e.target.closest('#search-results')) {
+        document.getElementById('search-results').style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

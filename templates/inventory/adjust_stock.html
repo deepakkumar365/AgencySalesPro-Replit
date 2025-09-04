@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Adjust Stock - {{ product.name }} - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-edit me-2"></i>Adjust Stock</h2>
+    <a href="{{ url_for('inventory.stock_levels') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Stock Levels
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <!-- Product Info -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Product Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>{{ product.name }}</h5>
+                        <p class="text-muted">SKU: {{ product.sku }}</p>
+                        <p class="text-muted">Category: {{ product.category or 'N/A' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="h3 mb-0">
+                            Current Stock: 
+                            {% if product.stock_quantity <= 0 %}
+                                <span class="text-danger">{{ product.stock_quantity }}</span>
+                            {% elif product.stock_quantity <= 10 %}
+                                <span class="text-warning">{{ product.stock_quantity }}</span>
+                            {% else %}
+                                <span class="text-success">{{ product.stock_quantity }}</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-muted">Unit Cost: ${{ "%.2f"|format(product.cost) }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Adjustment Form -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Stock Adjustment</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="adjustment_type" class="form-label">Adjustment Type <span class="text-danger">*</span></label>
+                                <select id="adjustment_type" name="adjustment_type" class="form-select" required>
+                                    <option value="">Select Type</option>
+                                    <option value="increase">Increase Stock</option>
+                                    <option value="decrease">Decrease Stock</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="quantity" class="form-label">Quantity <span class="text-danger">*</span></label>
+                                <input type="number" id="quantity" name="quantity" class="form-control" 
+                                       min="1" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Reason <span class="text-danger">*</span></label>
+                        <select id="reason" name="reason" class="form-select" required>
+                            <option value="">Select Reason</option>
+                            <option value="Inventory Count">Physical Inventory Count</option>
+                            <option value="Damaged Goods">Damaged/Defective Items</option>
+                            <option value="Theft/Loss">Theft or Loss</option>
+                            <option value="Supplier Return">Return to Supplier</option>
+                            <option value="Customer Return">Customer Return</option>
+                            <option value="Stock Receipt">Stock Receipt</option>
+                            <option value="Production">Production/Manufacturing</option>
+                            <option value="Transfer">Transfer Between Locations</option>
+                            <option value="Expired">Expired Products</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Additional Notes (Optional)</label>
+                        <textarea id="notes" name="notes" class="form-control" rows="3" 
+                                  placeholder="Enter any additional details about this adjustment"></textarea>
+                    </div>
+
+                    <!-- Preview -->
+                    <div class="card bg-light mb-3" id="preview" style="display: none;">
+                        <div class="card-body">
+                            <h6>Adjustment Preview:</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <strong>Current Stock:</strong> <span id="current-stock">{{ product.stock_quantity }}</span>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Change:</strong> <span id="change-amount">-</span>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>New Stock:</strong> <span id="new-stock">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('inventory.stock_levels') }}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="submit-btn" disabled>
+                            <i class="fas fa-save me-2"></i>Save Adjustment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const currentStock = {{ product.stock_quantity }};
+const adjustmentType = document.getElementById('adjustment_type');
+const quantity = document.getElementById('quantity');
+const preview = document.getElementById('preview');
+const changeAmount = document.getElementById('change-amount');
+const newStock = document.getElementById('new-stock');
+const submitBtn = document.getElementById('submit-btn');
+
+function updatePreview() {
+    const type = adjustmentType.value;
+    const qty = parseInt(quantity.value) || 0;
+    
+    if (type && qty > 0) {
+        let change, newQty;
+        
+        if (type === 'increase') {
+            change = `+${qty}`;
+            newQty = currentStock + qty;
+        } else {
+            change = `-${qty}`;
+            newQty = currentStock - qty;
+        }
+        
+        changeAmount.textContent = change;
+        newStock.textContent = newQty;
+        
+        // Color coding for new stock level
+        if (newQty < 0) {
+            newStock.className = 'text-danger fw-bold';
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Cannot go below zero';
+        } else if (newQty === 0) {
+            newStock.className = 'text-warning fw-bold';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Adjustment';
+        } else if (newQty <= 10) {
+            newStock.className = 'text-warning fw-bold';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Adjustment';
+        } else {
+            newStock.className = 'text-success fw-bold';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Adjustment';
+        }
+        
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Adjustment';
+    }
+}
+
+adjustmentType.addEventListener('change', updatePreview);
+quantity.addEventListener('input', updatePreview);
+
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const type = adjustmentType.value;
+    const qty = parseInt(quantity.value) || 0;
+    const reason = document.getElementById('reason').value;
+    
+    if (!type || !qty || !reason) {
+        e.preventDefault();
+        alert('Please fill in all required fields');
+        return;
+    }
+    
+    if (type === 'decrease' && qty > currentStock) {
+        e.preventDefault();
+        alert('Cannot decrease stock below zero');
+        return;
+    }
+    
+    // Confirmation for large adjustments
+    if (qty > 100) {
+        if (!confirm(`Are you sure you want to ${type} stock by ${qty} units?`)) {
+            e.preventDefault();
+        }
+    }
+});
+</script>
+{% endblock %}

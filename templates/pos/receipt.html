@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt - {{ order.order_number }}</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            .container { max-width: none !important; }
+        }
+        .receipt-container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            color: black;
+            padding: 20px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="receipt-container">
+            <!-- Header -->
+            <div class="text-center mb-3">
+                <h4>{{ order.agency.name }}</h4>
+                {% if order.customer.location.address %}
+                <small>{{ order.customer.location.address }}<br>
+                {{ order.customer.location.city }}, {{ order.customer.location.state }} {{ order.customer.location.zip_code }}</small>
+                {% endif %}
+                {% if order.customer.location.phone %}
+                <br><small>Phone: {{ order.customer.location.phone }}</small>
+                {% endif %}
+                <hr>
+            </div>
+
+            <!-- Order Info -->
+            <div class="mb-3">
+                <strong>SALES RECEIPT</strong><br>
+                <div class="row">
+                    <div class="col-6">Receipt #:</div>
+                    <div class="col-6 text-end">{{ order.order_number }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-6">Date:</div>
+                    <div class="col-6 text-end">{{ order.order_date.strftime('%Y-%m-%d %H:%M') }}</div>
+                </div>
+                <div class="row">
+                    <div class="col-6">Cashier:</div>
+                    <div class="col-6 text-end">{{ order.salesperson.full_name }}</div>
+                </div>
+                {% if order.customer.name != 'Walk-in Customer' %}
+                <div class="row">
+                    <div class="col-6">Customer:</div>
+                    <div class="col-6 text-end">{{ order.customer.name }}</div>
+                </div>
+                {% endif %}
+                <hr>
+            </div>
+
+            <!-- Items -->
+            <div class="mb-3">
+                <div class="row fw-bold">
+                    <div class="col-6">Item</div>
+                    <div class="col-2 text-end">Qty</div>
+                    <div class="col-2 text-end">Price</div>
+                    <div class="col-2 text-end">Total</div>
+                </div>
+                <hr style="margin: 5px 0;">
+                
+                {% for item in order.order_items %}
+                <div class="row">
+                    <div class="col-6">
+                        <div>{{ item.product.name }}</div>
+                        <small class="text-muted">{{ item.product.sku }}</small>
+                    </div>
+                    <div class="col-2 text-end">{{ item.quantity }}</div>
+                    <div class="col-2 text-end">${{ "%.2f"|format(item.unit_price) }}</div>
+                    <div class="col-2 text-end">${{ "%.2f"|format(item.total_price) }}</div>
+                </div>
+                {% endfor %}
+                <hr>
+            </div>
+
+            <!-- Totals -->
+            <div class="mb-3">
+                <div class="row">
+                    <div class="col-8">Subtotal:</div>
+                    <div class="col-4 text-end">${{ "%.2f"|format(order.total_amount - order.tax + order.discount) }}</div>
+                </div>
+                {% if order.discount > 0 %}
+                <div class="row">
+                    <div class="col-8">Discount:</div>
+                    <div class="col-4 text-end">-${{ "%.2f"|format(order.discount) }}</div>
+                </div>
+                {% endif %}
+                {% if order.tax > 0 %}
+                <div class="row">
+                    <div class="col-8">Tax:</div>
+                    <div class="col-4 text-end">${{ "%.2f"|format(order.tax) }}</div>
+                </div>
+                {% endif %}
+                <hr>
+                <div class="row fw-bold fs-5">
+                    <div class="col-8">TOTAL:</div>
+                    <div class="col-4 text-end">${{ "%.2f"|format(order.total_amount) }}</div>
+                </div>
+                <hr>
+            </div>
+
+            <!-- Payment Info -->
+            {% if order.invoice and order.invoice.payments %}
+                {% for payment in order.invoice.payments %}
+                <div class="row">
+                    <div class="col-8">{{ payment.payment_method.name }}:</div>
+                    <div class="col-4 text-end">${{ "%.2f"|format(payment.amount) }}</div>
+                </div>
+                {% endfor %}
+                <hr>
+            {% endif %}
+
+            <!-- Footer -->
+            <div class="text-center mt-4">
+                <small>Thank you for your business!<br>
+                Have a great day!</small>
+                
+                {% if order.notes %}
+                <div class="mt-2">
+                    <small><strong>Notes:</strong> {{ order.notes }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Print Controls -->
+        <div class="text-center mt-4 no-print">
+            <button onclick="window.print()" class="btn btn-primary me-2">
+                <i class="fas fa-print me-1"></i>Print Receipt
+            </button>
+            <button onclick="window.close()" class="btn btn-secondary">
+                <i class="fas fa-times me-1"></i>Close
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Auto-print when page loads (optional)
+        // window.addEventListener('load', () => {
+        //     setTimeout(() => window.print(), 500);
+        // });
+    </script>
+</body>
+</html>

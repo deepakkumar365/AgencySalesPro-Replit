@@ -45,6 +45,10 @@ def create_app():
     from product import product_bp
     from order import order_bp
     from super_admin import super_admin_bp
+    from pos import pos_bp
+    from billing import billing_bp
+    from inventory import inventory_bp
+    from reports import reports_bp
     from api import api_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -55,6 +59,10 @@ def create_app():
     app.register_blueprint(product_bp, url_prefix='/product')
     app.register_blueprint(order_bp, url_prefix='/order')
     app.register_blueprint(super_admin_bp, url_prefix='/super_admin')
+    app.register_blueprint(pos_bp, url_prefix='/pos')
+    app.register_blueprint(billing_bp, url_prefix='/billing')
+    app.register_blueprint(inventory_bp, url_prefix='/inventory')
+    app.register_blueprint(reports_bp, url_prefix='/reports')
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     
     # Main routes

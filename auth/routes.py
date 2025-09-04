@@ -46,6 +46,8 @@ def login():
             # Redirect based on role
             if user.role == 'super_admin':
                 return redirect(url_for('super_admin.dashboard'))
+            elif user.role == 'pos_user':
+                return redirect(url_for('pos.dashboard'))
             else:
                 return redirect(url_for('index'))
         else:
