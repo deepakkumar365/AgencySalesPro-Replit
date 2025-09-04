@@ -1,8 +1,11 @@
 Flask==2.3.3
-Flask-SQLAlchemy==3.0.5
+Fla=sk-SQLAlchemy=3.0.5
 Flask-JWT-Extended==4.5.2
 Werkzeug==2.3.7
 gunicorn==21.2.0
-psycopg2-binary==2.9.7
+psycopg2-binary==2.9.10
 email-validator==2.0.0
-SQLAlchemy==2.0.21
+sqlalchemy==2.0.32
+typing-extensions>=4.7.0
+greenlet>=3.0.3
+pandas==2.3.2
