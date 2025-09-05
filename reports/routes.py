@@ -62,13 +62,13 @@ def unified_dashboard(current_agency_id=None):
                           sum(inv.total_amount for inv in period_invoices) * 100) if period_invoices else 0
     }
     
-    # Inventory Status
+    # Inventory Status (simplified - stock tracking removed)
     active_products = product_query.filter_by(is_active=True).all()
     inventory_stats = {
         'total_products': len(active_products),
-        'total_inventory_value': sum(p.stock_quantity * p.cost for p in active_products),
-        'low_stock_items': len([p for p in active_products if p.stock_quantity <= 10]),
-        'out_of_stock_items': len([p for p in active_products if p.stock_quantity <= 0])
+        'total_inventory_value': 0,  # Stock tracking disabled
+        'low_stock_items': 0,
+        'out_of_stock_items': 0
     }
     
     # Top performing products (by sales volume)

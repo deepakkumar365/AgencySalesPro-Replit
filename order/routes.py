@@ -528,7 +528,7 @@ def search_products():
         'uom': p.uom or 'pcs',
         'tax_rate': float(p.tax_rate) if p.tax_rate else 18.0,
         'tax_code': p.tax_code or 'GST18',
-        'stock_quantity': p.stock_quantity or 0,
+        'stock_available': True,  # Stock tracking disabled
         'category': p.category or '',
-        'display_text': f"{p.name} ({p.sku}) - ₹{p.price} - Stock: {p.stock_quantity}"
+        'display_text': f"{p.name} ({p.sku}) - ₹{p.price}"
     } for p in products])

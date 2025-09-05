@@ -48,13 +48,8 @@ def dashboard(current_agency_id=None):
     # Recent orders (last 10)
     recent_orders = base_query.order_by(Order.created_at.desc()).limit(10).all()
     
-    # Low stock alerts for agency
-    if user_role == 'super_admin':
-        low_stock_products = Product.query.filter(Product.stock_quantity <= 10).limit(5).all()
-    else:
-        low_stock_products = Product.query.filter_by(agency_id=current_agency_id).filter(
-            Product.stock_quantity <= 10
-        ).limit(5).all()
+    # Low stock alerts for agency (disabled since stock tracking removed)
+    low_stock_products = []
     
     # Payment methods for agency
     if user_role == 'super_admin':
@@ -128,7 +123,7 @@ def search_products(current_agency_id=None):
         'name': p.name,
         'sku': p.sku,
         'price': float(p.price),
-        'stock_quantity': p.stock_quantity,
+        'stock_available': True,
         'category': p.category
     } for p in products])
 
@@ -253,9 +248,8 @@ def create_sale(current_agency_id=None):
             quantity = int(item_data['quantity'])
             unit_price = Decimal(str(item_data['unit_price']))
             
-            # Check stock availability
-            if product.stock_quantity < quantity:
-                return jsonify({'error': f'Insufficient stock for {product.name}'}), 400
+            # Stock checking disabled (inventory management removed)
+            # Product availability is assumed
             
             # Create order item
             order_item = OrderItem(
@@ -267,23 +261,7 @@ def create_sale(current_agency_id=None):
             )
             db.session.add(order_item)
             
-            # Update inventory
-            product.stock_quantity -= quantity
-            
-            # Create inventory transaction
-            inventory_transaction = InventoryTransaction(
-                product_id=product.id,
-                transaction_type='sale',
-                quantity_change=-quantity,
-                quantity_before=product.stock_quantity + quantity,
-                quantity_after=product.stock_quantity,
-                unit_cost=product.cost,
-                reference_id=order.id,
-                reference_type='order',
-                notes=f'POS Sale - Order {order_number}',
-                created_by=user_id
-            )
-            db.session.add(inventory_transaction)
+            # Inventory tracking disabled - no stock updates
             
             total_amount += order_item.total_price
         

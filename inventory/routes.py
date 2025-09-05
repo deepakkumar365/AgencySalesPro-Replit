@@ -24,14 +24,14 @@ def dashboard(current_agency_id=None):
     else:
         base_query = Product.query.filter_by(agency_id=current_agency_id)
     
-    # Stock level analysis
+    # Stock level analysis (disabled - stock tracking removed)
     total_products = base_query.filter_by(is_active=True).count()
-    low_stock_products = base_query.filter(Product.stock_quantity <= 10, Product.is_active == True).all()
-    out_of_stock_products = base_query.filter(Product.stock_quantity <= 0, Product.is_active == True).all()
+    low_stock_products = []
+    out_of_stock_products = []
     
-    # Calculate total inventory value
+    # Calculate total inventory value (disabled)
     active_products = base_query.filter_by(is_active=True).all()
-    total_inventory_value = sum(p.stock_quantity * p.cost for p in active_products)
+    total_inventory_value = 0
     
     # Recent inventory transactions
     if user_role == 'super_admin':
@@ -103,12 +103,13 @@ def stock_levels(current_agency_id=None):
             )
         )
     
+    # Stock status filtering disabled (stock tracking removed)
     if stock_status == 'low':
-        query = query.filter(Product.stock_quantity <= 10)
+        query = query.filter(Product.id == -1)  # No results
     elif stock_status == 'out':
-        query = query.filter(Product.stock_quantity <= 0)
+        query = query.filter(Product.id == -1)  # No results
     elif stock_status == 'normal':
-        query = query.filter(Product.stock_quantity > 10)
+        pass  # Show all products
     
     # Get paginated results
     products = query.order_by(Product.name).paginate(
@@ -169,18 +170,9 @@ def adjust_stock(product_id, current_agency_id=None):
                 flash('Quantity must be greater than 0', 'error')
                 return render_template('inventory/adjust_stock.html', product=product)
             
-            if adjustment_type == 'decrease' and quantity > product.stock_quantity:
-                flash('Cannot decrease stock below zero', 'error')
-                return render_template('inventory/adjust_stock.html', product=product)
-            
-            # Calculate new quantity
-            quantity_before = product.stock_quantity
-            if adjustment_type == 'increase':
-                quantity_change = quantity
-                product.stock_quantity += quantity
-            else:  # decrease
-                quantity_change = -quantity
-                product.stock_quantity -= quantity
+            # Stock adjustment disabled (stock tracking removed)
+            flash('Stock management has been disabled', 'info')
+            return render_template('inventory/adjust_stock.html', product=product)
             
             # Create inventory transaction
             transaction = InventoryTransaction(
@@ -378,9 +370,9 @@ def reports(current_agency_id=None):
     # Stock level analysis
     products = product_query.all()
     total_products = len(products)
-    total_inventory_value = sum(p.stock_quantity * p.cost for p in products)
-    low_stock_count = len([p for p in products if p.stock_quantity <= 10])
-    out_of_stock_count = len([p for p in products if p.stock_quantity <= 0])
+    total_inventory_value = 0  # Stock tracking disabled
+    low_stock_count = 0
+    out_of_stock_count = 0
     
     # Movement analysis for period
     period_transactions = transaction_query.filter(

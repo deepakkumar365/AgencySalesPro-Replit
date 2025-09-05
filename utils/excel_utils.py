@@ -14,7 +14,7 @@ def export_products_to_excel(products):
     ws.title = "Products"
     
     # Headers
-    headers = ['ID', 'Name', 'Description', 'SKU', 'Price', 'Cost', 'Stock Quantity', 'Category', 'Agency', 'Active', 'Created At']
+    headers = ['ID', 'Name', 'Description', 'SKU', 'Price', 'Cost', 'Category', 'Agency', 'Active', 'Created At']
     ws.append(headers)
     
     # Style headers
@@ -34,7 +34,6 @@ def export_products_to_excel(products):
             product.sku,
             float(product.price),
             float(product.cost) if product.cost else 0,
-            product.stock_quantity,
             product.category,
             product.agency.name,
             product.is_active,
@@ -96,7 +95,7 @@ def import_products_from_excel(file, agency_id, user_role):
                         sku=sku.strip(),
                         price=float(price),
                         cost=float(row.get('Cost', 0)) if row.get('Cost') else 0,
-                        stock_quantity=int(row.get('Stock Quantity', 0)) if row.get('Stock Quantity') else 0,
+                        # stock_quantity removed from model
                         category=row.get('Category', '').strip(),
                         agency_id=agency_id,
                         is_active=True
@@ -153,7 +152,7 @@ def import_products_from_excel(file, agency_id, user_role):
                         sku=str(sku).strip(),
                         price=float(price),
                         cost=float(row_dict.get('Cost', 0)) if row_dict.get('Cost') else 0,
-                        stock_quantity=int(row_dict.get('Stock Quantity', 0)) if row_dict.get('Stock Quantity') else 0,
+                        # stock_quantity removed from model
                         category=str(row_dict.get('Category', '')).strip(),
                         agency_id=agency_id,
                         is_active=True
