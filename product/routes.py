@@ -118,10 +118,10 @@ def create_product():
             return render_template('product/form.html', agencies=get_agencies_for_user())
         
         try:
-            buy_price = float(buy_price)
-            sell_price = float(sell_price)
-            mrp_price = float(mrp_price)
-        except ValueError:
+            buy_price = float(buy_price) if buy_price else 0.0
+            sell_price = float(sell_price) if sell_price else 0.0
+            mrp_price = float(mrp_price) if mrp_price else 0.0
+        except (ValueError, TypeError):
             flash('Invalid numeric values', 'error')
             return render_template('product/form.html', agencies=get_agencies_for_user())
         
@@ -142,12 +142,11 @@ def create_product():
             is_active=True
         )
         
-        db.session.add(product)
-        db.session.flush()  # Get the ID before setting legacy fields
-        
-        # Set legacy fields for backward compatibility
+        # Sync legacy fields for backward compatibility
         product.price = sell_price
         product.cost = buy_price
+        
+        db.session.add(product)
         db.session.commit()
         
         flash('Product created successfully!', 'success')

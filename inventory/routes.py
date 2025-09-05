@@ -125,7 +125,7 @@ def stock_levels(current_agency_id=None):
     else:
         categories = Category.query.filter_by(agency_id=current_agency_id, is_active=True).all()
     
-    return render_template('inventory/dashboard.html',
+    return render_template('inventory/stock_levels.html',
                          products=products,
                          categories=categories,
                          current_filters={

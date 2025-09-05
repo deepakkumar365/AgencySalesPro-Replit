@@ -88,10 +88,22 @@ class Product(db.Model):
     __tablename__ = 'ASP_products'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
     sku = db.Column(db.String(50), unique=True, nullable=False)
-    buy_price = db.Column(db.Numeric(10, 2), nullable=False)  # Cost/Purchase price
-    sell_price = db.Column(db.Numeric(10, 2), nullable=False)  # Selling price
-    mrp_price = db.Column(db.Numeric(10, 2), nullable=False)  # Maximum Retail Price
+    
+    # Legacy fields (nullable for backward compatibility)
+    price = db.Column(db.Numeric(10, 2))  # Legacy selling price
+    cost = db.Column(db.Numeric(10, 2))   # Legacy cost price
+    stock_quantity = db.Column(db.Integer)  # Legacy stock field
+    category = db.Column(db.String(100))  # Legacy category field
+    uom = db.Column(db.String(20))        # Legacy UOM field
+    tax_rate = db.Column(db.Numeric(5, 2))  # Legacy tax rate
+    tax_code = db.Column(db.String(20))   # Legacy tax code
+    
+    # New master data fields
+    buy_price = db.Column(db.Numeric(10, 2))  # Cost/Purchase price
+    sell_price = db.Column(db.Numeric(10, 2))  # Selling price
+    mrp_price = db.Column(db.Numeric(10, 2))  # Maximum Retail Price
     margin = db.Column(db.Numeric(5, 2))  # Margin percentage
     
     # Foreign key relationships to master tables
@@ -113,16 +125,18 @@ class Product(db.Model):
             return round(((self.sell_price - self.buy_price) / self.buy_price) * 100, 2)
         return 0
     
-    # Backward compatibility properties
-    @property
-    def price(self):
-        """Backward compatibility: maps to sell_price"""
-        return self.sell_price
-    
-    @property
-    def cost(self):
-        """Backward compatibility: maps to buy_price"""
-        return self.buy_price
+    # Backward compatibility methods
+    def sync_legacy_fields(self):
+        """Sync new fields to legacy fields for backward compatibility"""
+        self.price = self.sell_price
+        self.cost = self.buy_price
+        if self.category_ref:
+            self.category = self.category_ref.name
+        if self.uom_ref:
+            self.uom = self.uom_ref.name
+        if self.tax_master_ref:
+            self.tax_rate = self.tax_master_ref.percentage
+            self.tax_code = self.tax_master_ref.code
 
 class Order(db.Model):
     __tablename__ = 'ASP_orders'
