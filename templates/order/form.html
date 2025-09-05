@@ -197,55 +197,50 @@
 
         <!-- Row 3: Order Summary -->
         <div class="summary-panel">
-            <div class="row">
-                <div class="col-md-8">
-                    <h6 class="mb-3 text-primary">
-                        <i class="fas fa-calculator me-2"></i>ORDER SUMMARY
-                    </h6>
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="summary-item">
-                                <span>Total Items:</span>
-                                <strong id="totalItemsCount">0 lines</strong>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="summary-item">
-                                <span>Subtotal:</span>
-                                <strong id="subtotalAmount">₹ 0.00</strong>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="summary-item">
-                                <span>Total Tax:</span>
-                                <strong id="totalTaxAmount">₹ 0.00</strong>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="summary-item">
-                                <span class="text-primary fs-5">GRAND TOTAL:</span>
-                                <strong id="grandTotal" class="text-primary fs-5">₹ 0.00</strong>
-                            </div>
-                        </div>
-                    </div>
+            <h6 class="mb-3 text-primary">
+                <i class="fas fa-calculator me-2"></i>ORDER SUMMARY
+            </h6>
+            
+            <div class="summary-item">
+                <span>Total Items:</span>
+                <span id="totalItemsCount">0 lines</span>
+            </div>
+            
+            <div class="summary-item">
+                <span>Subtotal:</span>
+                <span id="subtotalAmount">₹ 0.00</span>
+            </div>
+            
+            <div class="summary-item">
+                <span>Total Tax:</span>
+                <span id="totalTaxAmount">₹ 0.00</span>
+            </div>
+            
+            <hr>
+            
+            <div class="summary-total">
+                <div class="summary-item">
+                    <span>GRAND TOTAL:</span>
+                    <span id="grandTotal" class="text-primary">₹ 0.00</span>
                 </div>
-                <div class="col-md-4">
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-success btn-lg">
-                            <i class="fas fa-check me-2"></i>Create Order
+            </div>
+            
+            <hr>
+            
+            <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="fas fa-check me-2"></i>Create Order
+                </button>
+                <div class="row">
+                    <div class="col-6">
+                        <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                            <i class="fas fa-undo me-1"></i>Reset
                         </button>
-                        <div class="row">
-                            <div class="col-6">
-                                <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
-                                    <i class="fas fa-undo me-1"></i>Reset
-                                </button>
-                            </div>
-                            <div class="col-6">
-                                <a href="{{ url_for('order.list_orders') }}" class="btn btn-outline-primary">
-                                    <i class="fas fa-times me-1"></i>Cancel
-                                </a>
-                            </div>
-                        </div>
+                    </div>
+                    <div class="col-6">
+                        <a href="{{ url_for('order.list_orders') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </a>
                     </div>
                 </div>
             </div>
