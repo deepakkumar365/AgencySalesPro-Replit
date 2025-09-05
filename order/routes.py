@@ -523,9 +523,9 @@ def search_products():
         'description': p.description or '',
         'price': float(p.sell_price) if p.sell_price else 0,
         'mrp_price': float(p.mrp_price) if p.mrp_price else 0,
-        'uom': p.uom_ref.name if p.uom_ref else 'pcs',
-        'tax_rate': float(p.tax_master_ref.percentage) if p.tax_master_ref else 18.0,
-        'tax_code': p.tax_master_ref.code if p.tax_master_ref else 'GST18',
+        'uom': p.uom_ref.name if p.uom_ref else (p.uom or 'pcs'),
+        'tax_rate': float(p.tax_master_ref.tax_rate) if p.tax_master_ref else (p.tax_rate or 18.0),
+        'tax_code': p.tax_master_ref.tax_code if p.tax_master_ref else (p.tax_code or 'GST18'),
         'stock_available': True,  # Stock tracking disabled
         'category': p.category_ref.name if p.category_ref else '',
         'display_text': f"{p.name} ({p.sku}) - ₹{p.sell_price}"

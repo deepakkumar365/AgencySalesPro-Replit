@@ -117,6 +117,7 @@ class Product(db.Model):
     
     # Relationships
     order_items = db.relationship('OrderItem', backref='product', lazy=True)
+    # Note: category_ref, uom_ref, and tax_master_ref are created via backref from the respective master tables
     
     @property
     def calculate_margin(self):
@@ -417,6 +418,9 @@ class UOM(db.Model):
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    products = db.relationship('Product', backref='uom_ref', lazy=True)
 
 class TaxMaster(db.Model):
     __tablename__ = 'ASP_tax_masters'
@@ -428,3 +432,6 @@ class TaxMaster(db.Model):
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    products = db.relationship('Product', backref='tax_master_ref', lazy=True)
