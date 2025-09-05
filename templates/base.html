@@ -79,6 +79,29 @@
                         </a>
                     </li>
                     
+                    {% if session.role in ['super_admin', 'agency_admin', 'staff'] %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-cogs me-1"></i>Masters
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('masters.index') }}">
+                                <i class="fas fa-cogs me-1"></i>Masters Dashboard
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('masters.categories') }}">
+                                <i class="fas fa-tags me-1"></i>Categories
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('masters.uoms') }}">
+                                <i class="fas fa-balance-scale me-1"></i>Units of Measure
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('masters.tax_masters') }}">
+                                <i class="fas fa-percent me-1"></i>Tax Masters
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                    
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-boxes me-1"></i>Inventory

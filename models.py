@@ -88,22 +88,30 @@ class Product(db.Model):
     __tablename__ = 'ASP_products'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text)
     sku = db.Column(db.String(50), unique=True, nullable=False)
-    price = db.Column(db.Numeric(10, 2), nullable=False)  # Selling price
-    cost = db.Column(db.Numeric(10, 2))
-    mrp_price = db.Column(db.Numeric(10, 2), nullable=False)  # Maximum Retail Price for master
-    uom = db.Column(db.String(20), default='pcs')  # Default Unit of Measure
-    tax_rate = db.Column(db.Numeric(5, 2), default=18.00)  # Default tax percentage
-    tax_code = db.Column(db.String(20), default='GST18')  # Default Indian tax code
-    stock_quantity = db.Column(db.Integer, default=0)
-    category = db.Column(db.String(50))
+    buy_price = db.Column(db.Numeric(10, 2), nullable=False)  # Cost/Purchase price
+    sell_price = db.Column(db.Numeric(10, 2), nullable=False)  # Selling price
+    mrp_price = db.Column(db.Numeric(10, 2), nullable=False)  # Maximum Retail Price
+    margin = db.Column(db.Numeric(5, 2))  # Margin percentage
+    
+    # Foreign key relationships to master tables
+    category_id = db.Column(db.Integer, db.ForeignKey('ASP_categories.id'))
+    uom_id = db.Column(db.Integer, db.ForeignKey('ASP_uoms.id'))
+    tax_master_id = db.Column(db.Integer, db.ForeignKey('ASP_tax_masters.id'))
+    
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
     order_items = db.relationship('OrderItem', backref='product', lazy=True)
+    
+    @property
+    def calculate_margin(self):
+        """Calculate margin percentage based on buy and sell prices"""
+        if self.buy_price and self.sell_price:
+            return round(((self.sell_price - self.buy_price) / self.buy_price) * 100, 2)
+        return 0
 
 class Order(db.Model):
     __tablename__ = 'ASP_orders'
@@ -361,3 +369,37 @@ class LowStockAlert(db.Model):
     # Relationships
     product = db.relationship('Product', backref='stock_alerts', lazy=True)
     resolver = db.relationship('User', backref='resolved_alerts', lazy=True)
+
+# Master Data Models
+class Category(db.Model):
+    __tablename__ = 'ASP_categories'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    products = db.relationship('Product', backref='category_ref', lazy=True)
+
+class UOM(db.Model):
+    __tablename__ = 'ASP_uoms'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    short_name = db.Column(db.String(10), nullable=False)
+    description = db.Column(db.Text)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class TaxMaster(db.Model):
+    __tablename__ = 'ASP_tax_masters'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    tax_code = db.Column(db.String(20), nullable=False, unique=True)
+    tax_rate = db.Column(db.Numeric(5, 2), nullable=False)
+    description = db.Column(db.Text)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

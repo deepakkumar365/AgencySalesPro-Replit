@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Categories - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-tags me-2"></i>Categories</h2>
+        <div>
+            <a href="{{ url_for('masters.create_category') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>Add Category
+            </a>
+            <a href="{{ url_for('masters.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Masters
+            </a>
+        </div>
+    </div>
+
+    {% if categories %}
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in categories %}
+                        <tr>
+                            <td>
+                                <strong>{{ category.name }}</strong>
+                            </td>
+                            <td>{{ category.description or '-' }}</td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ category.created_at.strftime('%Y-%m-%d') if category.created_at else '-' }}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-sm btn-outline-primary" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Delete" 
+                                            onclick="confirmDelete('{{ category.name }}', '{{ url_for('masters.categories') }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+        <h4 class="text-muted">No Categories Found</h4>
+        <p class="text-muted">Start by creating your first category.</p>
+        <a href="{{ url_for('masters.create_category') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>Add First Category
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function confirmDelete(name, returnUrl) {
+    if (confirm(`Are you sure you want to delete the category "${name}"?`)) {
+        // Implement delete functionality here
+        alert('Delete functionality not implemented yet');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Masters Dashboard - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-cogs me-2"></i>Masters Dashboard</h2>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ categories }}</h4>
+                            <p class="card-text">Categories</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-tags fa-2x"></i>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('masters.categories') }}" class="btn btn-light btn-sm mt-2">
+                        <i class="fas fa-eye me-1"></i>Manage Categories
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ uoms }}</h4>
+                            <p class="card-text">Units of Measure</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-balance-scale fa-2x"></i>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('masters.uoms') }}" class="btn btn-light btn-sm mt-2">
+                        <i class="fas fa-eye me-1"></i>Manage UOMs
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="card-title">{{ tax_masters }}</h4>
+                            <p class="card-text">Tax Masters</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-percent fa-2x"></i>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('masters.tax_masters') }}" class="btn btn-light btn-sm mt-2">
+                        <i class="fas fa-eye me-1"></i>Manage Tax Masters
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <a href="{{ url_for('masters.create_category') }}" class="btn btn-outline-primary btn-block mb-2">
+                                <i class="fas fa-plus me-1"></i>Add Category
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('masters.create_uom') }}" class="btn btn-outline-success btn-block mb-2">
+                                <i class="fas fa-plus me-1"></i>Add UOM
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('masters.create_tax_master') }}" class="btn btn-outline-info btn-block mb-2">
+                                <i class="fas fa-plus me-1"></i>Add Tax Master
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Tax Masters - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-percent me-2"></i>Tax Masters</h2>
+        <div>
+            <a href="{{ url_for('masters.create_tax_master') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>Add Tax Master
+            </a>
+            <a href="{{ url_for('masters.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Masters
+            </a>
+        </div>
+    </div>
+
+    {% if tax_masters %}
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Name</th>
+                            <th>Tax Code</th>
+                            <th>Tax Rate</th>
+                            <th>Description</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tax_master in tax_masters %}
+                        <tr>
+                            <td>
+                                <strong>{{ tax_master.name }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ tax_master.tax_code }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-success">{{ tax_master.tax_rate }}%</span>
+                            </td>
+                            <td>{{ tax_master.description or '-' }}</td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ tax_master.created_at.strftime('%Y-%m-%d') if tax_master.created_at else '-' }}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-sm btn-outline-primary" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Delete" 
+                                            onclick="confirmDelete('{{ tax_master.name }}', '{{ url_for('masters.tax_masters') }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-percent fa-3x text-muted mb-3"></i>
+        <h4 class="text-muted">No Tax Masters Found</h4>
+        <p class="text-muted">Start by creating your first tax master.</p>
+        <a href="{{ url_for('masters.create_tax_master') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>Add First Tax Master
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function confirmDelete(name, returnUrl) {
+    if (confirm(`Are you sure you want to delete the tax master "${name}"?`)) {
+        // Implement delete functionality here
+        alert('Delete functionality not implemented yet');
+    }
+}
+</script>
+{% endblock %}

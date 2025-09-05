@@ -113,8 +113,13 @@
     border-radius: 0 0 0.375rem 0.375rem;
     max-height: 200px;
     overflow-y: auto;
-    z-index: 1000;
+    z-index: 1050;
     display: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.product-suggestions {
+    z-index: 1055 !important;
 }
 
 .autocomplete-suggestion {
@@ -197,16 +202,16 @@
             <div class="items-grid">
                 <!-- Grid Header -->
                 <div class="row grid-header m-0">
-                    <div class="col-1 text-center">Sr.No</div>
-                    <div class="col-3">Product</div>
+                    <div class="col-auto text-center" style="width: 50px;">Sr</div>
+                    <div class="col-4">Product</div>
                     <div class="col-1">UOM</div>
                     <div class="col-1">Qty</div>
                     <div class="col-1">MRP ₹</div>
                     <div class="col-1">Disc %</div>
                     <div class="col-1">Price ₹</div>
-                    <div class="col-1">Tax</div>
+                    <div class="col-1">Tax%</div>
                     <div class="col-1">Total ₹</div>
-                    <div class="col-1">Action</div>
+                    <div class="col-auto" style="width: 60px;">Action</div>
                 </div>
                 
                 <!-- Scrollable Items Container -->
@@ -505,7 +510,8 @@ function selectProduct(itemId, productId, productName, displayText, mrpPrice, pr
     const mrpInput = itemRow.querySelector('input[name="mrp_prices"]');
     const priceInput = itemRow.querySelector('input[name="unit_prices"]');
     const uomSelect = itemRow.querySelector('select[name="uoms"]');
-    const taxSelect = itemRow.querySelector('select[name="tax_codes"]');
+    const taxDisplayInput = itemRow.querySelector('input[name="tax_display"]');
+    const taxCodeInput = itemRow.querySelector('input[name="tax_codes"]');
     
     if (mrpInput) mrpInput.value = mrpPrice.toFixed(2);
     if (priceInput) priceInput.value = price.toFixed(2);
@@ -518,14 +524,11 @@ function selectProduct(itemId, productId, productName, displayText, mrpPrice, pr
             }
         }
     }
-    if (taxSelect) {
-        // Set tax code if it exists
-        for (let option of taxSelect.options) {
-            if (option.value === taxCode) {
-                option.selected = true;
-                break;
-            }
-        }
+    if (taxDisplayInput) {
+        taxDisplayInput.value = `${taxRate}%`;
+    }
+    if (taxCodeInput) {
+        taxCodeInput.value = taxCode;
     }
     
     hideProductSuggestions(itemId);
@@ -568,10 +571,10 @@ function addOrderItem() {
     
     const itemHtml = `
         <div class="row grid-row m-0" id="item-${orderItemCounter}">
-            <div class="col-1 text-center">
+            <div class="col-auto text-center" style="width: 50px;">
                 <span class="item-serial">${orderItemCounter}</span>
             </div>
-            <div class="col-3">
+            <div class="col-4">
                 <div class="autocomplete-container">
                     <input type="text" class="form-control form-control-sm product-search" 
                            placeholder="Search products..." 
@@ -606,15 +609,15 @@ function addOrderItem() {
                        placeholder="0.00" step="0.01" onchange="calculateLineTotal(${orderItemCounter})">
             </div>
             <div class="col-1">
-                <select class="form-select form-select-sm" name="tax_codes" onchange="calculateLineTotal(${orderItemCounter})">
-                    ${taxOptions}
-                </select>
+                <input type="text" class="form-control form-control-sm tax-display" 
+                       name="tax_display" placeholder="18%" readonly style="background: #f8f9fa; font-size: 0.8rem;">
+                <input type="hidden" name="tax_codes" value="GST18">
             </div>
             <div class="col-1">
                 <input type="number" class="form-control form-control-sm" name="line_totals" 
                        placeholder="0.00" step="0.01" readonly>
             </div>
-            <div class="col-1 text-center">
+            <div class="col-auto text-center" style="width: 60px;">
                 <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeOrderItem(${orderItemCounter})" 
                         ${orderItemCounter === 1 ? 'disabled' : ''}>
                     <i class="fas fa-trash"></i>
@@ -682,7 +685,7 @@ function calculateLineTotal(itemId) {
     const quantity = parseFloat(row.querySelector('input[name="quantities"]').value) || 0;
     const unitPrice = parseFloat(row.querySelector('input[name="unit_prices"]').value) || 0;
     const discount = parseFloat(row.querySelector('input[name="discounts"]').value) || 0;
-    const taxCode = row.querySelector('select[name="tax_codes"]').value;
+    const taxCode = row.querySelector('input[name="tax_codes"]').value;
     
     // Calculate discounted price
     const discountAmount = (unitPrice * discount / 100);
@@ -711,7 +714,7 @@ function calculateOrderTotals() {
         const quantity = parseFloat(row.querySelector('input[name="quantities"]').value) || 0;
         const unitPrice = parseFloat(row.querySelector('input[name="unit_prices"]').value) || 0;
         const discount = parseFloat(row.querySelector('input[name="discounts"]').value) || 0;
-        const taxCode = row.querySelector('select[name="tax_codes"]').value;
+        const taxCode = row.querySelector('input[name="tax_codes"]').value;
         
         if (quantity > 0 && unitPrice > 0) {
             totalItems++;

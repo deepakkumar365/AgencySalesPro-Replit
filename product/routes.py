@@ -89,19 +89,20 @@ def list_products(current_agency_id=None):
 def create_product():
     if request.method == 'POST':
         name = request.form.get('name')
-        description = request.form.get('description')
         sku = request.form.get('sku')
-        price = request.form.get('price')
-        cost = request.form.get('cost')
-        stock_quantity = request.form.get('stock_quantity', 0)
-        category = request.form.get('category')
+        buy_price = request.form.get('buy_price')
+        sell_price = request.form.get('sell_price')
+        mrp_price = request.form.get('mrp_price')
+        category_id = request.form.get('category_id')
+        uom_id = request.form.get('uom_id')
+        tax_master_id = request.form.get('tax_master_id')
         agency_id = request.form.get('agency_id')
         
         user_role = session.get('role')
         current_agency_id = session.get('agency_id')
         
-        if not all([name, sku, price]):
-            flash('Name, SKU, and price are required', 'error')
+        if not all([name, sku, buy_price, sell_price, mrp_price]):
+            flash('Name, SKU, Buy Price, Sell Price, and MRP are required', 'error')
             return render_template('product/form.html', agencies=get_agencies_for_user())
         
         # Non-super admin users can only create products for their agency
@@ -118,21 +119,26 @@ def create_product():
             return render_template('product/form.html', agencies=get_agencies_for_user())
         
         try:
-            price = float(price)
-            cost = float(cost) if cost else 0
-            stock_quantity = int(stock_quantity) if stock_quantity else 0
+            buy_price = float(buy_price)
+            sell_price = float(sell_price)
+            mrp_price = float(mrp_price)
         except ValueError:
             flash('Invalid numeric values', 'error')
             return render_template('product/form.html', agencies=get_agencies_for_user())
         
+        # Calculate margin
+        margin = round(((sell_price - buy_price) / buy_price) * 100, 2) if buy_price > 0 else 0
+        
         product = Product(
             name=name,
-            description=description,
             sku=sku,
-            price=price,
-            cost=cost,
-            stock_quantity=stock_quantity,
-            category=category,
+            buy_price=buy_price,
+            sell_price=sell_price,
+            mrp_price=mrp_price,
+            margin=margin,
+            category_id=int(category_id) if category_id else None,
+            uom_id=int(uom_id) if uom_id else None,
+            tax_master_id=int(tax_master_id) if tax_master_id else None,
             agency_id=agency_id,
             is_active=True
         )
@@ -143,7 +149,26 @@ def create_product():
         flash('Product created successfully!', 'success')
         return redirect(url_for('product.list_products'))
     
-    return render_template('product/form.html', agencies=get_agencies_for_user())
+    # Get master data for dropdowns
+    from models import Category, UOM, TaxMaster
+    
+    user_role = session.get('role')
+    current_agency_id = session.get('agency_id')
+    
+    if user_role == 'super_admin':
+        categories = Category.query.filter_by(is_active=True).all()
+        uoms = UOM.query.filter_by(is_active=True).all()
+        tax_masters = TaxMaster.query.filter_by(is_active=True).all()
+    else:
+        categories = Category.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+        uoms = UOM.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+        tax_masters = TaxMaster.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+    
+    return render_template('product/form.html', 
+                         agencies=get_agencies_for_user(),
+                         categories=categories,
+                         uoms=uoms,
+                         tax_masters=tax_masters)
 
 @product_bp.route('/<int:product_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -161,12 +186,13 @@ def edit_product(product_id):
     
     if request.method == 'POST':
         product.name = request.form.get('name')
-        product.description = request.form.get('description')
         product.sku = request.form.get('sku')
-        price = request.form.get('price')
-        cost = request.form.get('cost')
-        stock_quantity = request.form.get('stock_quantity')
-        product.category = request.form.get('category')
+        buy_price = request.form.get('buy_price')
+        sell_price = request.form.get('sell_price')
+        mrp_price = request.form.get('mrp_price')
+        category_id = request.form.get('category_id')
+        uom_id = request.form.get('uom_id')
+        tax_master_id = request.form.get('tax_master_id')
         
         # Super admin can change agency
         if user_role == 'super_admin':
@@ -174,8 +200,8 @@ def edit_product(product_id):
             if agency_id:
                 product.agency_id = agency_id
         
-        if not all([product.name, product.sku, price]):
-            flash('Name, SKU, and price are required', 'error')
+        if not all([product.name, product.sku, buy_price, sell_price, mrp_price]):
+            flash('Name, SKU, Buy Price, Sell Price, and MRP are required', 'error')
             return render_template('product/form.html', product=product, agencies=get_agencies_for_user())
         
         # Check if SKU already exists (excluding current product)
@@ -185,9 +211,13 @@ def edit_product(product_id):
             return render_template('product/form.html', product=product, agencies=get_agencies_for_user())
         
         try:
-            product.price = float(price)
-            product.cost = float(cost) if cost else 0
-            product.stock_quantity = int(stock_quantity) if stock_quantity else 0
+            product.buy_price = float(buy_price)
+            product.sell_price = float(sell_price)
+            product.mrp_price = float(mrp_price)
+            product.margin = round(((float(sell_price) - float(buy_price)) / float(buy_price)) * 100, 2) if float(buy_price) > 0 else 0
+            product.category_id = int(category_id) if category_id else None
+            product.uom_id = int(uom_id) if uom_id else None
+            product.tax_master_id = int(tax_master_id) if tax_master_id else None
         except ValueError:
             flash('Invalid numeric values', 'error')
             return render_template('product/form.html', product=product, agencies=get_agencies_for_user())
@@ -196,7 +226,27 @@ def edit_product(product_id):
         flash('Product updated successfully!', 'success')
         return redirect(url_for('product.list_products'))
     
-    return render_template('product/form.html', product=product, agencies=get_agencies_for_user())
+    # Get master data for dropdowns
+    from models import Category, UOM, TaxMaster
+    
+    user_role = session.get('role')
+    current_agency_id = session.get('agency_id')
+    
+    if user_role == 'super_admin':
+        categories = Category.query.filter_by(is_active=True).all()
+        uoms = UOM.query.filter_by(is_active=True).all()
+        tax_masters = TaxMaster.query.filter_by(is_active=True).all()
+    else:
+        categories = Category.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+        uoms = UOM.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+        tax_masters = TaxMaster.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+    
+    return render_template('product/form.html', 
+                         product=product,
+                         agencies=get_agencies_for_user(),
+                         categories=categories,
+                         uoms=uoms,
+                         tax_masters=tax_masters)
 
 @product_bp.route('/<int:product_id>/toggle_status', methods=['POST'])
 @login_required

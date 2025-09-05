@@ -50,6 +50,7 @@ def create_app():
     from inventory import inventory_bp
     from reports import reports_bp
     from api import api_bp
+    from masters.routes import masters_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(agency_bp, url_prefix='/agency')
@@ -64,6 +65,7 @@ def create_app():
     app.register_blueprint(inventory_bp, url_prefix='/inventory')
     app.register_blueprint(reports_bp, url_prefix='/reports')
     app.register_blueprint(api_bp, url_prefix='/api/v1')
+    app.register_blueprint(masters_bp, url_prefix='/masters')
     
     # Main routes
     @app.route('/')
