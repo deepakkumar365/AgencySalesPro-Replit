@@ -2,11 +2,25 @@ from flask import render_template, request, redirect, url_for, flash, session, s
 from datetime import datetime
 import uuid
 from app import db
-from models import Order, OrderItem, Customer, Product, Location, User, Agency
+from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode
 from order import order_bp
 from auth.utils import login_required, agency_access_required
 from utils.decorators import log_activity
 from utils.excel_utils import export_orders_to_excel
+
+@order_bp.route('/api/tax-codes')
+@login_required
+def get_tax_codes():
+    """API endpoint to get Indian tax codes for the order form"""
+    tax_codes = IndianTaxCode.query.filter_by(is_active=True).all()
+    return jsonify({
+        code.code: {
+            'name': code.name,
+            'rate': float(code.rate),
+            'description': code.description
+        }
+        for code in tax_codes
+    })
 
 @order_bp.route('/')
 @login_required
@@ -107,8 +121,13 @@ def create_order():
         customer_id = request.form.get('customer_id')
         products_data = request.form.getlist('products')
         quantities = request.form.getlist('quantities')
-        discount = request.form.get('discount', 0)
-        tax = request.form.get('tax', 0)
+        uoms = request.form.getlist('uoms')
+        mrp_prices = request.form.getlist('mrp_prices')
+        unit_prices = request.form.getlist('unit_prices')
+        discounts = request.form.getlist('discounts')
+        tax_codes = request.form.getlist('tax_codes')
+        line_totals = request.form.getlist('line_totals')
+        payment_status = request.form.get('payment_status', 'pending')
         notes = request.form.get('notes')
         delivery_date = request.form.get('delivery_date')
         
@@ -145,17 +164,21 @@ def create_order():
         # Generate order number
         order_number = f"ORD-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:8].upper()}"
         
-        # Create order
-        order = Order(
-            order_number=order_number,
-            customer_id=customer_id,
-            agency_id=customer.location.agency_id,
-            salesperson_id=user_id,
-            status='pending',
-            discount=float(discount) if discount else 0,
-            tax=float(tax) if tax else 0,
-            notes=notes
-        )
+        # Create order with enhanced fields
+        order = Order()
+        order.order_number = order_number
+        order.customer_id = customer_id
+        order.agency_id = customer.location.agency_id
+        order.salesperson_id = user_id
+        order.status = 'pending'
+        order.payment_status = payment_status
+        order.total_amount = 0
+        order.subtotal_amount = 0
+        order.total_tax_amount = 0
+        order.total_items_count = 0
+        order.discount = 0  # Legacy field
+        order.tax = 0       # Legacy field
+        order.notes = notes
         
         if delivery_date:
             order.delivery_date = datetime.strptime(delivery_date, '%Y-%m-%d')
@@ -163,36 +186,81 @@ def create_order():
         db.session.add(order)
         db.session.flush()  # Get order ID
         
-        # Add order items
-        total_amount = 0
+        # Add enhanced order items
+        subtotal = 0
+        total_tax = 0
+        valid_items = 0
+        
         for i, product_id in enumerate(products_data):
-            if i < len(quantities) and quantities[i]:
+            if (i < len(quantities) and quantities[i] and 
+                i < len(unit_prices) and unit_prices[i]):
+                
                 quantity = int(quantities[i])
+                unit_price = float(unit_prices[i])
                 product = Product.query.get(product_id)
                 
-                if product and quantity > 0:
+                if product and quantity > 0 and unit_price > 0:
                     # Validate product belongs to same agency
                     if user_role != 'super_admin' and product.agency_id != customer.location.agency_id:
                         continue
                     
-                    order_item = OrderItem(
-                        order_id=order.id,
-                        product_id=product_id,
-                        quantity=quantity,
-                        unit_price=product.price
-                    )
-                    total_amount += order_item.total_price
+                    # Get enhanced item data
+                    uom = uoms[i] if i < len(uoms) else 'pcs'
+                    mrp_price = float(mrp_prices[i]) if i < len(mrp_prices) and mrp_prices[i] else unit_price
+                    discount_pct = float(discounts[i]) if i < len(discounts) and discounts[i] else 0
+                    tax_code = tax_codes[i] if i < len(tax_codes) else 'GST18'
+                    
+                    # Calculate pricing
+                    discount_amount = (unit_price * discount_pct / 100)
+                    discounted_price = unit_price - discount_amount
+                    
+                    # Get tax rate
+                    tax_rate = 18.0  # Default GST 18%
+                    tax_code_obj = IndianTaxCode.query.filter_by(code=tax_code, is_active=True).first()
+                    if tax_code_obj:
+                        tax_rate = float(tax_code_obj.rate)
+                    
+                    # Calculate tax and line total
+                    line_subtotal = discounted_price * quantity
+                    tax_amount = (line_subtotal * tax_rate / 100)
+                    line_total = line_subtotal + tax_amount
+                    
+                    order_item = OrderItem()
+                    order_item.order_id = order.id
+                    order_item.product_id = product_id
+                    order_item.quantity = quantity
+                    order_item.uom = uom
+                    order_item.unit_price = unit_price
+                    order_item.mrp_price = mrp_price
+                    order_item.discount_percentage = discount_pct
+                    order_item.discounted_price = discounted_price
+                    order_item.tax_code = tax_code
+                    order_item.tax_rate = tax_rate
+                    order_item.tax_amount = tax_amount
+                    order_item.line_total = line_total
+                    order_item.total_price = line_total  # For backward compatibility
+                    
+                    subtotal += line_subtotal
+                    total_tax += tax_amount
+                    valid_items += 1
                     db.session.add(order_item)
         
-        order.total_amount = total_amount
+        # Update order totals
+        order.subtotal_amount = subtotal
+        order.total_tax_amount = total_tax
+        order.total_amount = subtotal + total_tax
+        order.total_items_count = valid_items
         db.session.commit()
         
         flash('Order created successfully!', 'success')
         return redirect(url_for('order.list_orders'))
     
+    # Add today's date for the template
+    from datetime import date
     return render_template('order/form.html',
                          customers=get_customers_for_user(),
-                         products=get_products_for_user())
+                         products=get_products_for_user(),
+                         today=date.today())
 
 @order_bp.route('/<int:order_id>')
 @login_required

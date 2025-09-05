@@ -3,175 +3,563 @@
 {% block title %}Create Order - AgencySales Pro{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-10">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0">
-                    <i class="fas fa-shopping-cart me-2"></i>Create Order
-                </h4>
+<style>
+.fullscreen-form {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+}
+
+.order-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.customer-panel {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.customer-info-row {
+    margin-bottom: 0.5rem;
+}
+
+.order-items-section {
+    flex: 1;
+    display: flex;
+    gap: 1rem;
+}
+
+.items-container {
+    flex: 2;
+}
+
+.summary-panel {
+    flex: 0 0 300px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.5rem;
+    height: fit-content;
+    position: sticky;
+    top: 1rem;
+}
+
+.items-grid {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.grid-header {
+    background: #e9ecef;
+    font-weight: 600;
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.grid-row {
+    padding: 0.5rem;
+    border-bottom: 1px solid #f1f3f4;
+    min-height: 60px;
+    align-items: center;
+}
+
+.grid-row:last-child {
+    border-bottom: none;
+}
+
+.items-scroll {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0;
+}
+
+.summary-total {
+    border-top: 2px solid #007bff;
+    padding-top: 0.5rem;
+    margin-top: 0.5rem;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.form-control-sm {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+@media (max-width: 992px) {
+    .order-items-section {
+        flex-direction: column;
+    }
+    
+    .summary-panel {
+        flex: none;
+        position: static;
+    }
+}
+</style>
+
+<div class="container-fluid fullscreen-form">
+    <!-- Header Section -->
+    <div class="order-header">
+        <div class="row align-items-center">
+            <div class="col">
+                <h2 class="mb-0">
+                    <i class="fas fa-shopping-cart me-2"></i>Create New Order
+                </h2>
+                <small class="opacity-75">AgencySales Pro - Order Management System</small>
             </div>
-            <div class="card-body">
-                <form method="POST" id="orderForm">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="customer_id" class="form-label">Customer *</label>
-                            <select class="form-select" id="customer_id" name="customer_id" required>
-                                <option value="">Select Customer</option>
-                                {% for customer in customers %}
-                                <option value="{{ customer.id }}">
-                                    {{ customer.name }} - {{ customer.location.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="delivery_date" class="form-label">Delivery Date</label>
-                            <input type="date" class="form-control" id="delivery_date" name="delivery_date">
-                        </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label class="form-label">Order Items *</label>
-                        <div id="orderItems">
-                            <div class="order-item border rounded p-3 mb-3">
-                                <div class="row">
-                                    <div class="col-md-8 mb-2">
-                                        <select class="form-select" name="products" required>
-                                            <option value="">Select Product</option>
-                                            {% for product in products %}
-                                            <option value="{{ product.id }}" data-price="{{ product.price }}">
-                                                {{ product.name }} - ${{ "%.2f"|format(product.price) }} (Stock: {{ product.stock_quantity }})
-                                            </option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3 mb-2">
-                                        <input type="number" class="form-control" name="quantities" 
-                                               placeholder="Quantity" min="1" required>
-                                    </div>
-                                    <div class="col-md-1 mb-2">
-                                        <button type="button" class="btn btn-outline-danger remove-item" disabled>
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-outline-primary" id="addItem">
-                            <i class="fas fa-plus me-2"></i>Add Item
-                        </button>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="discount" class="form-label">Discount</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" step="0.01" class="form-control" id="discount" 
-                                       name="discount" value="0">
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="tax" class="form-label">Tax</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" step="0.01" class="form-control" id="tax" 
-                                       name="tax" value="0">
-                            </div>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Estimated Total</label>
-                            <div class="form-control-plaintext">
-                                <strong id="totalAmount">$0.00</strong>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="notes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
-                    </div>
-                    
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{{ url_for('order.list_orders') }}" class="btn btn-secondary">Cancel</a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-2"></i>Create Order
-                        </button>
-                    </div>
-                </form>
+            <div class="col-auto">
+                <button type="button" class="btn btn-light btn-sm me-2" onclick="saveDraft()">
+                    <i class="fas fa-save me-1"></i>Save Draft
+                </button>
+                <a href="{{ url_for('order.list_orders') }}" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </a>
             </div>
         </div>
     </div>
+
+    <form method="POST" id="orderForm">
+        <!-- Customer Panel -->
+        <div class="customer-panel">
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="customer_id" class="form-label fw-bold">Select Customer *</label>
+                    <select class="form-select" id="customer_id" name="customer_id" required onchange="loadCustomerInfo()">
+                        <option value="">Choose a customer...</option>
+                        {% for customer in customers %}
+                        <option value="{{ customer.id }}" 
+                                data-address="{{ customer.address }}"
+                                data-phone="{{ customer.phone }}"
+                                data-email="{{ customer.email }}"
+                                data-location="{{ customer.location.name }}"
+                                data-credit-period="{{ customer.credit_period or 'N/A' }}">
+                            {{ customer.name }} - {{ customer.location.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="delivery_date" class="form-label fw-bold">Delivery Date</label>
+                    <input type="date" class="form-control" id="delivery_date" name="delivery_date" 
+                           min="{{ today }}" value="{{ today }}">
+                </div>
+            </div>
+            
+            <!-- Customer Info Display -->
+            <div id="customerInfo" class="mt-3" style="display: none;">
+                <div class="row customer-info-row">
+                    <div class="col-md-6">
+                        <strong>Address:</strong> <span id="customerAddress">-</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Phone:</strong> <span id="customerPhone">-</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Credit Period:</strong> <span id="customerCredit">-</span>
+                    </div>
+                </div>
+                <div class="row customer-info-row">
+                    <div class="col-md-6">
+                        <strong>Location:</strong> <span id="customerLocation">-</span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Email:</strong> <span id="customerEmail">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Items Section -->
+        <div class="order-items-section">
+            <!-- Items Grid -->
+            <div class="items-container">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Order Items</h5>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="addOrderItem()">
+                        <i class="fas fa-plus me-1"></i>Add Item
+                    </button>
+                </div>
+                
+                <div class="items-grid">
+                    <!-- Grid Header -->
+                    <div class="row grid-header m-0">
+                        <div class="col-1 text-center">Sr.No</div>
+                        <div class="col-3">Product</div>
+                        <div class="col-1">UOM</div>
+                        <div class="col-1">Qty</div>
+                        <div class="col-1">MRP ₹</div>
+                        <div class="col-1">Disc %</div>
+                        <div class="col-1">Price ₹</div>
+                        <div class="col-1">Tax</div>
+                        <div class="col-1">Total ₹</div>
+                        <div class="col-1">Action</div>
+                    </div>
+                    
+                    <!-- Scrollable Items Container -->
+                    <div class="items-scroll" id="orderItemsContainer">
+                        <!-- Order items will be added here dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Panel -->
+            <div class="summary-panel">
+                <h6 class="text-center mb-3 text-primary">
+                    <i class="fas fa-calculator me-2"></i>ORDER SUMMARY
+                </h6>
+                
+                <div class="summary-item">
+                    <span>Total Items:</span>
+                    <span id="totalItemsCount">0 lines</span>
+                </div>
+                
+                <div class="summary-item">
+                    <span>Subtotal:</span>
+                    <span id="subtotalAmount">₹ 0.00</span>
+                </div>
+                
+                <div class="summary-item">
+                    <span>Total Tax:</span>
+                    <span id="totalTaxAmount">₹ 0.00</span>
+                </div>
+                
+                <hr>
+                
+                <div class="summary-total">
+                    <div class="summary-item">
+                        <span>GRAND TOTAL:</span>
+                        <span id="grandTotal" class="text-primary">₹ 0.00</span>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="mt-3">
+                    <label class="form-label fw-bold">Payment Status</label>
+                    <select class="form-select form-select-sm" name="payment_status">
+                        <option value="pending">⚪ Pending</option>
+                        <option value="partial">🟡 Partial</option>
+                        <option value="paid">🟢 Paid</option>
+                    </select>
+                </div>
+                
+                <div class="mt-3">
+                    <label for="notes" class="form-label fw-bold">Notes</label>
+                    <textarea class="form-control form-control-sm" id="notes" name="notes" rows="3" 
+                              placeholder="Special instructions or notes..."></textarea>
+                </div>
+                
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check me-2"></i>Create Order
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                        <i class="fas fa-undo me-2"></i>Reset Form
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+let orderItemCounter = 0;
+let taxCodes = {};
+
+// Load tax codes and initialize form
 document.addEventListener('DOMContentLoaded', function() {
-    const orderItemsContainer = document.getElementById('orderItems');
-    const addItemBtn = document.getElementById('addItem');
-    
-    function updateRemoveButtons() {
-        const items = orderItemsContainer.querySelectorAll('.order-item');
-        items.forEach((item, index) => {
-            const removeBtn = item.querySelector('.remove-item');
-            removeBtn.disabled = items.length === 1;
-        });
+    loadTaxCodes();
+    addOrderItem(); // Add first item
+});
+
+// Load tax codes from server
+async function loadTaxCodes() {
+    try {
+        const response = await fetch('/api/tax-codes');
+        if (response.ok) {
+            taxCodes = await response.json();
+        } else {
+            // Fallback tax codes
+            taxCodes = {
+                'GST0': { name: 'GST 0%', rate: 0 },
+                'GST5': { name: 'GST 5%', rate: 5 },
+                'GST12': { name: 'GST 12%', rate: 12 },
+                'GST18': { name: 'GST 18%', rate: 18 },
+                'GST28': { name: 'GST 28%', rate: 28 }
+            };
+        }
+    } catch (error) {
+        console.error('Error loading tax codes:', error);
+        // Use fallback
+        taxCodes = {
+            'GST0': { name: 'GST 0%', rate: 0 },
+            'GST5': { name: 'GST 5%', rate: 5 },
+            'GST12': { name: 'GST 12%', rate: 12 },
+            'GST18': { name: 'GST 18%', rate: 18 },
+            'GST28': { name: 'GST 28%', rate: 28 }
+        };
     }
+}
+
+// Load customer information
+function loadCustomerInfo() {
+    const select = document.getElementById('customer_id');
+    const customerInfo = document.getElementById('customerInfo');
     
-    function calculateTotal() {
-        let total = 0;
-        const items = orderItemsContainer.querySelectorAll('.order-item');
-        
-        items.forEach(item => {
-            const select = item.querySelector('select[name="products"]');
-            const quantityInput = item.querySelector('input[name="quantities"]');
-            
-            if (select.value && quantityInput.value) {
-                const price = parseFloat(select.options[select.selectedIndex].dataset.price || 0);
-                const quantity = parseInt(quantityInput.value || 0);
-                total += price * quantity;
-            }
-        });
-        
-        const discount = parseFloat(document.getElementById('discount').value || 0);
-        const tax = parseFloat(document.getElementById('tax').value || 0);
-        
-        total = total - discount + tax;
-        document.getElementById('totalAmount').textContent = '$' + total.toFixed(2);
+    if (select.value) {
+        const option = select.options[select.selectedIndex];
+        document.getElementById('customerAddress').textContent = option.dataset.address || 'N/A';
+        document.getElementById('customerPhone').textContent = option.dataset.phone || 'N/A';
+        document.getElementById('customerEmail').textContent = option.dataset.email || 'N/A';
+        document.getElementById('customerLocation').textContent = option.dataset.location || 'N/A';
+        document.getElementById('customerCredit').textContent = option.dataset.creditPeriod || 'N/A';
+        customerInfo.style.display = 'block';
+    } else {
+        customerInfo.style.display = 'none';
     }
+}
+
+// Add new order item
+function addOrderItem() {
+    orderItemCounter++;
+    const container = document.getElementById('orderItemsContainer');
     
-    addItemBtn.addEventListener('click', function() {
-        const newItem = orderItemsContainer.querySelector('.order-item').cloneNode(true);
-        newItem.querySelector('select').value = '';
-        newItem.querySelector('input').value = '';
+    const productOptions = {% raw %}`{% for product in products %}
+        <option value="{{ product.id }}" 
+                data-price="{{ product.price }}" 
+                data-mrp="{{ product.mrp or product.price }}"
+                data-stock="{{ product.stock_quantity }}">
+            {{ product.name }} - ₹{{ "%.2f"|format(product.price) }} (Stock: {{ product.stock_quantity }})
+        </option>{% endfor %}`{% endraw %};
+    
+    const taxOptions = Object.keys(taxCodes).map(code => 
+        `<option value="${code}" ${code === 'GST18' ? 'selected' : ''}>${taxCodes[code].name}</option>`
+    ).join('');
+    
+    const itemHtml = `
+        <div class="row grid-row m-0" id="item-${orderItemCounter}">
+            <div class="col-1 text-center">
+                <span class="item-serial">${orderItemCounter}</span>
+            </div>
+            <div class="col-3">
+                <select class="form-select form-select-sm" name="products" required onchange="updateItemPricing(${orderItemCounter})">
+                    <option value="">Select Product</option>
+                    ${productOptions}
+                </select>
+            </div>
+            <div class="col-1">
+                <select class="form-select form-select-sm" name="uoms">
+                    <option value="pcs">Pcs</option>
+                    <option value="kg">Kg</option>
+                    <option value="ltr">Ltr</option>
+                    <option value="box">Box</option>
+                </select>
+            </div>
+            <div class="col-1">
+                <input type="number" class="form-control form-control-sm" name="quantities" 
+                       placeholder="Qty" min="1" required onchange="calculateLineTotal(${orderItemCounter})">
+            </div>
+            <div class="col-1">
+                <input type="number" class="form-control form-control-sm" name="mrp_prices" 
+                       placeholder="0.00" step="0.01" readonly>
+            </div>
+            <div class="col-1">
+                <input type="number" class="form-control form-control-sm" name="discounts" 
+                       placeholder="0" min="0" max="100" step="0.01" onchange="calculateLineTotal(${orderItemCounter})">
+            </div>
+            <div class="col-1">
+                <input type="number" class="form-control form-control-sm" name="unit_prices" 
+                       placeholder="0.00" step="0.01" onchange="calculateLineTotal(${orderItemCounter})">
+            </div>
+            <div class="col-1">
+                <select class="form-select form-select-sm" name="tax_codes" onchange="calculateLineTotal(${orderItemCounter})">
+                    ${taxOptions}
+                </select>
+            </div>
+            <div class="col-1">
+                <input type="number" class="form-control form-control-sm" name="line_totals" 
+                       placeholder="0.00" step="0.01" readonly>
+            </div>
+            <div class="col-1 text-center">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeOrderItem(${orderItemCounter})" 
+                        ${orderItemCounter === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', itemHtml);
+    updateItemNumbers();
+    calculateOrderTotals();
+}
+
+// Remove order item
+function removeOrderItem(itemId) {
+    const item = document.getElementById(`item-${itemId}`);
+    if (item) {
+        item.remove();
+        updateItemNumbers();
+        calculateOrderTotals();
         
-        const removeBtn = newItem.querySelector('.remove-item');
-        removeBtn.addEventListener('click', function() {
-            newItem.remove();
-            updateRemoveButtons();
-            calculateTotal();
-        });
-        
-        orderItemsContainer.appendChild(newItem);
-        updateRemoveButtons();
+        // Enable remove button for first item if there are multiple items
+        const firstRemoveBtn = document.querySelector('#orderItemsContainer .btn-outline-danger');
+        const itemCount = document.querySelectorAll('#orderItemsContainer .grid-row').length;
+        if (firstRemoveBtn && itemCount > 1) {
+            firstRemoveBtn.disabled = false;
+        } else if (firstRemoveBtn && itemCount === 1) {
+            firstRemoveBtn.disabled = true;
+        }
+    }
+}
+
+// Update item serial numbers
+function updateItemNumbers() {
+    const items = document.querySelectorAll('#orderItemsContainer .item-serial');
+    items.forEach((item, index) => {
+        item.textContent = index + 1;
     });
+}
+
+// Update item pricing when product is selected
+function updateItemPricing(itemId) {
+    const row = document.getElementById(`item-${itemId}`);
+    const productSelect = row.querySelector('select[name="products"]');
+    const option = productSelect.options[productSelect.selectedIndex];
     
-    orderItemsContainer.addEventListener('change', calculateTotal);
-    orderItemsContainer.addEventListener('input', calculateTotal);
-    document.getElementById('discount').addEventListener('input', calculateTotal);
-    document.getElementById('tax').addEventListener('input', calculateTotal);
+    if (option.value) {
+        const mrpInput = row.querySelector('input[name="mrp_prices"]');
+        const priceInput = row.querySelector('input[name="unit_prices"]');
+        
+        mrpInput.value = option.dataset.mrp || option.dataset.price;
+        priceInput.value = option.dataset.price;
+        
+        calculateLineTotal(itemId);
+    }
+}
+
+// Calculate line total for an item
+function calculateLineTotal(itemId) {
+    const row = document.getElementById(`item-${itemId}`);
+    const quantity = parseFloat(row.querySelector('input[name="quantities"]').value) || 0;
+    const unitPrice = parseFloat(row.querySelector('input[name="unit_prices"]').value) || 0;
+    const discount = parseFloat(row.querySelector('input[name="discounts"]').value) || 0;
+    const taxCode = row.querySelector('select[name="tax_codes"]').value;
     
-    orderItemsContainer.addEventListener('click', function(e) {
-        if (e.target.closest('.remove-item')) {
-            e.target.closest('.order-item').remove();
-            updateRemoveButtons();
-            calculateTotal();
+    // Calculate discounted price
+    const discountAmount = (unitPrice * discount / 100);
+    const discountedPrice = unitPrice - discountAmount;
+    
+    // Calculate tax
+    const taxRate = taxCodes[taxCode] ? taxCodes[taxCode].rate : 18;
+    const subtotal = discountedPrice * quantity;
+    const taxAmount = (subtotal * taxRate / 100);
+    const lineTotal = subtotal + taxAmount;
+    
+    // Update line total
+    row.querySelector('input[name="line_totals"]').value = lineTotal.toFixed(2);
+    
+    calculateOrderTotals();
+}
+
+// Calculate order totals
+function calculateOrderTotals() {
+    let totalItems = 0;
+    let subtotal = 0;
+    let totalTax = 0;
+    
+    const rows = document.querySelectorAll('#orderItemsContainer .grid-row');
+    rows.forEach(row => {
+        const quantity = parseFloat(row.querySelector('input[name="quantities"]').value) || 0;
+        const unitPrice = parseFloat(row.querySelector('input[name="unit_prices"]').value) || 0;
+        const discount = parseFloat(row.querySelector('input[name="discounts"]').value) || 0;
+        const taxCode = row.querySelector('select[name="tax_codes"]').value;
+        
+        if (quantity > 0 && unitPrice > 0) {
+            totalItems++;
+            const discountAmount = (unitPrice * discount / 100);
+            const discountedPrice = unitPrice - discountAmount;
+            const itemSubtotal = discountedPrice * quantity;
+            const taxRate = taxCodes[taxCode] ? taxCodes[taxCode].rate : 18;
+            const itemTax = (itemSubtotal * taxRate / 100);
+            
+            subtotal += itemSubtotal;
+            totalTax += itemTax;
         }
     });
     
-    updateRemoveButtons();
+    const grandTotal = subtotal + totalTax;
+    
+    // Update summary panel
+    document.getElementById('totalItemsCount').textContent = `${totalItems} lines`;
+    document.getElementById('subtotalAmount').textContent = `₹ ${subtotal.toFixed(2)}`;
+    document.getElementById('totalTaxAmount').textContent = `₹ ${totalTax.toFixed(2)}`;
+    document.getElementById('grandTotal').textContent = `₹ ${grandTotal.toFixed(2)}`;
+}
+
+// Save draft functionality
+function saveDraft() {
+    alert('Save draft functionality will be implemented in the next phase');
+}
+
+// Reset form
+function resetForm() {
+    if (confirm('Are you sure you want to reset the form? All data will be lost.')) {
+        document.getElementById('orderForm').reset();
+        document.getElementById('orderItemsContainer').innerHTML = '';
+        orderItemCounter = 0;
+        addOrderItem();
+        document.getElementById('customerInfo').style.display = 'none';
+        calculateOrderTotals();
+    }
+}
+
+// Form submission handling
+document.getElementById('orderForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Validate that there's at least one item with quantity and price
+    const rows = document.querySelectorAll('#orderItemsContainer .grid-row');
+    let hasValidItems = false;
+    
+    rows.forEach(row => {
+        const quantity = parseFloat(row.querySelector('input[name="quantities"]').value) || 0;
+        const unitPrice = parseFloat(row.querySelector('input[name="unit_prices"]').value) || 0;
+        if (quantity > 0 && unitPrice > 0) {
+            hasValidItems = true;
+        }
+    });
+    
+    if (!hasValidItems) {
+        alert('Please add at least one item with valid quantity and price.');
+        return;
+    }
+    
+    // If validation passes, submit the form
+    this.submit();
 });
 </script>
 {% endblock %}

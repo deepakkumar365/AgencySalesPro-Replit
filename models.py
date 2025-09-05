@@ -103,7 +103,11 @@ class Order(db.Model):
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
     salesperson_id = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
     status = db.Column(db.String(20), default='pending')  # pending, confirmed, shipped, delivered, cancelled
+    payment_status = db.Column(db.String(20), default='pending')  # pending, partial, paid, overdue
     total_amount = db.Column(db.Numeric(10, 2), default=0)
+    subtotal_amount = db.Column(db.Numeric(10, 2), default=0)  # Total before tax
+    total_tax_amount = db.Column(db.Numeric(10, 2), default=0)  # Sum of all line taxes
+    total_items_count = db.Column(db.Integer, default=0)  # Number of line items
     discount = db.Column(db.Numeric(10, 2), default=0)
     tax = db.Column(db.Numeric(10, 2), default=0)
     notes = db.Column(db.Text)
@@ -120,13 +124,29 @@ class OrderItem(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
-    unit_price = db.Column(db.Numeric(10, 2), nullable=False)
-    total_price = db.Column(db.Numeric(10, 2), nullable=False)
+    uom = db.Column(db.String(20), default='pcs')  # Unit of Measure: pcs, kg, ltr, etc.
+    unit_price = db.Column(db.Numeric(10, 2), nullable=False)  # Original selling price
+    mrp_price = db.Column(db.Numeric(10, 2), nullable=False)  # Maximum Retail Price
+    discount_percentage = db.Column(db.Numeric(5, 2), default=0)  # Discount percentage
+    discounted_price = db.Column(db.Numeric(10, 2), nullable=False)  # Price after discount
+    tax_code = db.Column(db.String(20), default='GST18')  # Indian tax code
+    tax_rate = db.Column(db.Numeric(5, 2), default=18.00)  # Tax percentage
+    tax_amount = db.Column(db.Numeric(10, 2), default=0)  # Calculated tax amount
+    line_total = db.Column(db.Numeric(10, 2), nullable=False)  # Final line amount with tax
+    total_price = db.Column(db.Numeric(10, 2), nullable=False)  # For backward compatibility
     
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def calculate_totals(self):
+        """Calculate item totals after setting all values"""
         if self.quantity and self.unit_price:
-            self.total_price = self.quantity * self.unit_price
+            # Calculate discounted price
+            discount_amount = (self.unit_price * self.discount_percentage / 100) if self.discount_percentage else 0
+            self.discounted_price = self.unit_price - discount_amount
+            # Calculate tax amount
+            self.tax_amount = (self.discounted_price * self.quantity * self.tax_rate / 100) if self.tax_rate else 0
+            # Calculate line total
+            self.line_total = (self.discounted_price * self.quantity) + self.tax_amount
+            # For backward compatibility
+            self.total_price = self.line_total
 
 class ActivityLog(db.Model):
     __tablename__ = 'ASP_activity_logs'
@@ -206,6 +226,16 @@ class TaxRule(db.Model):
     
     # Relationships
     location = db.relationship('Location', backref='tax_rules', lazy=True)
+
+class IndianTaxCode(db.Model):
+    __tablename__ = 'ASP_indian_tax_codes'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), unique=True, nullable=False)  # GST0, GST5, GST12, GST18, GST28
+    name = db.Column(db.String(100), nullable=False)  # Goods and Services Tax 18%
+    rate = db.Column(db.Numeric(5, 2), nullable=False)  # 18.00 (percentage)
+    description = db.Column(db.Text)  # Description of what items this applies to
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Inventory Module Models
 class Supplier(db.Model):
