@@ -63,7 +63,7 @@ def get_products():
         'name': p.name,
         'description': p.description,
         'sku': p.sku,
-        'price': str(p.price),
+        'price': str(p.sell_price),
         'category': p.category_ref.name if p.category_ref else ''
     } for p in products])
 

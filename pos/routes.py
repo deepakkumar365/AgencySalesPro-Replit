@@ -122,7 +122,7 @@ def search_products(current_agency_id=None):
         'id': p.id,
         'name': p.name,
         'sku': p.sku,
-        'price': float(p.price),
+        'price': float(p.sell_price),
         'stock_available': True,
         'category': p.category
     } for p in products])

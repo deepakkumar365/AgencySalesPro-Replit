@@ -112,6 +112,17 @@ class Product(db.Model):
         if self.buy_price and self.sell_price:
             return round(((self.sell_price - self.buy_price) / self.buy_price) * 100, 2)
         return 0
+    
+    # Backward compatibility properties
+    @property
+    def price(self):
+        """Backward compatibility: maps to sell_price"""
+        return self.sell_price
+    
+    @property
+    def cost(self):
+        """Backward compatibility: maps to buy_price"""
+        return self.buy_price
 
 class Order(db.Model):
     __tablename__ = 'ASP_orders'
