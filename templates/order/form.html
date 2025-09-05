@@ -227,18 +227,23 @@
             
             <hr>
             
-            <div class="d-grid gap-2 mt-4">
-                <button type="submit" class="btn btn-success btn-lg">
-                    <i class="fas fa-check me-2"></i>Create Order
-                </button>
-                <div class="row">
-                    <div class="col-6">
-                        <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+            <div class="mt-4">
+                <!-- Main Create Order button - full width on mobile, larger on desktop -->
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-success btn-lg w-100">
+                        <i class="fas fa-check me-2"></i>Create Order
+                    </button>
+                </div>
+                
+                <!-- Secondary buttons - adjacent on big screens, stacked on small screens -->
+                <div class="row g-2">
+                    <div class="col-md-6 col-12">
+                        <button type="button" class="btn btn-outline-secondary w-100" onclick="resetForm()">
                             <i class="fas fa-undo me-1"></i>Reset
                         </button>
                     </div>
-                    <div class="col-6">
-                        <a href="{{ url_for('order.list_orders') }}" class="btn btn-outline-primary">
+                    <div class="col-md-6 col-12">
+                        <a href="{{ url_for('order.list_orders') }}" class="btn btn-outline-primary w-100">
                             <i class="fas fa-times me-1"></i>Cancel
                         </a>
                     </div>
