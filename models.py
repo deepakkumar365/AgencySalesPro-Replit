@@ -71,6 +71,12 @@ class Customer(db.Model):
     email = db.Column(db.String(120))
     phone = db.Column(db.String(20))
     address = db.Column(db.Text)
+    city = db.Column(db.String(50))  # For better search and display
+    state = db.Column(db.String(50))  # For regional filtering
+    pincode = db.Column(db.String(10))  # Indian postal code
+    gst_number = db.Column(db.String(20))  # GST registration number
+    credit_limit = db.Column(db.Numeric(10, 2), default=0)  # Credit limit
+    credit_period = db.Column(db.Integer, default=30)  # Credit days
     location_id = db.Column(db.Integer, db.ForeignKey('ASP_locations.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -84,8 +90,12 @@ class Product(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     sku = db.Column(db.String(50), unique=True, nullable=False)
-    price = db.Column(db.Numeric(10, 2), nullable=False)
+    price = db.Column(db.Numeric(10, 2), nullable=False)  # Selling price
     cost = db.Column(db.Numeric(10, 2))
+    mrp_price = db.Column(db.Numeric(10, 2), nullable=False)  # Maximum Retail Price for master
+    uom = db.Column(db.String(20), default='pcs')  # Default Unit of Measure
+    tax_rate = db.Column(db.Numeric(5, 2), default=18.00)  # Default tax percentage
+    tax_code = db.Column(db.String(20), default='GST18')  # Default Indian tax code
     stock_quantity = db.Column(db.Integer, default=0)
     category = db.Column(db.String(50))
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)

@@ -97,6 +97,41 @@
     font-size: 0.875rem;
 }
 
+/* Autocomplete styles */
+.autocomplete-container {
+    position: relative;
+}
+
+.autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
+
+.autocomplete-suggestion {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.autocomplete-suggestion:hover,
+.autocomplete-suggestion.selected {
+    background-color: #f8f9fa;
+}
+
+.autocomplete-suggestion:last-child {
+    border-bottom: none;
+}
+
 </style>
 
 <div class="container-fluid fullscreen-form">
@@ -107,35 +142,21 @@
             <h5 class="mb-3"><i class="fas fa-user me-2"></i>Customer Information</h5>
             <div class="row">
                 <div class="col-md-4">
-                    <label for="customer_id" class="form-label fw-bold">Select Customer *</label>
-                    <select class="form-select" id="customer_id" name="customer_id" required onchange="loadCustomerInfo()">
-                        <option value="">Choose a customer...</option>
-                        {% for customer in customers %}
-                        <option value="{{ customer.id }}" 
-                                data-address="{{ customer.address }}"
-                                data-phone="{{ customer.phone }}"
-                                data-email="{{ customer.email }}"
-                                data-location="{{ customer.location.name }}"
-                                data-credit-period="{{ customer.credit_period or 'N/A' }}">
-                            {{ customer.name }} - {{ customer.location.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
+                    <label for="customer_search" class="form-label fw-bold">Select Customer *</label>
+                    <div class="autocomplete-container">
+                        <input type="text" class="form-control" id="customer_search" 
+                               placeholder="Search customer by name, phone, or city..." 
+                               autocomplete="off" required>
+                        <input type="hidden" id="customer_id" name="customer_id" required>
+                        <div class="autocomplete-suggestions" id="customer_suggestions"></div>
+                    </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label for="delivery_date" class="form-label fw-bold">Delivery Date</label>
                     <input type="date" class="form-control" id="delivery_date" name="delivery_date" 
                            min="{{ today }}" value="{{ today }}">
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label fw-bold">Payment Status</label>
-                    <select class="form-select" name="payment_status">
-                        <option value="pending">Pending</option>
-                        <option value="partial">Partial</option>
-                        <option value="paid">Paid</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label for="notes" class="form-label fw-bold">Notes</label>
                     <input type="text" class="form-control" id="notes" name="notes" 
                            placeholder="Special instructions...">
@@ -262,6 +283,7 @@ let taxCodes = {};
 // Load tax codes and initialize form
 document.addEventListener('DOMContentLoaded', function() {
     loadTaxCodes();
+    initializeCustomerAutocomplete();
     addOrderItem(); // Add first item
 });
 
@@ -294,21 +316,242 @@ async function loadTaxCodes() {
     }
 }
 
-// Load customer information
-function loadCustomerInfo() {
-    const select = document.getElementById('customer_id');
-    const customerInfo = document.getElementById('customerInfo');
+// Customer autocomplete functionality
+let customerSearchTimeout;
+let selectedCustomer = null;
+
+function initializeCustomerAutocomplete() {
+    const searchInput = document.getElementById('customer_search');
+    const suggestionsDiv = document.getElementById('customer_suggestions');
+    const hiddenInput = document.getElementById('customer_id');
     
-    if (select.value) {
-        const option = select.options[select.selectedIndex];
-        document.getElementById('customerAddress').textContent = option.dataset.address || 'N/A';
-        document.getElementById('customerPhone').textContent = option.dataset.phone || 'N/A';
-        document.getElementById('customerEmail').textContent = option.dataset.email || 'N/A';
-        document.getElementById('customerLocation').textContent = option.dataset.location || 'N/A';
-        document.getElementById('customerCredit').textContent = option.dataset.creditPeriod || 'N/A';
-        customerInfo.style.display = 'block';
+    searchInput.addEventListener('input', function() {
+        clearTimeout(customerSearchTimeout);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            hideSuggestions();
+            hiddenInput.value = '';
+            selectedCustomer = null;
+            hideCustomerInfo();
+            return;
+        }
+        
+        customerSearchTimeout = setTimeout(() => {
+            searchCustomers(query);
+        }, 300);
+    });
+    
+    searchInput.addEventListener('blur', function() {
+        // Delay hiding to allow click on suggestions
+        setTimeout(() => {
+            hideSuggestions();
+        }, 200);
+    });
+    
+    searchInput.addEventListener('focus', function() {
+        if (this.value.trim().length >= 2) {
+            searchCustomers(this.value.trim());
+        }
+    });
+}
+
+async function searchCustomers(query) {
+    try {
+        const response = await fetch(`/order/api/search-customers?q=${encodeURIComponent(query)}`);
+        if (response.ok) {
+            const customers = await response.json();
+            showCustomerSuggestions(customers);
+        } else {
+            console.error('Failed to search customers');
+        }
+    } catch (error) {
+        console.error('Error searching customers:', error);
+    }
+}
+
+function showCustomerSuggestions(customers) {
+    const suggestionsDiv = document.getElementById('customer_suggestions');
+    
+    if (customers.length === 0) {
+        suggestionsDiv.innerHTML = '<div class="autocomplete-suggestion">No customers found</div>';
     } else {
-        customerInfo.style.display = 'none';
+        suggestionsDiv.innerHTML = customers.map(customer => 
+            `<div class="autocomplete-suggestion" 
+                  onclick="selectCustomer(${customer.id}, '${customer.name}', '${customer.display_text}', 
+                           '${customer.address}', '${customer.phone}', '${customer.email}', 
+                           '${customer.location_name}', ${customer.credit_period})">
+                ${customer.display_text}
+            </div>`
+        ).join('');
+    }
+    
+    suggestionsDiv.style.display = 'block';
+}
+
+function selectCustomer(id, name, displayText, address, phone, email, location, creditPeriod) {
+    const searchInput = document.getElementById('customer_search');
+    const hiddenInput = document.getElementById('customer_id');
+    
+    searchInput.value = displayText;
+    hiddenInput.value = id;
+    selectedCustomer = { id, name, address, phone, email, location, creditPeriod };
+    
+    hideSuggestions();
+    showCustomerInfo();
+}
+
+function hideSuggestions() {
+    document.getElementById('customer_suggestions').style.display = 'none';
+}
+
+function showCustomerInfo() {
+    if (selectedCustomer) {
+        document.getElementById('customerAddress').textContent = selectedCustomer.address || 'N/A';
+        document.getElementById('customerPhone').textContent = selectedCustomer.phone || 'N/A';
+        document.getElementById('customerEmail').textContent = selectedCustomer.email || 'N/A';
+        document.getElementById('customerLocation').textContent = selectedCustomer.location || 'N/A';
+        document.getElementById('customerCredit').textContent = selectedCustomer.creditPeriod + ' days' || 'N/A';
+        document.getElementById('customerInfo').style.display = 'block';
+    }
+}
+
+function hideCustomerInfo() {
+    document.getElementById('customerInfo').style.display = 'none';
+}
+
+// Product autocomplete functionality
+let productSearchTimeouts = {};
+
+function initializeProductAutocomplete(itemId) {
+    const searchInput = document.querySelector(`[data-item-id="${itemId}"].product-search`);
+    const suggestionsDiv = document.getElementById(`product-suggestions-${itemId}`);
+    const hiddenInput = document.querySelector(`[data-item-id="${itemId}"].product-id-input`);
+    
+    if (!searchInput) return;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(productSearchTimeouts[itemId]);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            hideProductSuggestions(itemId);
+            hiddenInput.value = '';
+            clearProductFields(itemId);
+            return;
+        }
+        
+        productSearchTimeouts[itemId] = setTimeout(() => {
+            searchProducts(query, itemId);
+        }, 300);
+    });
+    
+    searchInput.addEventListener('blur', function() {
+        // Delay hiding to allow click on suggestions
+        setTimeout(() => {
+            hideProductSuggestions(itemId);
+        }, 200);
+    });
+    
+    searchInput.addEventListener('focus', function() {
+        if (this.value.trim().length >= 2) {
+            searchProducts(this.value.trim(), itemId);
+        }
+    });
+}
+
+async function searchProducts(query, itemId) {
+    try {
+        const response = await fetch(`/order/api/search-products?q=${encodeURIComponent(query)}`);
+        if (response.ok) {
+            const products = await response.json();
+            showProductSuggestions(products, itemId);
+        } else {
+            console.error('Failed to search products');
+        }
+    } catch (error) {
+        console.error('Error searching products:', error);
+    }
+}
+
+function showProductSuggestions(products, itemId) {
+    const suggestionsDiv = document.getElementById(`product-suggestions-${itemId}`);
+    
+    if (products.length === 0) {
+        suggestionsDiv.innerHTML = '<div class="autocomplete-suggestion">No products found</div>';
+    } else {
+        suggestionsDiv.innerHTML = products.map(product => 
+            `<div class="autocomplete-suggestion" 
+                  onclick="selectProduct(${itemId}, ${product.id}, '${product.name}', '${product.display_text}', 
+                           ${product.mrp_price}, ${product.price}, '${product.uom}', ${product.tax_rate}, '${product.tax_code}')">
+                ${product.display_text}
+            </div>`
+        ).join('');
+    }
+    
+    suggestionsDiv.style.display = 'block';
+}
+
+function selectProduct(itemId, productId, productName, displayText, mrpPrice, price, uom, taxRate, taxCode) {
+    const searchInput = document.querySelector(`[data-item-id="${itemId}"].product-search`);
+    const hiddenInput = document.querySelector(`[data-item-id="${itemId}"].product-id-input`);
+    const itemRow = document.getElementById(`item-${itemId}`);
+    
+    // Set product selection
+    searchInput.value = displayText;
+    hiddenInput.value = productId;
+    
+    // Auto-populate product details
+    const mrpInput = itemRow.querySelector('input[name="mrp_prices"]');
+    const priceInput = itemRow.querySelector('input[name="unit_prices"]');
+    const uomSelect = itemRow.querySelector('select[name="uoms"]');
+    const taxSelect = itemRow.querySelector('select[name="tax_codes"]');
+    
+    if (mrpInput) mrpInput.value = mrpPrice.toFixed(2);
+    if (priceInput) priceInput.value = price.toFixed(2);
+    if (uomSelect) {
+        // Set UOM if it exists in options
+        for (let option of uomSelect.options) {
+            if (option.value === uom) {
+                option.selected = true;
+                break;
+            }
+        }
+    }
+    if (taxSelect) {
+        // Set tax code if it exists
+        for (let option of taxSelect.options) {
+            if (option.value === taxCode) {
+                option.selected = true;
+                break;
+            }
+        }
+    }
+    
+    hideProductSuggestions(itemId);
+    
+    // Trigger calculation if quantity is already entered
+    const qtyInput = itemRow.querySelector('input[name="quantities"]');
+    if (qtyInput && qtyInput.value) {
+        calculateLineTotal(itemId);
+    }
+}
+
+function hideProductSuggestions(itemId) {
+    const suggestionsDiv = document.getElementById(`product-suggestions-${itemId}`);
+    if (suggestionsDiv) {
+        suggestionsDiv.style.display = 'none';
+    }
+}
+
+function clearProductFields(itemId) {
+    const itemRow = document.getElementById(`item-${itemId}`);
+    if (itemRow) {
+        const mrpInput = itemRow.querySelector('input[name="mrp_prices"]');
+        const priceInput = itemRow.querySelector('input[name="unit_prices"]');
+        
+        if (mrpInput) mrpInput.value = '';
+        if (priceInput) priceInput.value = '';
     }
 }
 
@@ -317,13 +560,7 @@ function addOrderItem() {
     orderItemCounter++;
     const container = document.getElementById('orderItemsContainer');
     
-    const productOptions = {% raw %}`{% for product in products %}
-        <option value="{{ product.id }}" 
-                data-price="{{ product.price }}" 
-                data-mrp="{{ product.mrp or product.price }}"
-                data-stock="{{ product.stock_quantity }}">
-            {{ product.name }} - ₹{{ "%.2f"|format(product.price) }} (Stock: {{ product.stock_quantity }})
-        </option>{% endfor %}`{% endraw %};
+    // Product search functionality will be handled separately
     
     const taxOptions = Object.keys(taxCodes).map(code => 
         `<option value="${code}" ${code === 'GST18' ? 'selected' : ''}>${taxCodes[code].name}</option>`
@@ -335,10 +572,14 @@ function addOrderItem() {
                 <span class="item-serial">${orderItemCounter}</span>
             </div>
             <div class="col-3">
-                <select class="form-select form-select-sm" name="products" required onchange="updateItemPricing(${orderItemCounter})">
-                    <option value="">Select Product</option>
-                    ${productOptions}
-                </select>
+                <div class="autocomplete-container">
+                    <input type="text" class="form-control form-control-sm product-search" 
+                           placeholder="Search products..." 
+                           data-item-id="${orderItemCounter}"
+                           autocomplete="off" required>
+                    <input type="hidden" name="products" class="product-id-input" data-item-id="${orderItemCounter}">
+                    <div class="autocomplete-suggestions product-suggestions" id="product-suggestions-${orderItemCounter}"></div>
+                </div>
             </div>
             <div class="col-1">
                 <select class="form-select form-select-sm" name="uoms">
@@ -383,6 +624,10 @@ function addOrderItem() {
     `;
     
     container.insertAdjacentHTML('beforeend', itemHtml);
+    
+    // Initialize product autocomplete for the new item
+    initializeProductAutocomplete(orderItemCounter);
+    
     updateItemNumbers();
     calculateOrderTotals();
 }

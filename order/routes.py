@@ -127,7 +127,7 @@ def create_order():
         discounts = request.form.getlist('discounts')
         tax_codes = request.form.getlist('tax_codes')
         line_totals = request.form.getlist('line_totals')
-        payment_status = request.form.get('payment_status', 'pending')
+        # payment_status removed as per requirement
         notes = request.form.get('notes')
         delivery_date = request.form.get('delivery_date')
         
@@ -171,7 +171,7 @@ def create_order():
         order.agency_id = customer.location.agency_id
         order.salesperson_id = user_id
         order.status = 'pending'
-        order.payment_status = payment_status
+        order.payment_status = 'pending'  # Default to pending
         order.total_amount = 0
         order.subtotal_amount = 0
         order.total_tax_amount = 0
@@ -448,3 +448,87 @@ def get_products_for_user():
     else:
         agency_id = session.get('agency_id')
         return Product.query.filter_by(agency_id=agency_id, is_active=True).all()
+
+@order_bp.route('/api/search-customers', methods=['GET'])
+@login_required
+def search_customers():
+    """Search customers with autocomplete support"""
+    query = request.args.get('q', '').strip()
+    user_role = session.get('role')
+    agency_id = session.get('agency_id')
+    
+    # Build base query
+    customers_query = Customer.query.filter(Customer.is_active == True)
+    
+    # Apply agency filter for non-super admins
+    if user_role != 'super_admin':
+        customers_query = customers_query.join(Location).filter(Location.agency_id == agency_id)
+    
+    # Apply search filter
+    if query:
+        customers_query = customers_query.filter(
+            db.or_(
+                Customer.name.ilike(f'%{query}%'),
+                Customer.phone.ilike(f'%{query}%'),
+                Customer.email.ilike(f'%{query}%'),
+                Customer.city.ilike(f'%{query}%')
+            )
+        )
+    
+    customers = customers_query.limit(50).all()
+    
+    return jsonify([{
+        'id': c.id,
+        'name': c.name,
+        'email': c.email or '',
+        'phone': c.phone or '',
+        'address': c.address or '',
+        'city': c.city or '',
+        'location_name': c.location.name if c.location else '',
+        'credit_period': c.credit_period or 30,
+        'gst_number': c.gst_number or '',
+        'display_text': f"{c.name} - {c.location.name if c.location else ''} ({c.phone or 'No phone'})"
+    } for c in customers])
+
+@order_bp.route('/api/search-products', methods=['GET'])
+@login_required
+def search_products():
+    """Search products with autocomplete support"""
+    query = request.args.get('q', '').strip()
+    user_role = session.get('role')
+    agency_id = session.get('agency_id')
+    
+    # Build base query
+    products_query = Product.query.filter(Product.is_active == True)
+    
+    # Apply agency filter for non-super admins
+    if user_role != 'super_admin':
+        products_query = products_query.filter(Product.agency_id == agency_id)
+    
+    # Apply search filter
+    if query:
+        products_query = products_query.filter(
+            db.or_(
+                Product.name.ilike(f'%{query}%'),
+                Product.sku.ilike(f'%{query}%'),
+                Product.category.ilike(f'%{query}%'),
+                Product.description.ilike(f'%{query}%')
+            )
+        )
+    
+    products = products_query.limit(50).all()
+    
+    return jsonify([{
+        'id': p.id,
+        'name': p.name,
+        'sku': p.sku,
+        'description': p.description or '',
+        'price': float(p.price) if p.price else 0,
+        'mrp_price': float(p.mrp_price) if p.mrp_price else 0,
+        'uom': p.uom or 'pcs',
+        'tax_rate': float(p.tax_rate) if p.tax_rate else 18.0,
+        'tax_code': p.tax_code or 'GST18',
+        'stock_quantity': p.stock_quantity or 0,
+        'category': p.category or '',
+        'display_text': f"{p.name} ({p.sku}) - ₹{p.price} - Stock: {p.stock_quantity}"
+    } for p in products])
