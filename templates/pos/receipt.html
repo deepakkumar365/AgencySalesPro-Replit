@@ -77,8 +77,8 @@
                         <small class="text-muted">{{ item.product.sku }}</small>
                     </div>
                     <div class="col-2 text-end">{{ item.quantity }}</div>
-                    <div class="col-2 text-end">${{ "%.2f"|format(item.unit_price) }}</div>
-                    <div class="col-2 text-end">${{ "%.2f"|format(item.total_price) }}</div>
+                    <div class="col-2 text-end">₹{{ "%.2f"|format(item.unit_price) }}</div>
+                    <div class="col-2 text-end">₹{{ "%.2f"|format(item.total_price) }}</div>
                 </div>
                 {% endfor %}
                 <hr>
@@ -88,24 +88,24 @@
             <div class="mb-3">
                 <div class="row">
                     <div class="col-8">Subtotal:</div>
-                    <div class="col-4 text-end">${{ "%.2f"|format(order.total_amount - order.tax + order.discount) }}</div>
+                    <div class="col-4 text-end">₹{{ "%.2f"|format(order.total_amount - order.tax + order.discount) }}</div>
                 </div>
                 {% if order.discount > 0 %}
                 <div class="row">
                     <div class="col-8">Discount:</div>
-                    <div class="col-4 text-end">-${{ "%.2f"|format(order.discount) }}</div>
+                    <div class="col-4 text-end">-₹{{ "%.2f"|format(order.discount) }}</div>
                 </div>
                 {% endif %}
                 {% if order.tax > 0 %}
                 <div class="row">
                     <div class="col-8">Tax:</div>
-                    <div class="col-4 text-end">${{ "%.2f"|format(order.tax) }}</div>
+                    <div class="col-4 text-end">₹{{ "%.2f"|format(order.tax) }}</div>
                 </div>
                 {% endif %}
                 <hr>
                 <div class="row fw-bold fs-5">
                     <div class="col-8">TOTAL:</div>
-                    <div class="col-4 text-end">${{ "%.2f"|format(order.total_amount) }}</div>
+                    <div class="col-4 text-end">₹{{ "%.2f"|format(order.total_amount) }}</div>
                 </div>
                 <hr>
             </div>

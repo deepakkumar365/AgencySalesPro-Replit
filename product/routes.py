@@ -143,6 +143,11 @@ def create_product():
         )
         
         db.session.add(product)
+        db.session.flush()  # Get the ID before setting legacy fields
+        
+        # Set legacy fields for backward compatibility
+        product.price = sell_price
+        product.cost = buy_price
         db.session.commit()
         
         flash('Product created successfully!', 'success')

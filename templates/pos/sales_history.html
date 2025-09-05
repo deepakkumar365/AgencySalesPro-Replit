@@ -93,7 +93,7 @@
                             <span class="badge bg-info">{{ order.order_items|length }} items</span>
                         </td>
                         <td>
-                            <span class="fw-bold text-success">${{ "%.2f"|format(order.total_amount) }}</span>
+                            <span class="fw-bold text-success">₹{{ "%.2f"|format(order.total_amount) }}</span>
                         </td>
                         <td>
                             {% if order.status == 'completed' %}

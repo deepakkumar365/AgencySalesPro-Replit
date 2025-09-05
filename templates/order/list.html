@@ -166,7 +166,7 @@
                                         {{ order.status.title() }}
                                     </span>
                                 </td>
-                                <td class="d-none-mobile">${{ "%.2f"|format(order.total_amount) }}</td>
+                                <td class="d-none-mobile">₹{{ "%.2f"|format(order.total_amount) }}</td>
                                 <td class="d-none-mobile">{{ order.order_date.strftime('%Y-%m-%d') }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm">

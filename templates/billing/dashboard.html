@@ -23,7 +23,7 @@
                 <div class="d-flex align-items-center">
                     <i class="fas fa-file-invoice fa-2x me-3"></i>
                     <div>
-                        <div class="h4 mb-0">${{ "%.2f"|format(stats.total_invoiced) }}</div>
+                        <div class="h4 mb-0">₹{{ "%.2f"|format(stats.total_invoiced) }}</div>
                         <small>Total Invoiced (30 days)</small>
                     </div>
                 </div>
@@ -36,7 +36,7 @@
                 <div class="d-flex align-items-center">
                     <i class="fas fa-check-circle fa-2x me-3"></i>
                     <div>
-                        <div class="h4 mb-0">${{ "%.2f"|format(stats.total_paid) }}</div>
+                        <div class="h4 mb-0">₹{{ "%.2f"|format(stats.total_paid) }}</div>
                         <small>Total Paid</small>
                     </div>
                 </div>
@@ -49,7 +49,7 @@
                 <div class="d-flex align-items-center">
                     <i class="fas fa-clock fa-2x me-3"></i>
                     <div>
-                        <div class="h4 mb-0">${{ "%.2f"|format(stats.total_pending) }}</div>
+                        <div class="h4 mb-0">₹{{ "%.2f"|format(stats.total_pending) }}</div>
                         <small>Pending Payment</small>
                     </div>
                 </div>
@@ -62,7 +62,7 @@
                 <div class="d-flex align-items-center">
                     <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
                     <div>
-                        <div class="h4 mb-0">${{ "%.2f"|format(stats.total_overdue) }}</div>
+                        <div class="h4 mb-0">₹{{ "%.2f"|format(stats.total_overdue) }}</div>
                         <small>Overdue</small>
                     </div>
                 </div>
@@ -85,7 +85,7 @@
                     </div>
                 </div>
                 <small class="text-muted">
-                    ${{ "%.2f"|format(stats.total_paid) }} collected out of ${{ "%.2f"|format(stats.total_invoiced) }} invoiced
+                    ₹{{ "%.2f"|format(stats.total_paid) }} collected out of ₹{{ "%.2f"|format(stats.total_invoiced) }} invoiced
                 </small>
             </div>
         </div>
@@ -139,7 +139,7 @@
                             <tr>
                                 <td>{{ invoice.invoice_number }}</td>
                                 <td>{{ invoice.customer.name }}</td>
-                                <td>${{ "%.2f"|format(invoice.total_amount) }}</td>
+                                <td>₹{{ "%.2f"|format(invoice.total_amount) }}</td>
                                 <td>
                                     {% if invoice.status == 'paid' %}
                                         <span class="badge bg-success">Paid</span>
@@ -206,7 +206,7 @@
                             <small class="text-muted">{{ invoice.invoice_number }}</small>
                         </div>
                         <div class="text-end">
-                            <div class="text-danger fw-bold">${{ "%.2f"|format(invoice.total_amount) }}</div>
+                            <div class="text-danger fw-bold">₹{{ "%.2f"|format(invoice.total_amount) }}</div>
                             <small class="text-muted">{{ invoice.due_date.strftime('%m/%d') if invoice.due_date else '-' }}</small>
                         </div>
                     </div>

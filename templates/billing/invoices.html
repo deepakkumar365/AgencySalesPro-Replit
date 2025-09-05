@@ -123,19 +123,19 @@
                                 -
                             {% endif %}
                         </td>
-                        <td>${{ "%.2f"|format(invoice.total_amount) }}</td>
+                        <td>₹{{ "%.2f"|format(invoice.total_amount) }}</td>
                         <td>
                             {% if total_paid > 0 %}
-                                <span class="text-success">${{ "%.2f"|format(total_paid) }}</span>
+                                <span class="text-success">₹{{ "%.2f"|format(total_paid) }}</span>
                             {% else %}
-                                <span class="text-muted">$0.00</span>
+                                <span class="text-muted">₹0.00</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if balance > 0 %}
-                                <span class="text-warning fw-bold">${{ "%.2f"|format(balance) }}</span>
+                                <span class="text-warning fw-bold">₹{{ "%.2f"|format(balance) }}</span>
                             {% else %}
-                                <span class="text-muted">$0.00</span>
+                                <span class="text-muted">₹0.00</span>
                             {% endif %}
                         </td>
                         <td>

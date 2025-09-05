@@ -32,10 +32,10 @@ def get_agencies():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
     
-    if user.role == 'super_admin':
+    if user and user.role == 'super_admin':
         agencies = Agency.query.filter_by(is_active=True).all()
     else:
-        agencies = Agency.query.filter_by(id=user.agency_id, is_active=True).all()
+        agencies = Agency.query.filter_by(id=user.agency_id, is_active=True).all() if user else []
     
     return jsonify([{
         'id': a.id,
@@ -53,10 +53,10 @@ def get_products():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
     
-    if user.role == 'super_admin':
+    if user and user.role == 'super_admin':
         products = Product.query.filter_by(is_active=True).all()
     else:
-        products = Product.query.filter_by(agency_id=user.agency_id, is_active=True).all()
+        products = Product.query.filter_by(agency_id=user.agency_id, is_active=True).all() if user else []
     
     return jsonify([{
         'id': p.id,
@@ -74,13 +74,13 @@ def get_customers():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
     
-    if user.role == 'super_admin':
+    if user and user.role == 'super_admin':
         customers = Customer.query.filter_by(is_active=True).all()
     else:
         customers = Customer.query.join(Location).filter(
             Location.agency_id == user.agency_id,
             Customer.is_active == True
-        ).all()
+        ).all() if user else []
     
     return jsonify([{
         'id': c.id,
@@ -97,12 +97,12 @@ def get_orders():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
     
-    if user.role == 'super_admin':
+    if user and user.role == 'super_admin':
         orders = Order.query.all()
-    elif user.role == 'salesperson':
+    elif user and user.role == 'salesperson':
         orders = Order.query.filter_by(salesperson_id=user_id).all()
     else:
-        orders = Order.query.filter_by(agency_id=user.agency_id).all()
+        orders = Order.query.filter_by(agency_id=user.agency_id).all() if user else []
     
     return jsonify([{
         'id': o.id,
@@ -123,9 +123,9 @@ def get_order_detail(order_id):
     order = Order.query.get_or_404(order_id)
     
     # Check permissions
-    if user.role == 'salesperson' and order.salesperson_id != user_id:
+    if user and user.role == 'salesperson' and order.salesperson_id != user_id:
         return jsonify({'error': 'Unauthorized'}), 403
-    elif user.role not in ['super_admin', 'salesperson'] and order.agency_id != user.agency_id:
+    elif user and user.role not in ['super_admin', 'salesperson'] and order.agency_id != user.agency_id:
         return jsonify({'error': 'Unauthorized'}), 403
     
     return jsonify({
@@ -175,7 +175,7 @@ def create_order_api():
     if not customer:
         return jsonify({'error': 'Customer not found'}), 404
     
-    if user.role != 'super_admin' and customer.location.agency_id != user.agency_id:
+    if user and user.role != 'super_admin' and customer.location.agency_id != user.agency_id:
         return jsonify({'error': 'Unauthorized customer access'}), 403
     
     try:
@@ -192,14 +192,14 @@ def get_dashboard_stats():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
     
-    if user.role == 'super_admin':
+    if user and user.role == 'super_admin':
         stats = {
             'total_agencies': Agency.query.count(),
             'total_orders': Order.query.count(),
             'total_products': Product.query.count(),
             'total_customers': Customer.query.count()
         }
-    elif user.role == 'salesperson':
+    elif user and user.role == 'salesperson':
         stats = {
             'my_orders': Order.query.filter_by(salesperson_id=user_id).count(),
             'pending_orders': Order.query.filter_by(salesperson_id=user_id, status='pending').count(),
@@ -207,9 +207,9 @@ def get_dashboard_stats():
         }
     else:
         stats = {
-            'agency_orders': Order.query.filter_by(agency_id=user.agency_id).count(),
-            'agency_products': Product.query.filter_by(agency_id=user.agency_id).count(),
-            'agency_customers': Customer.query.join(Location).filter(Location.agency_id == user.agency_id).count()
+            'agency_orders': Order.query.filter_by(agency_id=user.agency_id).count() if user else 0,
+            'agency_products': Product.query.filter_by(agency_id=user.agency_id).count() if user else 0,
+            'agency_customers': Customer.query.join(Location).filter(Location.agency_id == user.agency_id).count() if user else 0
         }
     
     return jsonify(stats)

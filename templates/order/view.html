@@ -97,31 +97,31 @@
                                 <td>{{ item.product.name }}</td>
                                 <td><code>{{ item.product.sku }}</code></td>
                                 <td>{{ item.quantity }}</td>
-                                <td>${{ "%.2f"|format(item.unit_price) }}</td>
-                                <td>${{ "%.2f"|format(item.total_price) }}</td>
+                                <td>₹{{ "%.2f"|format(item.unit_price) }}</td>
+                                <td>₹{{ "%.2f"|format(item.total_price) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                         <tfoot>
                             <tr>
                                 <th colspan="4">Subtotal</th>
-                                <th>${{ "%.2f"|format(order.order_items|sum(attribute='total_price')) }}</th>
+                                <th>₹{{ "%.2f"|format(order.order_items|sum(attribute='total_price')) }}</th>
                             </tr>
                             {% if order.discount > 0 %}
                             <tr>
                                 <th colspan="4">Discount</th>
-                                <th>-${{ "%.2f"|format(order.discount) }}</th>
+                                <th>-₹{{ "%.2f"|format(order.discount) }}</th>
                             </tr>
                             {% endif %}
                             {% if order.tax > 0 %}
                             <tr>
                                 <th colspan="4">Tax</th>
-                                <th>${{ "%.2f"|format(order.tax) }}</th>
+                                <th>₹{{ "%.2f"|format(order.tax) }}</th>
                             </tr>
                             {% endif %}
                             <tr class="table-primary">
                                 <th colspan="4">Total Amount</th>
-                                <th>${{ "%.2f"|format(order.total_amount) }}</th>
+                                <th>₹{{ "%.2f"|format(order.total_amount) }}</th>
                             </tr>
                         </tfoot>
                     </table>

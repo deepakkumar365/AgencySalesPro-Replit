@@ -38,7 +38,7 @@
                                 <td><strong>{{ agency.name }}</strong></td>
                                 <td><code>{{ agency.code }}</code></td>
                                 <td>{{ agency.total_orders or 0 }}</td>
-                                <td>${{ "%.2f"|format(agency.total_revenue or 0) }}</td>
+                                <td>₹{{ "%.2f"|format(agency.total_revenue or 0) }}</td>
                                 <td>{{ agency.total_products or 0 }}</td>
                                 <td>{{ agency.total_customers or 0 }}</td>
                             </tr>
