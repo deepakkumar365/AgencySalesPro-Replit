@@ -93,7 +93,7 @@ def stock_levels(current_agency_id=None):
     
     # Apply filters
     if category:
-        query = query.filter_by(category=category)
+        query = query.filter_by(category_id=category)
     
     if search:
         query = query.filter(
@@ -118,22 +118,14 @@ def stock_levels(current_agency_id=None):
         error_out=False
     )
     
-    # Get unique categories for filter
+    # Get unique categories for filter from Category table
+    from models import Category
     if user_role == 'super_admin':
-        categories = db.session.query(Product.category).filter(
-            Product.is_active == True,
-            Product.category.isnot(None)
-        ).distinct().all()
+        categories = Category.query.filter_by(is_active=True).all()
     else:
-        categories = db.session.query(Product.category).filter(
-            Product.agency_id == current_agency_id,
-            Product.is_active == True,
-            Product.category.isnot(None)
-        ).distinct().all()
+        categories = Category.query.filter_by(agency_id=current_agency_id, is_active=True).all()
     
-    categories = [cat[0] for cat in categories if cat[0]]
-    
-    return render_template('inventory/stock_levels.html',
+    return render_template('inventory/dashboard.html',
                          products=products,
                          categories=categories,
                          current_filters={

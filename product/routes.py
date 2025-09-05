@@ -49,7 +49,7 @@ def list_products(current_agency_id=None):
         query = query.filter(Product.agency_id == agency_filter)
     
     if category_filter:
-        query = query.filter(Product.category == category_filter)
+        query = query.filter(Product.category_id == category_filter)
     
     if status_filter == 'active':
         query = query.filter(Product.is_active == True)
@@ -63,13 +63,12 @@ def list_products(current_agency_id=None):
     if user_role == 'super_admin':
         agencies = Agency.query.filter_by(is_active=True).all()
     
-    # Get unique categories
+    # Get unique categories from Category table
+    from models import Category
     if user_role == 'super_admin':
-        categories = db.session.query(Product.category.distinct()).filter(Product.category.isnot(None)).all()
+        categories = Category.query.filter_by(is_active=True).all()
     else:
-        categories = db.session.query(Product.category.distinct()).filter(Product.agency_id == current_agency_id, Product.category.isnot(None)).all()
-    
-    categories = [cat[0] for cat in categories if cat[0]]
+        categories = Category.query.filter_by(agency_id=current_agency_id, is_active=True).all()
     
     return render_template('product/list.html', 
                          products=products,

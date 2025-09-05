@@ -64,8 +64,7 @@ def get_products():
         'description': p.description,
         'sku': p.sku,
         'price': str(p.price),
-        'stock_quantity': p.stock_quantity,
-        'category': p.category
+        'category': p.category_ref.name if p.category_ref else ''
     } for p in products])
 
 @api_bp.route('/customers')

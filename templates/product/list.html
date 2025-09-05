@@ -63,8 +63,8 @@
                         <select class="form-select" id="category" name="category">
                             <option value="">All Categories</option>
                             {% for category in categories %}
-                            <option value="{{ category }}" {{ 'selected' if filters.category == category else '' }}>
-                                {{ category }}
+                            <option value="{{ category.id }}" {{ 'selected' if filters.category == category.id|string else '' }}>
+                                {{ category.name }}
                             </option>
                             {% endfor %}
                         </select>
@@ -129,11 +129,11 @@
                                 <td class="d-none-mobile"><code>{{ product.sku }}</code></td>
                                 <td class="d-none-mobile">${{ "%.2f"|format(product.price) }}</td>
                                 <td>
-                                    <span class="badge bg-{{ 'success' if product.stock_quantity > 10 else 'warning' if product.stock_quantity > 0 else 'danger' }}">
-                                        {{ product.stock_quantity }}
+                                    <span class="badge bg-secondary">
+                                        N/A
                                     </span>
                                 </td>
-                                <td class="d-none-mobile">{{ product.category or '-' }}</td>
+                                <td class="d-none-mobile">{{ product.category_ref.name if product.category_ref else '-' }}</td>
                                 <td class="d-none-mobile">{{ product.agency.name }}</td>
                                 <td>
                                     {% if product.is_active %}

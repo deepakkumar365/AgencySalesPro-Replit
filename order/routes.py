@@ -510,9 +510,7 @@ def search_products():
         products_query = products_query.filter(
             db.or_(
                 Product.name.ilike(f'%{query}%'),
-                Product.sku.ilike(f'%{query}%'),
-                Product.category.ilike(f'%{query}%'),
-                Product.description.ilike(f'%{query}%')
+                Product.sku.ilike(f'%{query}%')
             )
         )
     
@@ -529,6 +527,6 @@ def search_products():
         'tax_rate': float(p.tax_rate) if p.tax_rate else 18.0,
         'tax_code': p.tax_code or 'GST18',
         'stock_available': True,  # Stock tracking disabled
-        'category': p.category or '',
+        'category': p.category_ref.name if p.category_ref else '',
         'display_text': f"{p.name} ({p.sku}) - ₹{p.price}"
     } for p in products])
