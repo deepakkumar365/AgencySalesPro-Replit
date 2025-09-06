@@ -9,6 +9,19 @@ from utils.decorators import log_activity
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    # Defensive: ensure install complete on cold starts
+    try:
+        from models import AppSetting
+        installed = AppSetting.get("app_installed", "false") == "true"
+    except Exception:
+        installed = False
+
+    if not installed:
+        try:
+            db.create_all()
+        except Exception:
+            pass
+
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')

@@ -2,6 +2,28 @@ from app import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# Installation / App Settings
+class AppSetting(db.Model):
+    __tablename__ = 'ASP_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(100), unique=True, nullable=False)
+    value = db.Column(db.String(255), nullable=False)
+
+    @staticmethod
+    def get(key, default=None):
+        rec = AppSetting.query.filter_by(key=key).first()
+        return rec.value if rec else default
+
+    @staticmethod
+    def set(key, value):
+        rec = AppSetting.query.filter_by(key=key).first()
+        if rec:
+            rec.value = str(value)
+        else:
+            rec = AppSetting(key=key, value=str(value))
+            db.session.add(rec)
+        db.session.commit()
+
 class Agency(db.Model):
     __tablename__ = 'ASP_agencies'
     id = db.Column(db.Integer, primary_key=True)

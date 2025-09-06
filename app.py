@@ -21,7 +21,11 @@ def create_app():
     
     # Configuration
     app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///agency_sales.db")
+    # Normalize Render's postgres scheme for SQLAlchemy
+    db_url = os.environ.get("DATABASE_URL", "sqlite:///agency_sales.db")
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    app.config["SQLALCHEMY_DATABASE_URI"] = db_url
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "pool_recycle": 300,
         "pool_pre_ping": True,
@@ -78,80 +82,44 @@ def create_app():
     with app.app_context():
         import models
         db.create_all()
-        
-        # Create default super admin if not exists
-        from models import User, Agency
+
+        from models import User, Agency, AppSetting
         from werkzeug.security import generate_password_hash
-        
-        if not User.query.filter_by(role='super_admin').first():
-            admin = User(
-                username='admin',
-                email='admin@system.com',
-                password_hash=generate_password_hash('admin123'),
-                role='super_admin',
-                is_active=True
-            )
-            db.session.add(admin)
-            db.session.commit()
-            logging.info("Default super admin created: admin/admin123")
-        
-        # Create sample agency and users for testing
-        if not Agency.query.first():
-            # Create sample agency
-            sample_agency = Agency(
-                name='Sample Marketing Agency',
-                code='SMA001',
-                address='123 Business Street, City, State 12345',
-                phone='(555) 123-4567',
-                email='info@sampleagency.com',
-                is_active=True
-            )
-            db.session.add(sample_agency)
-            db.session.commit()
-            
-            # Create agency admin
-            agency_admin = User(
-                username='agency_admin',
-                email='admin@sampleagency.com',
-                password_hash=generate_password_hash('admin123'),
-                first_name='John',
-                last_name='Manager',
-                role='agency_admin',
-                agency_id=sample_agency.id,
-                is_active=True
-            )
-            
-            # Create agency staff
-            agency_staff = User(
-                username='agency_staff',
-                email='staff@sampleagency.com',
-                password_hash=generate_password_hash('staff123'),
-                first_name='Jane',
-                last_name='Staff',
-                role='staff',
-                agency_id=sample_agency.id,
-                is_active=True
-            )
-            
-            # Create salesperson
-            salesperson = User(
-                username='salesperson',
-                email='sales@sampleagency.com',
-                password_hash=generate_password_hash('sales123'),
-                first_name='Mike',
-                last_name='Sales',
-                role='salesperson',
-                agency_id=sample_agency.id,
-                is_active=True
-            )
-            
-            db.session.add_all([agency_admin, agency_staff, salesperson])
-            db.session.commit()
-            logging.info("Sample agency and users created:")
-            logging.info("  Agency Admin: agency_admin/admin123")
-            logging.info("  Staff: agency_staff/staff123")
-            logging.info("  Salesperson: salesperson/sales123")
-    
+
+        def is_installed() -> bool:
+            try:
+                return AppSetting.get("app_installed", "false") == "true"
+            except Exception as e:
+                logging.exception("Failed to read installation flag: %s", e)
+                return False
+
+        def run_setup():
+            try:
+                # Only super admin in production (from env)
+                if not User.query.filter_by(role='super_admin').first():
+                    admin = User(
+                        username=os.environ.get("DEFAULT_ADMIN_USER", "admin"),
+                        email=os.environ.get("DEFAULT_ADMIN_EMAIL", "admin@system.com"),
+                        password_hash=generate_password_hash(os.environ.get("DEFAULT_ADMIN_PASS", "admin123")),
+                        role='super_admin',
+                        is_active=True
+                    )
+                    db.session.add(admin)
+                    db.session.commit()
+                    logging.info("Default super admin created")
+
+                # Do NOT seed sample/demo data in production as per requirement
+                AppSetting.set("app_installed", "true")
+                logging.info("Installation flag set")
+                return True
+            except Exception as e:
+                logging.exception("Setup failed: %s", e)
+                return False
+
+        if not is_installed():
+            logging.info("App not installed. Running setup...")
+            run_setup()
+
     return app
 
 app = create_app()
