@@ -39,8 +39,9 @@ def dashboard(current_agency_id=None):
             InventoryTransaction.created_at.desc()
         ).limit(10).all()
     else:
-        recent_transactions = InventoryTransaction.query.join(Product).filter(
-            Product.agency_id == current_agency_id
+        from models import ProductAgency
+        recent_transactions = InventoryTransaction.query.join(Product).join(ProductAgency).filter(
+            ProductAgency.agency_id == current_agency_id
         ).order_by(InventoryTransaction.created_at.desc()).limit(10).all()
     
     # Stock movement trends (last 30 days)
@@ -50,8 +51,9 @@ def dashboard(current_agency_id=None):
             InventoryTransaction.created_at >= thirty_days_ago
         ).all()
     else:
-        movement_transactions = InventoryTransaction.query.join(Product).filter(
-            Product.agency_id == current_agency_id,
+        from models import ProductAgency
+        movement_transactions = InventoryTransaction.query.join(Product).join(ProductAgency).filter(
+            ProductAgency.agency_id == current_agency_id,
             InventoryTransaction.created_at >= thirty_days_ago
         ).all()
     
@@ -208,8 +210,9 @@ def transaction_history(current_agency_id=None):
     if user_role == 'super_admin':
         query = InventoryTransaction.query
     else:
-        query = InventoryTransaction.query.join(Product).filter(
-            Product.agency_id == current_agency_id
+        from models import ProductAgency
+        query = InventoryTransaction.query.join(Product).join(ProductAgency).filter(
+            ProductAgency.agency_id == current_agency_id
         )
     
     # Apply filters
@@ -245,7 +248,8 @@ def transaction_history(current_agency_id=None):
     if user_role == 'super_admin':
         products = Product.query.filter_by(is_active=True).all()
     else:
-        products = Product.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+        from models import ProductAgency
+        products = db.session.query(Product).join(ProductAgency).filter(ProductAgency.agency_id == current_agency_id, Product.is_active == True).all()
     
     return render_template('inventory/transactions.html',
                          transactions=transactions,

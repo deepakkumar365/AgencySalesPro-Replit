@@ -51,7 +51,7 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Sales Records</h5>
-        <div class="text-muted">
+        <div>
             {% if orders.items %}
                 Showing {{ orders.per_page * (orders.page - 1) + 1 }} to 
                 {{ orders.per_page * (orders.page - 1) + orders.items|length }} of {{ orders.total }} records
@@ -81,12 +81,12 @@
                         </td>
                         <td>
                             <div>{{ order.order_date.strftime('%Y-%m-%d') }}</div>
-                            <small class="text-muted">{{ order.order_date.strftime('%H:%M:%S') }}</small>
+                            <small>{{ order.order_date.strftime('%H:%M:%S') }}</small>
                         </td>
                         <td>
                             <div>{{ order.customer.name }}</div>
                             {% if order.customer.phone %}
-                            <small class="text-muted">{{ order.customer.phone }}</small>
+                            <small>{{ order.customer.phone }}</small>
                             {% endif %}
                         </td>
                         <td>

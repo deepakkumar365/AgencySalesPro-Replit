@@ -73,7 +73,7 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Invoice Records</h5>
-        <div class="text-muted">
+        <div>
             {% if invoices.items %}
                 Showing {{ invoices.per_page * (invoices.page - 1) + 1 }} to 
                 {{ invoices.per_page * (invoices.page - 1) + invoices.items|length }} of {{ invoices.total }} records
@@ -108,7 +108,7 @@
                         <td>
                             <div>{{ invoice.customer.name }}</div>
                             {% if invoice.customer.phone %}
-                            <small class="text-muted">{{ invoice.customer.phone }}</small>
+                            <small>{{ invoice.customer.phone }}</small>
                             {% endif %}
                         </td>
                         <td>{{ invoice.issue_date.strftime('%Y-%m-%d') }}</td>
@@ -128,14 +128,14 @@
                             {% if total_paid > 0 %}
                                 <span class="text-success">₹{{ "%.2f"|format(total_paid) }}</span>
                             {% else %}
-                                <span class="text-muted">₹0.00</span>
+                                <span>₹0.00</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if balance > 0 %}
                                 <span class="text-warning fw-bold">₹{{ "%.2f"|format(balance) }}</span>
                             {% else %}
-                                <span class="text-muted">₹0.00</span>
+                                <span>₹0.00</span>
                             {% endif %}
                         </td>
                         <td>

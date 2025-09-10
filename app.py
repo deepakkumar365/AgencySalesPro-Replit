@@ -70,6 +70,10 @@ def create_app():
     app.register_blueprint(reports_bp, url_prefix='/reports')
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     app.register_blueprint(masters_bp, url_prefix='/masters')
+
+    # Product Overrides (Agency-specific)
+    from product_overrides import overrides_bp
+    app.register_blueprint(overrides_bp)
     
     # Main routes
     @app.route('/')

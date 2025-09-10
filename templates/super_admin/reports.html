@@ -47,7 +47,7 @@
                     </table>
                 </div>
                 {% else %}
-                <p class="text-muted">No agency performance data available.</p>
+                <p>No agency performance data available.</p>
                 {% endif %}
             </div>
         </div>
@@ -87,7 +87,7 @@
                                     {% if user.last_activity %}
                                     {{ user.last_activity.strftime('%Y-%m-%d %H:%M') }}
                                     {% else %}
-                                    <span class="text-muted">Never</span>
+                                    <span>Never</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -96,7 +96,7 @@
                     </table>
                 </div>
                 {% else %}
-                <p class="text-muted">No user activity data available.</p>
+                <p>No user activity data available.</p>
                 {% endif %}
             </div>
         </div>

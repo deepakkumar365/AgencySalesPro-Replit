@@ -4,7 +4,7 @@ import pandas as pd
 import io
 import os
 from app import db
-from models import Product, Agency
+from models import Product, Agency, ProductAgency
 from product import product_bp
 from auth.utils import login_required, agency_access_required
 from utils.decorators import log_activity
@@ -17,18 +17,19 @@ def list_products(current_agency_id=None):
     user_role = session.get('role')
     
     # Start with base query
+    # Base query uses mapping for visibility
     if user_role == 'super_admin':
-        query = Product.query
+        query = db.session.query(Product).outerjoin(ProductAgency, ProductAgency.product_id == Product.id)
     else:
-        query = Product.query.filter_by(agency_id=current_agency_id)
-    
+        query = db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id).filter(ProductAgency.agency_id == current_agency_id)
+
     # Apply filters
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
     agency_filter = request.args.get('agency')
     category_filter = request.args.get('category')
     status_filter = request.args.get('status')
-    
+
     if date_from:
         try:
             from datetime import datetime
@@ -36,7 +37,7 @@ def list_products(current_agency_id=None):
             query = query.filter(Product.created_at >= date_from_obj)
         except ValueError:
             pass
-    
+
     if date_to:
         try:
             from datetime import datetime
@@ -44,34 +45,60 @@ def list_products(current_agency_id=None):
             query = query.filter(Product.created_at <= date_to_obj)
         except ValueError:
             pass
-    
+
     if agency_filter and user_role == 'super_admin':
-        query = query.filter(Product.agency_id == agency_filter)
-    
+        query = query.filter(ProductAgency.agency_id == agency_filter)
+
     if category_filter:
-        query = query.filter(Product.category_id == category_filter)
-    
+        # Match either mapping override or global default
+        query = query.filter((ProductAgency.category_id == category_filter) | (Product.category_id == category_filter))
+
     if status_filter == 'active':
-        query = query.filter(Product.is_active == True)
+        query = query.filter(ProductAgency.is_active == True)
     elif status_filter == 'inactive':
-        query = query.filter(Product.is_active == False)
-    
-    products = query.order_by(Product.created_at.desc()).all()
+        query = query.filter(ProductAgency.is_active == False)
+
+    # Show unique products by default for super_admin unless an agency filter is applied
+    if user_role == 'super_admin' and not agency_filter:
+        # PostgreSQL DISTINCT ON requires ORDER BY to start with the distinct columns
+        query = query.order_by(Product.id, Product.created_at.desc()).distinct(Product.id)
+    else:
+        query = query.order_by(Product.created_at.desc())
+    products = query.all()
     
     # Get filter options
     agencies = []
     if user_role == 'super_admin':
         agencies = Agency.query.filter_by(is_active=True).all()
     
-    # Get unique categories from Category table
+    # Get unique categories from Category table (global masters)
     from models import Category
-    if user_role == 'super_admin':
-        categories = Category.query.filter_by(is_active=True).all()
-    else:
-        categories = Category.query.filter_by(agency_id=current_agency_id, is_active=True).all()
-    
+    categories = Category.query.filter_by(is_active=True).all()
+
+    # Build view-model rows including mapping-derived properties
+    rows = []
+    for product in products:
+        # Find mapping for current or selected agency if applicable
+        mapping = None
+        if user_role == 'super_admin' and agency_filter:
+            mapping = ProductAgency.query.filter_by(product_id=product.id, agency_id=int(agency_filter)).first()
+        elif user_role != 'super_admin':
+            mapping = ProductAgency.query.filter_by(product_id=product.id, agency_id=current_agency_id).first()
+        # Compose effective fields
+        effective_sell = mapping.sell_price if mapping and mapping.sell_price is not None else product.sell_price
+        effective_category = mapping.category_ref if mapping and mapping.category_id else product.category_ref
+        effective_active = mapping.is_active if mapping else True
+        rows.append({
+            'product': product,
+            'mapping': mapping,
+            'effective_sell_price': effective_sell,
+            'effective_category': effective_category,
+            'effective_active': effective_active
+        })
+
     return render_template('product/list.html', 
                          products=products,
+                         product_rows=rows,
                          agencies=agencies,
                          categories=categories,
                          filters={
@@ -108,11 +135,11 @@ def create_product():
         if user_role != 'super_admin':
             agency_id = current_agency_id
         
-        if not agency_id:
-            flash('Agency is required', 'error')
-            return render_template('product/form.html', agencies=get_agencies_for_user())
+        # For non-super admin, force mapping to their agency. For super admin, agency is optional.
+        if user_role != 'super_admin':
+            agency_id = current_agency_id
         
-        # Check if SKU already exists
+        # Check if SKU already exists (global unique)
         if Product.query.filter_by(sku=sku).first():
             flash('SKU already exists', 'error')
             return render_template('product/form.html', agencies=get_agencies_for_user())
@@ -128,6 +155,7 @@ def create_product():
         # Calculate margin
         margin = round(((sell_price - buy_price) / buy_price) * 100, 2) if buy_price > 0 else 0
         
+        # Create master product
         product = Product(
             name=name,
             sku=sku,
@@ -138,7 +166,6 @@ def create_product():
             category_id=int(category_id) if category_id else None,
             uom_id=int(uom_id) if uom_id else None,
             tax_master_id=int(tax_master_id) if tax_master_id else None,
-            agency_id=agency_id,
             is_active=True
         )
         
@@ -147,6 +174,25 @@ def create_product():
         product.cost = buy_price
         
         db.session.add(product)
+        db.session.flush()  # to get product.id
+        
+        # Create product-agency mapping only if we have an agency_id (super admin may leave it blank)
+        if agency_id:
+            agency_id = int(agency_id)  # ensure integer
+            # Avoid duplicate mapping
+            existing_mapping = ProductAgency.query.filter_by(product_id=product.id, agency_id=agency_id).first()
+            if not existing_mapping:
+                mapping = ProductAgency(
+                    product_id=product.id,
+                    agency_id=agency_id,
+                    sell_price=None,
+                    category_id=None,
+                    uom_id=None,
+                    tax_master_id=None,
+                    is_active=True
+                )
+                db.session.add(mapping)
+        
         db.session.commit()
         
         flash('Product created successfully!', 'success')
@@ -158,14 +204,10 @@ def create_product():
     user_role = session.get('role')
     current_agency_id = session.get('agency_id')
     
-    if user_role == 'super_admin':
-        categories = Category.query.filter_by(is_active=True).all()
-        uoms = UOM.query.filter_by(is_active=True).all()
-        tax_masters = TaxMaster.query.filter_by(is_active=True).all()
-    else:
-        categories = Category.query.filter_by(agency_id=current_agency_id, is_active=True).all()
-        uoms = UOM.query.filter_by(agency_id=current_agency_id, is_active=True).all()
-        tax_masters = TaxMaster.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+    # Global masters
+    categories = Category.query.filter_by(is_active=True).all()
+    uoms = UOM.query.filter_by(is_active=True).all()
+    tax_masters = TaxMaster.query.filter_by(is_active=True).all()
     
     return render_template('product/form.html', 
                          agencies=get_agencies_for_user(),
@@ -181,10 +223,10 @@ def edit_product(product_id):
     
     user_role = session.get('role')
     current_agency_id = session.get('agency_id')
-    
-    # Check permissions
-    if user_role != 'super_admin' and product.agency_id != current_agency_id:
-        flash('You can only edit products from your agency', 'error')
+
+    # Only super_admin can edit master
+    if user_role != 'super_admin':
+        flash('Only super admin can edit product master. Agency overrides will be provided separately.', 'error')
         return redirect(url_for('product.list_products'))
     
     if request.method == 'POST':
@@ -196,12 +238,6 @@ def edit_product(product_id):
         category_id = request.form.get('category_id')
         uom_id = request.form.get('uom_id')
         tax_master_id = request.form.get('tax_master_id')
-        
-        # Super admin can change agency
-        if user_role == 'super_admin':
-            agency_id = request.form.get('agency_id')
-            if agency_id:
-                product.agency_id = agency_id
         
         if not all([product.name, product.sku, buy_price, sell_price, mrp_price]):
             flash('Name, SKU, Buy Price, Sell Price, and MRP are required', 'error')
@@ -235,14 +271,10 @@ def edit_product(product_id):
     user_role = session.get('role')
     current_agency_id = session.get('agency_id')
     
-    if user_role == 'super_admin':
-        categories = Category.query.filter_by(is_active=True).all()
-        uoms = UOM.query.filter_by(is_active=True).all()
-        tax_masters = TaxMaster.query.filter_by(is_active=True).all()
-    else:
-        categories = Category.query.filter_by(agency_id=current_agency_id, is_active=True).all()
-        uoms = UOM.query.filter_by(agency_id=current_agency_id, is_active=True).all()
-        tax_masters = TaxMaster.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+    # Global masters
+    categories = Category.query.filter_by(is_active=True).all()
+    uoms = UOM.query.filter_by(is_active=True).all()
+    tax_masters = TaxMaster.query.filter_by(is_active=True).all()
     
     return render_template('product/form.html', 
                          product=product,
@@ -260,16 +292,23 @@ def toggle_product_status(product_id):
     user_role = session.get('role')
     current_agency_id = session.get('agency_id')
     
-    # Check permissions
-    if user_role != 'super_admin' and product.agency_id != current_agency_id:
-        flash('You can only modify products from your agency', 'error')
+    # Toggle mapping (agency-specific)
+    target_agency_id = None
+    if user_role == 'super_admin':
+        target_agency_id = request.form.get('agency_id') or session.get('agency_id')
+    else:
+        target_agency_id = current_agency_id
+    
+    mapping = ProductAgency.query.filter_by(product_id=product.id, agency_id=target_agency_id).first()
+    if not mapping:
+        flash('No mapping found for this agency.', 'error')
         return redirect(url_for('product.list_products'))
     
-    product.is_active = not product.is_active
+    mapping.is_active = not mapping.is_active
     db.session.commit()
     
-    status = 'activated' if product.is_active else 'deactivated'
-    flash(f'Product {status} successfully!', 'success')
+    status = 'activated' if mapping.is_active else 'deactivated'
+    flash(f'Product mapping {status} successfully!', 'success')
     return redirect(url_for('product.list_products'))
 
 @product_bp.route('/<int:product_id>/delete', methods=['POST'])
@@ -281,20 +320,34 @@ def delete_product(product_id):
     user_role = session.get('role')
     current_agency_id = session.get('agency_id')
     
-    # Check permissions
-    if user_role != 'super_admin' and product.agency_id != current_agency_id:
-        flash('You can only delete products from your agency', 'error')
+    # Delete mapping (agency-specific). Do not delete master unless no mappings remain.
+    target_agency_id = None
+    if user_role == 'super_admin':
+        target_agency_id = request.form.get('agency_id') or session.get('agency_id')
+    else:
+        target_agency_id = current_agency_id
+    
+    mapping = ProductAgency.query.filter_by(product_id=product.id, agency_id=target_agency_id).first()
+    if not mapping:
+        flash('No mapping found for this agency.', 'error')
         return redirect(url_for('product.list_products'))
     
-    # Check if product has order items
-    if product.order_items:
-        flash('Cannot delete product with existing orders', 'error')
-        return redirect(url_for('product.list_products'))
+    # Prevent delete if existing orders reference this product for that agency? We'll allow mapping delete; master remains.
+    db.session.delete(mapping)
+    db.session.flush()
     
-    db.session.delete(product)
+    # If no mappings remain, optionally delete master if no order items exist
+    remaining = ProductAgency.query.filter_by(product_id=product.id).count()
+    if remaining == 0:
+        if product.order_items:
+            # Keep master to preserve history
+            pass
+        else:
+            db.session.delete(product)
+    
     db.session.commit()
     
-    flash('Product deleted successfully!', 'success')
+    flash('Product mapping deleted successfully!', 'success')
     return redirect(url_for('product.list_products'))
 
 @product_bp.route('/export')
@@ -305,9 +358,10 @@ def export_products():
     current_agency_id = session.get('agency_id')
     
     if user_role == 'super_admin':
-        products = Product.query.all()
+        products = Product.query.order_by(Product.created_at.desc()).all()
     else:
-        products = Product.query.filter_by(agency_id=current_agency_id).all()
+        # Products visible to current agency (via mapping)
+        products = db.session.query(Product).join(ProductAgency).filter(ProductAgency.agency_id == current_agency_id).all()
     
     # Create Excel file
     output = export_products_to_excel(products)

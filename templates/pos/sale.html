@@ -211,7 +211,7 @@ function displaySearchResults(products) {
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <div class="fw-bold">${product.name}</div>
-                        <small class="text-muted">SKU: ${product.sku} | Stock: ${product.stock_quantity}</small>
+                        <small>SKU: ${product.sku} | Stock: ${product.stock_quantity}</small>
                     </div>
                     <div>
                         <span class="badge bg-primary">$${product.price.toFixed(2)}</span>
@@ -306,7 +306,7 @@ function updateCartDisplay() {
             <tr>
                 <td>
                     <div class="fw-bold">${item.name}</div>
-                    <small class="text-muted">${item.sku}</small>
+                    <small>${item.sku}</small>
                 </td>
                 <td>$${item.price.toFixed(2)}</td>
                 <td>
