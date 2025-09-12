@@ -84,7 +84,7 @@
                         {{ "%.1f"|format(stats.collection_rate) }}%
                     </div>
                 </div>
-                <small class="text-muted">
+                <small>
                     ₹{{ "%.2f"|format(stats.total_paid) }} collected out of ₹{{ "%.2f"|format(stats.total_invoiced) }} invoiced
                 </small>
             </div>
@@ -203,11 +203,11 @@
                     <div class="list-group-item d-flex justify-content-between align-items-center p-2">
                         <div>
                             <div class="fw-bold">{{ invoice.customer.name }}</div>
-                            <small class="text-muted">{{ invoice.invoice_number }}</small>
+                            <small>{{ invoice.invoice_number }}</small>
                         </div>
                         <div class="text-end">
                             <div class="text-danger fw-bold">₹{{ "%.2f"|format(invoice.total_amount) }}</div>
-                            <small class="text-muted">{{ invoice.due_date.strftime('%m/%d') if invoice.due_date else '-' }}</small>
+                            <small>{{ invoice.due_date.strftime('%m/%d') if invoice.due_date else '-' }}</small>
                         </div>
                     </div>
                     {% endfor %}
@@ -233,7 +233,7 @@
                     <div class="list-group-item d-flex justify-content-between align-items-center p-2">
                         <div>
                             <div class="fw-bold">{{ method.name }}</div>
-                            <small class="text-muted">{{ method.method_type|title }}</small>
+                            <small>{{ method.method_type|title }}</small>
                         </div>
                         <span class="badge {{ 'bg-success' if method.is_active else 'bg-secondary' }}">
                             {{ 'Active' if method.is_active else 'Inactive' }}

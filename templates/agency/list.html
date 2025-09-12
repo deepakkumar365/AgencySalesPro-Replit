@@ -41,7 +41,7 @@
                                 <td>
                                     <strong>{{ agency.name }}</strong>
                                     {% if agency.address %}
-                                    <br><small class="text-muted">{{ agency.address }}</small>
+                                    <br><small>{{ agency.address }}</small>
                                     {% endif %}
                                 </td>
                                 <td><code>{{ agency.code }}</code></td>
@@ -102,9 +102,9 @@
                 {% else %}
                 <div class="text-center py-5">
                     <i class="fas fa-building fa-3x text-muted mb-3"></i>
-                    <h5 class="text-muted">No agencies found</h5>
+                    <h5>No agencies found</h5>
                     {% if session.role == 'super_admin' %}
-                    <p class="text-muted">Start by creating your first agency.</p>
+                    <p>Start by creating your first agency.</p>
                     <a href="{{ url_for('agency.create_agency') }}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>Add Agency
                     </a>

@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, flash, session, s
 from datetime import datetime
 import uuid
 from app import db
-from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode
+from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode, ProductAgency
 from order import order_bp
 from auth.utils import login_required, agency_access_required
 from utils.decorators import log_activity
@@ -200,9 +200,11 @@ def create_order():
                 product = Product.query.get(product_id)
                 
                 if product and quantity > 0 and unit_price > 0:
-                    # Validate product belongs to same agency
-                    if user_role != 'super_admin' and product.agency_id != customer.location.agency_id:
-                        continue
+                    # Validate product has a mapping to the order's agency
+                    from models import ProductAgency
+                    if user_role != 'super_admin':
+                        if not ProductAgency.query.filter_by(product_id=product.id, agency_id=customer.location.agency_id, is_active=True).first():
+                            continue
                     
                     # Get enhanced item data
                     uom = uoms[i] if i < len(uoms) else 'pcs'
@@ -443,11 +445,8 @@ def get_products_for_user():
     """Get products based on current user role"""
     user_role = session.get('role')
     
-    if user_role == 'super_admin':
-        return Product.query.filter_by(is_active=True).all()
-    else:
-        agency_id = session.get('agency_id')
-        return Product.query.filter_by(agency_id=agency_id, is_active=True).all()
+    # Products are global master; visibility comes from mapping at point of use.
+    return Product.query.filter_by(is_active=True).all()
 
 @order_bp.route('/api/search-customers', methods=['GET'])
 @login_required
@@ -498,14 +497,14 @@ def search_products():
     user_role = session.get('role')
     agency_id = session.get('agency_id')
     
-    # Build base query
-    products_query = Product.query.filter(Product.is_active == True)
-    
-    # Apply agency filter for non-super admins
-    if user_role != 'super_admin':
-        products_query = products_query.filter(Product.agency_id == agency_id)
-    
-    # Apply search filter
+    # Build base query from Product master; outer-join any mapping for current agency
+    products_query = db.session.query(Product, ProductAgency).outerjoin(
+        ProductAgency,
+        db.and_(ProductAgency.product_id == Product.id,
+                ProductAgency.agency_id == agency_id)
+    )
+
+    # Apply search filter (master-level)
     if query:
         products_query = products_query.filter(
             db.or_(
@@ -513,20 +512,36 @@ def search_products():
                 Product.sku.ilike(f'%{query}%')
             )
         )
-    
-    products = products_query.limit(50).all()
-    
+
+    results = products_query.limit(50).all()
+
+    def safe_float(val, default=0.0):
+        try:
+            return float(val) if val is not None else default
+        except Exception:
+            return default
+
     return jsonify([{
         'id': p.id,
-        'name': p.name,
+        'name': (pa.display_name if pa and pa.display_name else p.name),
         'sku': p.sku,
         'description': p.description or '',
-        'price': float(p.sell_price) if p.sell_price else 0,
-        'mrp_price': float(p.mrp_price) if p.mrp_price else 0,
-        'uom': p.uom_ref.name if p.uom_ref else (p.uom or 'pcs'),
-        'tax_rate': float(p.tax_master_ref.tax_rate) if p.tax_master_ref else (p.tax_rate or 18.0),
-        'tax_code': p.tax_master_ref.tax_code if p.tax_master_ref else (p.tax_code or 'GST18'),
+        'price': safe_float(pa.sell_price if pa and pa.sell_price is not None else p.sell_price, 0.0),
+        'buy_price': safe_float(pa.buy_price if pa and getattr(pa, 'buy_price', None) is not None else p.buy_price, 0.0),
+        'mrp_price': safe_float(pa.mrp_price if pa and getattr(pa, 'mrp_price', None) is not None else p.mrp_price, 0.0),
+        'uom': (pa.uom_ref.name if pa and pa.uom_ref else (p.uom_ref.name if p.uom_ref else (p.uom or 'pcs'))),
+        'uom_id': (int(pa.uom_id) if pa and getattr(pa, 'uom_id', None) is not None else (int(p.uom_id) if getattr(p, 'uom_id', None) is not None else None)),
+        'tax_rate': (
+            safe_float(pa.tax_master_ref.tax_rate) if pa and pa.tax_master_ref else (
+                safe_float(p.tax_master_ref.tax_rate) if p and p.tax_master_ref else (
+                    safe_float(p.tax_rate, 18.0)
+                )
+            )
+        ),
+        'tax_code': (pa.tax_master_ref.tax_code if pa and pa.tax_master_ref else (p.tax_master_ref.tax_code if p and p.tax_master_ref else (p.tax_code or 'GST18'))),
+        'tax_master_id': (int(pa.tax_master_id) if pa and getattr(pa, 'tax_master_id', None) is not None else (int(p.tax_master_id) if getattr(p, 'tax_master_id', None) is not None else None)),
         'stock_available': True,  # Stock tracking disabled
-        'category': p.category_ref.name if p.category_ref else '',
-        'display_text': f"{p.name} ({p.sku}) - ₹{p.sell_price}"
-    } for p in products])
+        'category': (pa.category_ref.name if pa and pa.category_ref else (p.category_ref.name if p and p.category_ref else '')),
+        'category_id': (int(pa.category_id) if pa and getattr(pa, 'category_id', None) is not None else (int(p.category_id) if getattr(p, 'category_id', None) is not None else None)),
+        'display_text': f"{(pa.display_name if pa and pa.display_name else p.name)} ({p.sku}) - ₹{safe_float(pa.sell_price if pa and pa.sell_price is not None else p.sell_price, 0.0)}"
+    } for (p, pa) in results])

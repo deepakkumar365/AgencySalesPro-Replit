@@ -11,39 +11,45 @@
 </div>
 
 <!-- Filters -->
+{% set has_filters = request.args.get('start_date') or request.args.get('end_date') %}
 <div class="card mb-4">
-    <div class="card-header">
+    <div class="card-header d-flex justify-content-between align-items-center">
         <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filters</h6>
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#posSalesFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}" aria-controls="posSalesFilters">
+            <i class="fas fa-sliders-h me-1"></i> Toggle
+        </button>
     </div>
-    <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-3">
-                <label for="start_date" class="form-label">Start Date</label>
-                <input type="date" id="start_date" name="start_date" class="form-control" 
-                       value="{{ request.args.get('start_date', '') }}">
-            </div>
-            <div class="col-md-3">
-                <label for="end_date" class="form-label">End Date</label>
-                <input type="date" id="end_date" name="end_date" class="form-control" 
-                       value="{{ request.args.get('end_date', '') }}">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">&nbsp;</label>
-                <div class="d-grid">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search me-1"></i>Filter
-                    </button>
+    <div id="posSalesFilters" class="collapse {{ 'show' if has_filters else '' }}">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input type="date" id="start_date" name="start_date" class="form-control" 
+                           value="{{ request.args.get('start_date', '') }}">
                 </div>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">&nbsp;</label>
-                <div class="d-grid">
-                    <a href="{{ url_for('pos.sales_history') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-times me-1"></i>Clear
-                    </a>
+                <div class="col-md-3">
+                    <label for="end_date" class="form-label">End Date</label>
+                    <input type="date" id="end_date" name="end_date" class="form-control" 
+                           value="{{ request.args.get('end_date', '') }}">
                 </div>
-            </div>
-        </form>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>Filter
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <a href="{{ url_for('pos.sales_history') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>Clear
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -51,7 +57,7 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Sales Records</h5>
-        <div class="text-muted">
+        <div>
             {% if orders.items %}
                 Showing {{ orders.per_page * (orders.page - 1) + 1 }} to 
                 {{ orders.per_page * (orders.page - 1) + orders.items|length }} of {{ orders.total }} records
@@ -81,12 +87,12 @@
                         </td>
                         <td>
                             <div>{{ order.order_date.strftime('%Y-%m-%d') }}</div>
-                            <small class="text-muted">{{ order.order_date.strftime('%H:%M:%S') }}</small>
+                            <small>{{ order.order_date.strftime('%H:%M:%S') }}</small>
                         </td>
                         <td>
                             <div>{{ order.customer.name }}</div>
                             {% if order.customer.phone %}
-                            <small class="text-muted">{{ order.customer.phone }}</small>
+                            <small>{{ order.customer.phone }}</small>
                             {% endif %}
                         </td>
                         <td>

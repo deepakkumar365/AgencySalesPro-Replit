@@ -5,7 +5,7 @@ from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Font, PatternFill
 from app import db
-from models import Product, Order, OrderItem
+from models import Product, Order, OrderItem, ProductAgency, Agency
 
 def export_products_to_excel(products):
     """Export products to Excel file using openpyxl"""
@@ -14,7 +14,7 @@ def export_products_to_excel(products):
     ws.title = "Products"
     
     # Headers
-    headers = ['ID', 'Name', 'Description', 'SKU', 'Price', 'Cost', 'Category', 'Agency', 'Active', 'Created At']
+    headers = ['ID', 'Name', 'Description', 'SKU', 'Sell Price (Effective)', 'Buy Cost', 'Category (Effective)', 'Agency', 'Active (Mapping)', 'Created At']
     ws.append(headers)
     
     # Style headers
@@ -27,16 +27,28 @@ def export_products_to_excel(products):
     
     # Add data
     for product in products:
+        # Find mapping for given agency context if provided by caller; otherwise, try to use the first mapping
+        mapping = None
+        if hasattr(product, 'agency_mappings') and product.agency_mappings:
+            mapping = product.agency_mappings[0]
+        effective_sell = float(mapping.sell_price) if mapping and mapping.sell_price is not None else float(product.sell_price or 0)
+        effective_category_name = (
+            (mapping.category_ref.name if mapping and mapping.category_ref else None)
+            or (product.category_ref.name if hasattr(product, 'category_ref') and product.category_ref else None)
+            or (product.category if hasattr(product, 'category') else None)
+        )
+        agency_name = mapping.agency.name if mapping else ''
+        mapping_active = mapping.is_active if mapping else True
         row_data = [
             product.id,
             product.name,
             product.description,
             product.sku,
-            float(product.sell_price),
+            effective_sell,
             float(product.buy_price) if product.buy_price else 0,
-            product.category,
-            product.agency.name,
-            product.is_active,
+            effective_category_name or '-',
+            agency_name,
+            mapping_active,
             product.created_at.strftime('%Y-%m-%d %H:%M:%S')
         ]
         ws.append(row_data)
@@ -82,26 +94,37 @@ def import_products_from_excel(file, agency_id, user_role):
                     skipped += 1
                     continue
                 
-                # Check if SKU already exists
+                # Check if SKU already exists (global)
                 if Product.query.filter_by(sku=sku.strip()).first():
                     skipped += 1
                     continue
                 
-                # Create product
+                # Create product master and mapping
                 try:
+                    buy = float(row.get('Cost', 0)) if row.get('Cost') else 0
+                    sell = float(price)
+                    mrp = float(row.get('MRP', sell)) if row.get('MRP') else sell
+                    margin = round(((sell - buy) / buy) * 100, 2) if buy > 0 else 0
+
                     product = Product(
                         name=name.strip(),
                         description=row.get('Description', '').strip(),
                         sku=sku.strip(),
-                        price=float(price),
-                        cost=float(row.get('Cost', 0)) if row.get('Cost') else 0,
-                        # stock_quantity removed from model
-                        category=row.get('Category', '').strip(),
+                        buy_price=buy,
+                        sell_price=sell,
+                        mrp_price=mrp,
+                        margin=margin,
+                        is_active=True
+                    )
+                    db.session.add(product)
+                    db.session.flush()
+
+                    mapping = ProductAgency(
+                        product_id=product.id,
                         agency_id=agency_id,
                         is_active=True
                     )
-                    
-                    db.session.add(product)
+                    db.session.add(mapping)
                     imported += 1
                 except (ValueError, TypeError):
                     skipped += 1
@@ -139,26 +162,38 @@ def import_products_from_excel(file, agency_id, user_role):
                     skipped += 1
                     continue
                 
-                # Check if SKU already exists
+                # Check if SKU already exists (global)
                 if Product.query.filter_by(sku=str(sku).strip()).first():
                     skipped += 1
                     continue
                 
-                # Create product
+                # Create product master and mapping
                 try:
+                    buy = float(row_dict.get('Cost', 0)) if row_dict.get('Cost') else 0
+                    sell = float(price)
+                    mrp = float(row_dict.get('MRP', sell)) if row_dict.get('MRP') else sell
+                    margin = round(((sell - buy) / buy) * 100, 2) if buy > 0 else 0
+
                     product = Product(
                         name=str(name).strip(),
                         description=str(row_dict.get('Description', '')).strip(),
                         sku=str(sku).strip(),
-                        price=float(price),
-                        cost=float(row_dict.get('Cost', 0)) if row_dict.get('Cost') else 0,
-                        # stock_quantity removed from model
-                        category=str(row_dict.get('Category', '')).strip(),
-                        agency_id=agency_id,
+                        buy_price=buy,
+                        sell_price=sell,
+                        mrp_price=mrp,
+                        margin=margin,
                         is_active=True
                     )
                     
                     db.session.add(product)
+                    db.session.flush()
+
+                    mapping = ProductAgency(
+                        product_id=product.id,
+                        agency_id=agency_id,
+                        is_active=True
+                    )
+                    db.session.add(mapping)
                     imported += 1
                 except (ValueError, TypeError):
                     skipped += 1

@@ -1,7 +1,7 @@
 from flask import jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
-from models import User, Agency, Product, Order, Customer, Location
+from models import User, Agency, Product, ProductAgency, Order, Customer, Location
 from api import api_bp
 
 @api_bp.route('/profile')
@@ -56,7 +56,9 @@ def get_products():
     if user and user.role == 'super_admin':
         products = Product.query.filter_by(is_active=True).all()
     else:
-        products = Product.query.filter_by(agency_id=user.agency_id, is_active=True).all() if user else []
+        # Join via ProductAgency mapping for agency-specific visibility
+        products = db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id)\
+            .filter(ProductAgency.agency_id == user.agency_id, Product.is_active == True).all() if user else []
     
     return jsonify([{
         'id': p.id,
@@ -208,7 +210,7 @@ def get_dashboard_stats():
     else:
         stats = {
             'agency_orders': Order.query.filter_by(agency_id=user.agency_id).count() if user else 0,
-            'agency_products': Product.query.filter_by(agency_id=user.agency_id).count() if user else 0,
+            'agency_products': db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id).filter(ProductAgency.agency_id == user.agency_id).count() if user else 0,
             'agency_customers': Customer.query.join(Location).filter(Location.agency_id == user.agency_id).count() if user else 0
         }
     

@@ -147,13 +147,10 @@
             <h5 class="mb-3"><i class="fas fa-user me-2"></i>Customer Information</h5>
             <div class="row">
                 <div class="col-md-4">
-                    <label for="customer_search" class="form-label fw-bold">Select Customer *</label>
-                    <div class="autocomplete-container">
-                        <input type="text" class="form-control" id="customer_search" 
-                               placeholder="Search customer by name, phone, or city..." 
-                               autocomplete="off" required>
+                    <label for="customer_select" class="form-label fw-bold">Select Customer *</label>
+                    <div>
+                        <select id="customer_select" class="form-select" placeholder="Search customer by name, phone, or city..." autocomplete="off"></select>
                         <input type="hidden" id="customer_id" name="customer_id" required>
-                        <div class="autocomplete-suggestions" id="customer_suggestions"></div>
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -288,7 +285,7 @@ let taxCodes = {};
 // Load tax codes and initialize form
 document.addEventListener('DOMContentLoaded', function() {
     loadTaxCodes();
-    initializeCustomerAutocomplete();
+    initCustomerSelect();
     addOrderItem(); // Add first item
 });
 
@@ -321,93 +318,58 @@ async function loadTaxCodes() {
     }
 }
 
-// Customer autocomplete functionality
-let customerSearchTimeout;
+// Customer select (Tom Select)
 let selectedCustomer = null;
+let customerSelectInstance = null;
 
-function initializeCustomerAutocomplete() {
-    const searchInput = document.getElementById('customer_search');
-    const suggestionsDiv = document.getElementById('customer_suggestions');
+function initCustomerSelect() {
+    const selectEl = document.getElementById('customer_select');
     const hiddenInput = document.getElementById('customer_id');
-    
-    searchInput.addEventListener('input', function() {
-        clearTimeout(customerSearchTimeout);
-        const query = this.value.trim();
-        
-        if (query.length < 2) {
-            hideSuggestions();
-            hiddenInput.value = '';
-            selectedCustomer = null;
-            hideCustomerInfo();
-            return;
+
+    customerSelectInstance = new TomSelect(selectEl, {
+        valueField: 'id',
+        labelField: 'display_text',
+        searchField: ['name','phone','email','city','display_text'],
+        maxOptions: 50,
+        create: false,
+        preload: false,
+        allowEmptyOption: true,
+        placeholder: 'Search customer by name, phone, or city...',
+        load: function(query, callback) {
+            if (!query || query.length < 2) return callback();
+            fetch(`/order/api/search-customers?q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(items => callback(items))
+                .catch(() => callback());
+        },
+        render: {
+            option: function(item, escape) {
+                return `<div>${escape(item.display_text)}</div>`;
+            },
+            item: function(item, escape) {
+                return `<div>${escape(item.display_text)}</div>`;
+            }
+        },
+        onChange: function(value) {
+            hiddenInput.value = value || '';
+            const item = this.options[value];
+            if (item) {
+                selectedCustomer = {
+                    id: item.id,
+                    name: item.name,
+                    address: item.address,
+                    phone: item.phone,
+                    email: item.email,
+                    location: item.location_name,
+                    creditPeriod: item.credit_period
+                };
+                showCustomerInfo();
+            } else {
+                selectedCustomer = null;
+                hideCustomerInfo();
+            }
         }
-        
-        customerSearchTimeout = setTimeout(() => {
-            searchCustomers(query);
-        }, 300);
     });
-    
-    searchInput.addEventListener('blur', function() {
-        // Delay hiding to allow click on suggestions
-        setTimeout(() => {
-            hideSuggestions();
-        }, 200);
-    });
-    
-    searchInput.addEventListener('focus', function() {
-        if (this.value.trim().length >= 2) {
-            searchCustomers(this.value.trim());
-        }
-    });
-}
-
-async function searchCustomers(query) {
-    try {
-        const response = await fetch(`/order/api/search-customers?q=${encodeURIComponent(query)}`);
-        if (response.ok) {
-            const customers = await response.json();
-            showCustomerSuggestions(customers);
-        } else {
-            console.error('Failed to search customers');
-        }
-    } catch (error) {
-        console.error('Error searching customers:', error);
-    }
-}
-
-function showCustomerSuggestions(customers) {
-    const suggestionsDiv = document.getElementById('customer_suggestions');
-    
-    if (customers.length === 0) {
-        suggestionsDiv.innerHTML = '<div class="autocomplete-suggestion">No customers found</div>';
-    } else {
-        suggestionsDiv.innerHTML = customers.map(customer => 
-            `<div class="autocomplete-suggestion" 
-                  onclick="selectCustomer(${customer.id}, '${customer.name}', '${customer.display_text}', 
-                           '${customer.address}', '${customer.phone}', '${customer.email}', 
-                           '${customer.location_name}', ${customer.credit_period})">
-                ${customer.display_text}
-            </div>`
-        ).join('');
-    }
-    
-    suggestionsDiv.style.display = 'block';
-}
-
-function selectCustomer(id, name, displayText, address, phone, email, location, creditPeriod) {
-    const searchInput = document.getElementById('customer_search');
-    const hiddenInput = document.getElementById('customer_id');
-    
-    searchInput.value = displayText;
-    hiddenInput.value = id;
-    selectedCustomer = { id, name, address, phone, email, location, creditPeriod };
-    
-    hideSuggestions();
-    showCustomerInfo();
-}
-
-function hideSuggestions() {
-    document.getElementById('customer_suggestions').style.display = 'none';
 }
 
 function showCustomerInfo() {
@@ -425,126 +387,72 @@ function hideCustomerInfo() {
     document.getElementById('customerInfo').style.display = 'none';
 }
 
-// Product autocomplete functionality
-let productSearchTimeouts = {};
+// Product select (Tom Select)
+const productSelectInstances = {};
 
-function initializeProductAutocomplete(itemId) {
-    const searchInput = document.querySelector(`[data-item-id="${itemId}"].product-search`);
-    const suggestionsDiv = document.getElementById(`product-suggestions-${itemId}`);
-    const hiddenInput = document.querySelector(`[data-item-id="${itemId}"].product-id-input`);
-    
-    if (!searchInput) return;
-    
-    searchInput.addEventListener('input', function() {
-        clearTimeout(productSearchTimeouts[itemId]);
-        const query = this.value.trim();
-        
-        if (query.length < 2) {
-            hideProductSuggestions(itemId);
-            hiddenInput.value = '';
-            clearProductFields(itemId);
-            return;
-        }
-        
-        productSearchTimeouts[itemId] = setTimeout(() => {
-            searchProducts(query, itemId);
-        }, 300);
-    });
-    
-    searchInput.addEventListener('blur', function() {
-        // Delay hiding to allow click on suggestions
-        setTimeout(() => {
-            hideProductSuggestions(itemId);
-        }, 200);
-    });
-    
-    searchInput.addEventListener('focus', function() {
-        if (this.value.trim().length >= 2) {
-            searchProducts(this.value.trim(), itemId);
-        }
-    });
-}
-
-async function searchProducts(query, itemId) {
-    try {
-        const response = await fetch(`/order/api/search-products?q=${encodeURIComponent(query)}`);
-        if (response.ok) {
-            const products = await response.json();
-            showProductSuggestions(products, itemId);
-        } else {
-            console.error('Failed to search products');
-        }
-    } catch (error) {
-        console.error('Error searching products:', error);
-    }
-}
-
-function showProductSuggestions(products, itemId) {
-    const suggestionsDiv = document.getElementById(`product-suggestions-${itemId}`);
-    
-    if (products.length === 0) {
-        suggestionsDiv.innerHTML = '<div class="autocomplete-suggestion">No products found</div>';
-    } else {
-        suggestionsDiv.innerHTML = products.map(product => 
-            `<div class="autocomplete-suggestion" 
-                  onclick="selectProduct(${itemId}, ${product.id}, '${product.name}', '${product.display_text}', 
-                           ${product.mrp_price}, ${product.price}, '${product.uom}', ${product.tax_rate}, '${product.tax_code}')">
-                ${product.display_text}
-            </div>`
-        ).join('');
-    }
-    
-    suggestionsDiv.style.display = 'block';
-}
-
-function selectProduct(itemId, productId, productName, displayText, mrpPrice, price, uom, taxRate, taxCode) {
-    const searchInput = document.querySelector(`[data-item-id="${itemId}"].product-search`);
+function initProductSelect(itemId) {
+    const selectEl = document.querySelector(`[data-item-id="${itemId}"].product-select`);
     const hiddenInput = document.querySelector(`[data-item-id="${itemId}"].product-id-input`);
     const itemRow = document.getElementById(`item-${itemId}`);
-    
-    // Set product selection
-    searchInput.value = displayText;
-    hiddenInput.value = productId;
-    
-    // Auto-populate product details
-    const mrpInput = itemRow.querySelector('input[name="mrp_prices"]');
-    const priceInput = itemRow.querySelector('input[name="unit_prices"]');
-    const uomSelect = itemRow.querySelector('select[name="uoms"]');
-    const taxDisplayInput = itemRow.querySelector('input[name="tax_display"]');
-    const taxCodeInput = itemRow.querySelector('input[name="tax_codes"]');
-    
-    if (mrpInput) mrpInput.value = mrpPrice.toFixed(2);
-    if (priceInput) priceInput.value = price.toFixed(2);
-    if (uomSelect) {
-        // Set UOM if it exists in options
-        for (let option of uomSelect.options) {
-            if (option.value === uom) {
-                option.selected = true;
-                break;
+    if (!selectEl || !itemRow) return;
+
+    productSelectInstances[itemId] = new TomSelect(selectEl, {
+        valueField: 'id',
+        labelField: 'display_text',
+        searchField: ['name','sku','display_text'],
+        maxOptions: 50,
+        create: false,
+        preload: false,
+        allowEmptyOption: true,
+        placeholder: 'Search products...',
+        load: function(query, callback) {
+            if (!query || query.length < 2) return callback();
+            fetch(`/order/api/search-products?q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(items => callback(items))
+                .catch(() => callback());
+        },
+        render: {
+            option: function(item, escape) {
+                return `<div>${escape(item.display_text)}</div>`;
+            },
+            item: function(item, escape) {
+                return `<div>${escape(item.display_text)}</div>`;
+            }
+        },
+        onChange: function(value) {
+            hiddenInput.value = value || '';
+            const product = this.options[value];
+            if (!product) {
+                clearProductFields(itemId);
+                return;
+            }
+            // Auto-populate fields
+            const mrpInput = itemRow.querySelector('input[name="mrp_prices"]');
+            const priceInput = itemRow.querySelector('input[name="unit_prices"]');
+            const uomSelect = itemRow.querySelector('select[name="uoms"]');
+            const taxDisplayInput = itemRow.querySelector('input[name="tax_display"]');
+            const taxCodeInput = itemRow.querySelector('input[name="tax_codes"]');
+
+            if (mrpInput) mrpInput.value = (product.mrp_price ?? 0).toFixed(2);
+            if (priceInput) priceInput.value = (product.price ?? 0).toFixed(2);
+            if (uomSelect) {
+                for (let option of uomSelect.options) {
+                    if (option.value === (product.uom || option.value)) {
+                        option.selected = true;
+                        break;
+                    }
+                }
+            }
+            if (taxDisplayInput) taxDisplayInput.value = `${product.tax_rate ?? 18}%`;
+            if (taxCodeInput) taxCodeInput.value = product.tax_code || 'GST18';
+
+            const qtyInput = itemRow.querySelector('input[name="quantities"]');
+            if (qtyInput && qtyInput.value) {
+                calculateLineTotal(itemId);
             }
         }
-    }
-    if (taxDisplayInput) {
-        taxDisplayInput.value = `${taxRate}%`;
-    }
-    if (taxCodeInput) {
-        taxCodeInput.value = taxCode;
-    }
-    
-    hideProductSuggestions(itemId);
-    
-    // Trigger calculation if quantity is already entered
-    const qtyInput = itemRow.querySelector('input[name="quantities"]');
-    if (qtyInput && qtyInput.value) {
-        calculateLineTotal(itemId);
-    }
-}
-
-function hideProductSuggestions(itemId) {
-    const suggestionsDiv = document.getElementById(`product-suggestions-${itemId}`);
-    if (suggestionsDiv) {
-        suggestionsDiv.style.display = 'none';
-    }
+    });
 }
 
 function clearProductFields(itemId) {
@@ -575,13 +483,9 @@ function addOrderItem() {
                 <span class="item-serial">${orderItemCounter}</span>
             </div>
             <div class="col-4">
-                <div class="autocomplete-container">
-                    <input type="text" class="form-control form-control-sm product-search" 
-                           placeholder="Search products..." 
-                           data-item-id="${orderItemCounter}"
-                           autocomplete="off" required>
+                <div>
+                    <select class="form-select form-select-sm product-select" data-item-id="${orderItemCounter}"></select>
                     <input type="hidden" name="products" class="product-id-input" data-item-id="${orderItemCounter}">
-                    <div class="autocomplete-suggestions product-suggestions" id="product-suggestions-${orderItemCounter}"></div>
                 </div>
             </div>
             <div class="col-1">
@@ -628,8 +532,8 @@ function addOrderItem() {
     
     container.insertAdjacentHTML('beforeend', itemHtml);
     
-    // Initialize product autocomplete for the new item
-    initializeProductAutocomplete(orderItemCounter);
+    // Initialize product select for the new item
+    initProductSelect(orderItemCounter);
     
     updateItemNumbers();
     calculateOrderTotals();
