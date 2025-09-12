@@ -529,16 +529,14 @@ def search_products():
         'price': safe_float(pa.sell_price if pa and pa.sell_price is not None else p.sell_price, 0.0),
         'buy_price': safe_float(pa.buy_price if pa and getattr(pa, 'buy_price', None) is not None else p.buy_price, 0.0),
         'mrp_price': safe_float(pa.mrp_price if pa and getattr(pa, 'mrp_price', None) is not None else p.mrp_price, 0.0),
-        'uom': (pa.uom_ref.name if pa and pa.uom_ref else (p.uom_ref.name if p.uom_ref else (p.uom or 'pcs'))),
+        'uom': (pa.uom_ref.name if pa and pa.uom_ref else (p.uom_ref.name if p.uom_ref else 'pcs')),
         'uom_id': (int(pa.uom_id) if pa and getattr(pa, 'uom_id', None) is not None else (int(p.uom_id) if getattr(p, 'uom_id', None) is not None else None)),
         'tax_rate': (
             safe_float(pa.tax_master_ref.tax_rate) if pa and pa.tax_master_ref else (
-                safe_float(p.tax_master_ref.tax_rate) if p and p.tax_master_ref else (
-                    safe_float(p.tax_rate, 18.0)
-                )
+                safe_float(p.tax_master_ref.tax_rate) if p and p.tax_master_ref else 18.0
             )
         ),
-        'tax_code': (pa.tax_master_ref.tax_code if pa and pa.tax_master_ref else (p.tax_master_ref.tax_code if p and p.tax_master_ref else (p.tax_code or 'GST18'))),
+        'tax_code': (pa.tax_master_ref.tax_code if pa and pa.tax_master_ref else (p.tax_master_ref.tax_code if p and p.tax_master_ref else 'GST18')),
         'tax_master_id': (int(pa.tax_master_id) if pa and getattr(pa, 'tax_master_id', None) is not None else (int(p.tax_master_id) if getattr(p, 'tax_master_id', None) is not None else None)),
         'stock_available': True,  # Stock tracking disabled
         'category': (pa.category_ref.name if pa and pa.category_ref else (p.category_ref.name if p and p.category_ref else '')),
