@@ -113,15 +113,6 @@ class Product(db.Model):
     description = db.Column(db.Text)
     sku = db.Column(db.String(50), unique=True, nullable=False)
     
-    # Legacy fields (nullable for backward compatibility)
-    price = db.Column(db.Numeric(10, 2))  # Legacy selling price
-    cost = db.Column(db.Numeric(10, 2))   # Legacy cost price
-    stock_quantity = db.Column(db.Integer)  # Legacy stock field
-    category = db.Column(db.String(100))  # Legacy category field
-    uom = db.Column(db.String(20))        # Legacy UOM field
-    tax_rate = db.Column(db.Numeric(5, 2))  # Legacy tax rate
-    tax_code = db.Column(db.String(20))   # Legacy tax code
-    
     # New master data fields (global defaults)
     buy_price = db.Column(db.Numeric(10, 2))  # Global cost/purchase price
     sell_price = db.Column(db.Numeric(10, 2))  # Default selling price
@@ -150,16 +141,8 @@ class Product(db.Model):
     
     # Backward compatibility methods
     def sync_legacy_fields(self):
-        """Sync new fields to legacy fields for backward compatibility"""
-        self.price = self.sell_price
-        self.cost = self.buy_price
-        if self.category_ref:
-            self.category = self.category_ref.name
-        if self.uom_ref:
-            self.uom = self.uom_ref.name
-        if self.tax_master_ref:
-            self.tax_rate = self.tax_master_ref.percentage
-            self.tax_code = self.tax_master_ref.code
+        """Legacy columns removed; no-op to maintain compatibility with old calls."""
+        return
 
 class ProductAgency(db.Model):
     __tablename__ = 'ASP_product_agencies'
@@ -169,7 +152,9 @@ class ProductAgency(db.Model):
     
     # Per-agency overrides (optional; fall back to Product defaults)
     display_name = db.Column(db.String(150))
-    sell_price = db.Column(db.Numeric(10, 2))
+    buy_price = db.Column(db.Numeric(10, 2))   # New: agency-specific buy price
+    sell_price = db.Column(db.Numeric(10, 2))  # Agency-specific sell price
+    mrp_price = db.Column(db.Numeric(10, 2))   # New: agency-specific MRP
     category_id = db.Column(db.Integer, db.ForeignKey('ASP_categories.id'))
     uom_id = db.Column(db.Integer, db.ForeignKey('ASP_uoms.id'))
     tax_master_id = db.Column(db.Integer, db.ForeignKey('ASP_tax_masters.id'))

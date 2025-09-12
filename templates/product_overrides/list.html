@@ -2,7 +2,7 @@
 {% block content %}
 <div class="container-fluid">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4>Agency Product Overrides</h4>
+    <h4>My Product</h4>
     <form class="d-flex" method="GET">
       {% if session.role == 'super_admin' %}
       <select name="agency" class="form-select me-2" style="width: 260px;">
@@ -27,7 +27,7 @@
         <tr>
           <th>Name</th>
           <th>SKU</th>
-          <th>Sell Price</th>
+          <th>Prices (Buy / Sell / MRP)</th>
           <th>Category</th>
           <th>UOM</th>
           <th>Tax</th>
@@ -40,7 +40,13 @@
         <tr>
           <td><strong>{{ mapping.display_name or product.name }}</strong></td>
           <td><code>{{ product.sku }}</code></td>
-          <td>₹{{ '%.2f'|format(mapping.sell_price if mapping.sell_price is not none else (product.sell_price or 0)) }}</td>
+          <td>
+            ₹{{ '%.2f'|format(mapping.buy_price if mapping.buy_price is not none else (product.buy_price or 0)) }}
+            /
+            ₹{{ '%.2f'|format(mapping.sell_price if mapping.sell_price is not none else (product.sell_price or 0)) }}
+            /
+            ₹{{ '%.2f'|format(mapping.mrp_price if mapping.mrp_price is not none else (product.mrp_price or 0)) }}
+          </td>
           <td>{{ mapping.category_ref.name if mapping.category_ref else (product.category_ref.name if product.category_ref else '-') }}</td>
           <td>{{ mapping.uom_ref.name if mapping.uom_ref else (product.uom_ref.name if product.uom_ref else (product.uom or 'pcs')) }}</td>
           <td>{{ mapping.tax_master_ref.tax_code if mapping.tax_master_ref else (product.tax_master_ref.tax_code if product.tax_master_ref else (product.tax_code or 'GST18')) }}</td>
@@ -56,7 +62,7 @@
               <span>Select Agency</span>
             {% else %}
               <a class="btn btn-sm btn-outline-primary" href="{{ url_for('product_overrides.edit_override', product_id=product.id, agency=current_filters.agency) }}">
-                Edit Override
+                <i class="fas fa-edit"></i>
               </a>
             {% endif %}
           </td>

@@ -46,12 +46,24 @@ def edit_override(product_id, current_agency_id=None):
         db.session.flush()
 
     if request.method == 'POST':
+        # Text and dropdowns
         mapping.display_name = request.form.get('display_name') or None
-        mapping.sell_price = float(request.form.get('sell_price')) if request.form.get('sell_price') else None
         mapping.category_id = int(request.form.get('category_id')) if request.form.get('category_id') else None
         mapping.uom_id = int(request.form.get('uom_id')) if request.form.get('uom_id') else None
         mapping.tax_master_id = int(request.form.get('tax_master_id')) if request.form.get('tax_master_id') else None
         mapping.is_active = request.form.get('is_active') == 'on'
+
+        # Numeric fields (optional overrides)
+        def parse_optional_decimal(val):
+            try:
+                return float(val) if val not in (None, '',) else None
+            except ValueError:
+                return None
+
+        mapping.buy_price = parse_optional_decimal(request.form.get('buy_price'))
+        mapping.sell_price = parse_optional_decimal(request.form.get('sell_price'))
+        mapping.mrp_price = parse_optional_decimal(request.form.get('mrp_price'))
+
         db.session.commit()
         flash('Product override saved', 'success')
         return redirect(url_for('product_overrides.list_overrides', agency=agency_id))

@@ -527,8 +527,8 @@ def search_products():
         'sku': p.sku,
         'description': p.description or '',
         'price': safe_float(pa.sell_price if pa and pa.sell_price is not None else p.sell_price, 0.0),
-        'buy_price': safe_float(p.buy_price, 0.0),
-        'mrp_price': safe_float(p.mrp_price, 0.0),
+        'buy_price': safe_float(pa.buy_price if pa and getattr(pa, 'buy_price', None) is not None else p.buy_price, 0.0),
+        'mrp_price': safe_float(pa.mrp_price if pa and getattr(pa, 'mrp_price', None) is not None else p.mrp_price, 0.0),
         'uom': (pa.uom_ref.name if pa and pa.uom_ref else (p.uom_ref.name if p.uom_ref else (p.uom or 'pcs'))),
         'uom_id': (int(pa.uom_id) if pa and getattr(pa, 'uom_id', None) is not None else (int(p.uom_id) if getattr(p, 'uom_id', None) is not None else None)),
         'tax_rate': (

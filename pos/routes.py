@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from app import db
 from models import (
-    Product, Customer, Order, OrderItem, Location, Agency, 
+    Product, ProductAgency, Customer, Order, OrderItem, Location, Agency, 
     Invoice, Payment, PaymentMethod, TaxRule, InventoryTransaction
 )
 from pos import pos_bp
@@ -77,7 +77,8 @@ def new_sale(current_agency_id=None):
         products = Product.query.filter_by(is_active=True).all()
         locations = Location.query.filter_by(is_active=True).all()
     else:
-        products = Product.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+        products = db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id)\
+            .filter(ProductAgency.agency_id == current_agency_id, Product.is_active == True).all()
         locations = Location.query.filter_by(agency_id=current_agency_id, is_active=True).all()
     
     # Get payment methods
@@ -106,12 +107,13 @@ def search_products(current_agency_id=None):
     
     # Base query
     if user_role == 'super_admin':
-        products = Product.query.filter_by(is_active=True)
+        base_q = Product.query.filter_by(is_active=True)
     else:
-        products = Product.query.filter_by(agency_id=current_agency_id, is_active=True)
+        base_q = db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id)\
+            .filter(ProductAgency.agency_id == current_agency_id, Product.is_active == True)
     
     # Search by name or SKU
-    products = products.filter(
+    products = base_q.filter(
         db.or_(
             Product.name.ilike(f'%{query}%'),
             Product.sku.ilike(f'%{query}%')

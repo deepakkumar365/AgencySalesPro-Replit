@@ -109,7 +109,7 @@
                             <tr>
                                 <th>Product</th>
                                 <th class="d-none-mobile">SKU</th>
-                                <th class="d-none-mobile">Price</th>
+                                <th class="d-none-mobile">Prices (Buy / Sell / MRP)</th>
                                 <th>Stock</th>
                                 <th class="d-none-mobile">Category</th>
                                 <th class="d-none-mobile">Agency</th>
@@ -128,7 +128,13 @@
                                     {% endif %}
                                 </td>
                                 <td class="d-none-mobile"><code>{{ product.sku }}</code></td>
-                                <td class="d-none-mobile">₹{{ "%.2f"|format(row.effective_sell_price) }}</td>
+                                <td class="d-none-mobile">
+                                        ₹{{ "%.2f"|format(row.effective_buy_price or 0) }}
+                                        /
+                                        ₹{{ "%.2f"|format(row.effective_sell_price or 0) }}
+                                        /
+                                        ₹{{ "%.2f"|format(row.effective_mrp_price or 0) }}
+                                    </td>
                                 <td>
                                     <span class="badge bg-secondary">
                                         N/A
@@ -148,6 +154,19 @@
                                         {% if session.role == 'super_admin' %}
                                         <a href="{{ url_for('product.edit_product', product_id=product.id) }}" 
                                            class="btn btn-outline-primary" title="Edit Master">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% endif %}
+
+                                        {# Edit Agency Product button #}
+                                        {% if session.role != 'super_admin' %}
+                                        <a href="{{ url_for('product_overrides.edit_override', product_id=product.id) }}" 
+                                           class="btn btn-outline-secondary" title="Edit Agency Product">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% elif filters.agency %}
+                                        <a href="{{ url_for('product_overrides.edit_override', product_id=product.id, agency=filters.agency) }}" 
+                                           class="btn btn-outline-secondary" title="Edit Agency Product ({{ filters.agency }})">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         {% endif %}

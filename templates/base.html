@@ -110,9 +110,17 @@
                             <i class="fas fa-boxes me-1"></i>Inventory
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('product.list_products') }}">
-                                <i class="fas fa-box me-1"></i>Products
-                            </a></li>
+                            <li>
+                                {% if session.role == 'super_admin' %}
+                                <a class="dropdown-item" href="{{ url_for('product.list_products') }}">
+                                    <i class="fas fa-box me-1"></i>Products
+                                </a>
+                                {% else %}
+                                <a class="dropdown-item" href="{{ url_for('product_overrides.list_overrides', agency=session.agency_id) }}">
+                                    <i class="fas fa-box me-1"></i>Products
+                                </a>
+                                {% endif %}
+                            </li>
                             {% if session.role in ['super_admin', 'agency_admin', 'staff'] %}
                             <li><a class="dropdown-item" href="{{ url_for('inventory.dashboard') }}">
                                 <i class="fas fa-warehouse me-1"></i>Inventory Dashboard

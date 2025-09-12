@@ -17,6 +17,7 @@
                         <div class="mt-2">
                             <label for="product_lookup" class="form-label mb-1">Search Existing Products</label>
                             <select id="product_lookup" class="form-select" placeholder="Type name or SKU to search"></select>
+                            <input type="hidden" id="selected_product_id" name="selected_product_id" value="">
                             <div class="form-text">Selecting will auto-fill fields; you can still edit.</div>
                         </div>
                         <div class="col-md-8 mb-3">
@@ -213,7 +214,16 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             onChange: function(value) {
                 const item = this.options[value];
-                if (!item) return;
+                const selectedIdInput = document.getElementById('selected_product_id');
+
+                if (!item) {
+                    // Clear selection when user clears the lookup
+                    if (selectedIdInput) selectedIdInput.value = '';
+                    return;
+                }
+
+                // Set hidden selected product id for backend mapping flow
+                if (selectedIdInput && item.id != null) selectedIdInput.value = String(item.id);
 
                 // Populate main fields
                 if (nameInput && item.name) nameInput.value = String(item.name);

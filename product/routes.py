@@ -85,13 +85,17 @@ def list_products(current_agency_id=None):
         elif user_role != 'super_admin':
             mapping = ProductAgency.query.filter_by(product_id=product.id, agency_id=current_agency_id).first()
         # Compose effective fields
+        effective_buy = mapping.buy_price if mapping and mapping.buy_price is not None else product.buy_price
         effective_sell = mapping.sell_price if mapping and mapping.sell_price is not None else product.sell_price
+        effective_mrp = mapping.mrp_price if mapping and mapping.mrp_price is not None else product.mrp_price
         effective_category = mapping.category_ref if mapping and mapping.category_id else product.category_ref
         effective_active = mapping.is_active if mapping else True
         rows.append({
             'product': product,
             'mapping': mapping,
+            'effective_buy_price': effective_buy,
             'effective_sell_price': effective_sell,
+            'effective_mrp_price': effective_mrp,
             'effective_category': effective_category,
             'effective_active': effective_active
         })
@@ -139,9 +143,55 @@ def create_product():
         if user_role != 'super_admin':
             agency_id = current_agency_id
         
-        # Check if SKU already exists (global unique)
+        # If a master product was selected from search, map it to the agency and skip SKU duplication
+        selected_product_id = request.form.get('selected_product_id')
+        if selected_product_id:
+            try:
+                selected_id = int(selected_product_id)
+            except (TypeError, ValueError):
+                flash('Invalid selected product.', 'error')
+                return render_template('product/form.html', agencies=get_agencies_for_user())
+
+            existing_product = Product.query.get(selected_id)
+            if not existing_product:
+                flash('Selected product not found.', 'error')
+                return render_template('product/form.html', agencies=get_agencies_for_user())
+
+            # Determine target agency for mapping
+            target_agency_id = None
+            if user_role == 'super_admin':
+                target_agency_id = int(agency_id) if agency_id else None
+            else:
+                target_agency_id = int(current_agency_id) if current_agency_id else None
+
+            if target_agency_id:
+                # Ensure mapping exists or reactivate if previously inactive
+                mapping = ProductAgency.query.filter_by(product_id=existing_product.id, agency_id=target_agency_id).first()
+                if mapping:
+                    if not mapping.is_active:
+                        mapping.is_active = True
+                else:
+                    mapping = ProductAgency(
+                        product_id=existing_product.id,
+                        agency_id=target_agency_id,
+                        sell_price=None,
+                        category_id=None,
+                        uom_id=None,
+                        tax_master_id=None,
+                        is_active=True
+                    )
+                    db.session.add(mapping)
+                db.session.commit()
+                flash('Existing product mapped to the agency.', 'success')
+                return redirect(url_for('product.list_products'))
+            else:
+                # No agency chosen by super admin; cannot map automatically
+                flash('Select an agency to map the existing product, or create without selecting.', 'error')
+                return render_template('product/form.html', agencies=get_agencies_for_user())
+
+        # No selection => creating a new product: enforce global SKU uniqueness
         if Product.query.filter_by(sku=sku).first():
-            flash('SKU already exists', 'error')
+            flash('SKU already exists. Please use search to select the existing product instead of creating a duplicate.', 'error')
             return render_template('product/form.html', agencies=get_agencies_for_user())
         
         try:
@@ -169,10 +219,7 @@ def create_product():
             is_active=True
         )
         
-        # Sync legacy fields for backward compatibility
-        product.price = sell_price
-        product.cost = buy_price
-        
+        # Legacy fields removed (price/cost no longer stored on Product)
         db.session.add(product)
         db.session.flush()  # to get product.id
         
