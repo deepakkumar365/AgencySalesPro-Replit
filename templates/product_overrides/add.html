@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Add Product to Agency - AgencySales Pro{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h4 class="mb-0"><i class="fas fa-box me-2"></i>Add Product to Agency</h4>
+        <a href="{{ url_for('product_overrides.list_overrides', agency=selected_agency_id) }}" class="btn btn-secondary">Back</a>
+      </div>
+      <div class="card-body">
+        {% if session.role == 'super_admin' %}
+        <form method="GET" class="mb-3">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-6">
+              <label class="form-label">Agency</label>
+              <select name="agency" class="form-select" onchange="this.form.submit()">
+                <option value="">Select Agency</option>
+                {% for a in agencies %}
+                <option value="{{ a.id }}" {{ 'selected' if selected_agency_id and (selected_agency_id|int == a.id) else '' }}>{{ a.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <small class="text-muted">Choose an agency before mapping a product</small>
+            </div>
+          </div>
+        </form>
+        {% endif %}
+
+        {% if session.role == 'super_admin' and not selected_agency_id %}
+          <div class="alert alert-info">Please select an agency to continue.</div>
+        {% else %}
+        <form method="POST">
+          <div class="row g-3">
+            {% if session.role == 'super_admin' %}
+            <div class="col-md-12">
+              <label class="form-label">Agency</label>
+              <select name="agency_id" class="form-select" required>
+                {% for a in agencies %}
+                <option value="{{ a.id }}" {{ 'selected' if selected_agency_id and (selected_agency_id|int == a.id) else '' }}>{{ a.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+
+            <div class="col-md-12">
+              <label for="override_product_lookup" class="form-label mb-1">Search Existing Products</label>
+              <select id="override_product_lookup" class="form-select" placeholder="Type name or SKU to search"></select>
+              <input type="hidden" id="selected_product_id" name="selected_product_id" value="">
+              <div class="form-text">Selecting will map the product to the agency. If already mapped, you'll be redirected to edit overrides.</div>
+            </div>
+          </div>
+
+          <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+            <a href="{{ url_for('product_overrides.list_overrides', agency=selected_agency_id) }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-link me-2"></i>Map Product
+            </button>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const lookup = document.getElementById('override_product_lookup');
+  if (!lookup) return;
+  const ts = new TomSelect(lookup, {
+    valueField: 'id',
+    labelField: 'display_text',
+    searchField: ['name','sku','display_text'],
+    maxOptions: 50,
+    create: false,
+    preload: false,
+    allowEmptyOption: true,
+    placeholder: 'Type name or SKU to search',
+    load: function(query, callback) {
+      if (!query || query.length < 2) return callback();
+      fetch(`/order/api/search-products?q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(items => callback(items))
+        .catch(() => callback());
+    },
+    render: {
+      option: function(item, escape) { return `<div>${escape(item.display_text)}</div>`; },
+      item: function(item, escape) { return `<div>${escape(item.display_text)}</div>`; }
+    },
+    onChange: function(value) {
+      const item = this.options[value];
+      const hidden = document.getElementById('selected_product_id');
+      if (!item) { if (hidden) hidden.value = ''; return; }
+      if (hidden && item.id != null) hidden.value = String(item.id);
+    }
+  });
+});
+</script>
+{% endblock %}

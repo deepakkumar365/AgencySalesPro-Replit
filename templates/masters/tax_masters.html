@@ -45,7 +45,7 @@
                             </td>
                             <td>{{ tax_master.description or '-' }}</td>
                             <td>
-                                <small class="text-muted">
+                                <small>
                                     {{ tax_master.created_at.strftime('%Y-%m-%d') if tax_master.created_at else '-' }}
                                 </small>
                             </td>
@@ -69,9 +69,9 @@
     </div>
     {% else %}
     <div class="text-center py-5">
-        <i class="fas fa-percent fa-3x text-muted mb-3"></i>
-        <h4 class="text-muted">No Tax Masters Found</h4>
-        <p class="text-muted">Start by creating your first tax master.</p>
+        <i class="fas fa-percent fa-3x mb-3"></i>
+        <h4>No Tax Masters Found</h4>
+        <p>Start by creating your first tax master.</p>
         <a href="{{ url_for('masters.create_tax_master') }}" class="btn btn-primary">
             <i class="fas fa-plus me-1"></i>Add First Tax Master
         </a>

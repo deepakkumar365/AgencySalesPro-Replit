@@ -29,14 +29,10 @@ def index():
     user_role = session.get('role')
     agency_id = session.get('agency_id')
     
-    if user_role == 'super_admin':
-        categories = Category.query.filter_by(is_active=True).count()
-        uoms = UOM.query.filter_by(is_active=True).count()
-        tax_masters = TaxMaster.query.filter_by(is_active=True).count()
-    else:
-        categories = Category.query.filter_by(agency_id=agency_id, is_active=True).count()
-        uoms = UOM.query.filter_by(agency_id=agency_id, is_active=True).count()
-        tax_masters = TaxMaster.query.filter_by(agency_id=agency_id, is_active=True).count()
+    # Global masters: counts are not agency-specific
+    categories = Category.query.filter_by(is_active=True).count()
+    uoms = UOM.query.filter_by(is_active=True).count()
+    tax_masters = TaxMaster.query.filter_by(is_active=True).count()
     
     return render_template('masters/dashboard.html', 
                          categories=categories, 
@@ -51,10 +47,8 @@ def categories():
     user_role = session.get('role')
     agency_id = session.get('agency_id')
     
-    if user_role == 'super_admin':
-        categories = Category.query.filter_by(is_active=True).all()
-    else:
-        categories = Category.query.filter_by(agency_id=agency_id, is_active=True).all()
+    # Global masters
+    categories = Category.query.filter_by(is_active=True).all()
     
     return render_template('masters/categories.html', categories=categories)
 
@@ -66,16 +60,13 @@ def create_category():
     if request.method == 'POST':
         name = request.form.get('name')
         description = request.form.get('description')
-        agency_id = session.get('agency_id')
-        
         if not name:
             flash('Category name is required', 'error')
             return render_template('masters/category_form.html')
         
         category = Category(
             name=name,
-            description=description,
-            agency_id=agency_id
+            description=description
         )
         
         try:
@@ -97,10 +88,8 @@ def uoms():
     user_role = session.get('role')
     agency_id = session.get('agency_id')
     
-    if user_role == 'super_admin':
-        uoms = UOM.query.filter_by(is_active=True).all()
-    else:
-        uoms = UOM.query.filter_by(agency_id=agency_id, is_active=True).all()
+    # Global masters
+    uoms = UOM.query.filter_by(is_active=True).all()
     
     return render_template('masters/uoms.html', uoms=uoms)
 
@@ -113,8 +102,6 @@ def create_uom():
         name = request.form.get('name')
         short_name = request.form.get('short_name')
         description = request.form.get('description')
-        agency_id = session.get('agency_id')
-        
         if not name or not short_name:
             flash('UOM name and short name are required', 'error')
             return render_template('masters/uom_form.html')
@@ -122,8 +109,7 @@ def create_uom():
         uom = UOM(
             name=name,
             short_name=short_name,
-            description=description,
-            agency_id=agency_id
+            description=description
         )
         
         try:
@@ -145,10 +131,8 @@ def tax_masters():
     user_role = session.get('role')
     agency_id = session.get('agency_id')
     
-    if user_role == 'super_admin':
-        tax_masters = TaxMaster.query.filter_by(is_active=True).all()
-    else:
-        tax_masters = TaxMaster.query.filter_by(agency_id=agency_id, is_active=True).all()
+    # Global masters
+    tax_masters = TaxMaster.query.filter_by(is_active=True).all()
     
     return render_template('masters/tax_masters.html', tax_masters=tax_masters)
 
@@ -162,8 +146,6 @@ def create_tax_master():
         tax_code = request.form.get('tax_code')
         tax_rate = request.form.get('tax_rate')
         description = request.form.get('description')
-        agency_id = session.get('agency_id')
-        
         if not name or not tax_code or not tax_rate:
             flash('Name, tax code and tax rate are required', 'error')
             return render_template('masters/tax_master_form.html')
@@ -172,8 +154,7 @@ def create_tax_master():
             name=name,
             tax_code=tax_code,
             tax_rate=float(tax_rate),
-            description=description,
-            agency_id=agency_id
+            description=description
         )
         
         try:
@@ -195,10 +176,8 @@ def api_categories():
     user_role = session.get('role')
     agency_id = session.get('agency_id')
     
-    if user_role == 'super_admin':
-        categories = Category.query.filter_by(is_active=True).all()
-    else:
-        categories = Category.query.filter_by(agency_id=agency_id, is_active=True).all()
+    # Global masters
+    categories = Category.query.filter_by(is_active=True).all()
     
     return jsonify([{
         'id': c.id,
@@ -213,10 +192,8 @@ def api_uoms():
     user_role = session.get('role')
     agency_id = session.get('agency_id')
     
-    if user_role == 'super_admin':
-        uoms = UOM.query.filter_by(is_active=True).all()
-    else:
-        uoms = UOM.query.filter_by(agency_id=agency_id, is_active=True).all()
+    # Global masters
+    uoms = UOM.query.filter_by(is_active=True).all()
     
     return jsonify([{
         'id': u.id,
@@ -232,10 +209,8 @@ def api_tax_masters():
     user_role = session.get('role')
     agency_id = session.get('agency_id')
     
-    if user_role == 'super_admin':
-        tax_masters = TaxMaster.query.filter_by(is_active=True).all()
-    else:
-        tax_masters = TaxMaster.query.filter_by(agency_id=agency_id, is_active=True).all()
+    # Global masters
+    tax_masters = TaxMaster.query.filter_by(is_active=True).all()
     
     return jsonify([{
         'id': t.id,

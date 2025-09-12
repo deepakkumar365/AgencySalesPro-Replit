@@ -22,7 +22,8 @@ def dashboard(current_agency_id=None):
     if user_role == 'super_admin':
         base_query = Product.query
     else:
-        base_query = Product.query.filter_by(agency_id=current_agency_id)
+        from models import ProductAgency
+        base_query = db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id).filter(ProductAgency.agency_id == current_agency_id)
     
     # Stock level analysis (disabled - stock tracking removed)
     total_products = base_query.filter_by(is_active=True).count()
@@ -39,8 +40,9 @@ def dashboard(current_agency_id=None):
             InventoryTransaction.created_at.desc()
         ).limit(10).all()
     else:
-        recent_transactions = InventoryTransaction.query.join(Product).filter(
-            Product.agency_id == current_agency_id
+        from models import ProductAgency
+        recent_transactions = InventoryTransaction.query.join(Product).join(ProductAgency).filter(
+            ProductAgency.agency_id == current_agency_id
         ).order_by(InventoryTransaction.created_at.desc()).limit(10).all()
     
     # Stock movement trends (last 30 days)
@@ -50,8 +52,9 @@ def dashboard(current_agency_id=None):
             InventoryTransaction.created_at >= thirty_days_ago
         ).all()
     else:
-        movement_transactions = InventoryTransaction.query.join(Product).filter(
-            Product.agency_id == current_agency_id,
+        from models import ProductAgency
+        movement_transactions = InventoryTransaction.query.join(Product).join(ProductAgency).filter(
+            ProductAgency.agency_id == current_agency_id,
             InventoryTransaction.created_at >= thirty_days_ago
         ).all()
     
@@ -89,7 +92,9 @@ def stock_levels(current_agency_id=None):
     if user_role == 'super_admin':
         query = Product.query.filter_by(is_active=True)
     else:
-        query = Product.query.filter_by(agency_id=current_agency_id, is_active=True)
+        from models import ProductAgency
+        query = db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id)\
+            .filter(ProductAgency.agency_id == current_agency_id, Product.is_active == True)
     
     # Apply filters
     if category:
@@ -120,10 +125,7 @@ def stock_levels(current_agency_id=None):
     
     # Get unique categories for filter from Category table
     from models import Category
-    if user_role == 'super_admin':
-        categories = Category.query.filter_by(is_active=True).all()
-    else:
-        categories = Category.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+    categories = Category.query.filter_by(is_active=True).all()
     
     return render_template('inventory/stock_levels.html',
                          products=products,
@@ -147,7 +149,9 @@ def adjust_stock(product_id, current_agency_id=None):
     if user_role == 'super_admin':
         product = Product.query.get_or_404(product_id)
     else:
-        product = Product.query.filter_by(id=product_id, agency_id=current_agency_id).first_or_404()
+        from models import ProductAgency
+        product = db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id)\
+            .filter(Product.id == product_id, ProductAgency.agency_id == current_agency_id).first_or_404()
     
     if request.method == 'POST':
         try:
@@ -208,8 +212,9 @@ def transaction_history(current_agency_id=None):
     if user_role == 'super_admin':
         query = InventoryTransaction.query
     else:
-        query = InventoryTransaction.query.join(Product).filter(
-            Product.agency_id == current_agency_id
+        from models import ProductAgency
+        query = InventoryTransaction.query.join(Product).join(ProductAgency).filter(
+            ProductAgency.agency_id == current_agency_id
         )
     
     # Apply filters
@@ -245,7 +250,8 @@ def transaction_history(current_agency_id=None):
     if user_role == 'super_admin':
         products = Product.query.filter_by(is_active=True).all()
     else:
-        products = Product.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+        from models import ProductAgency
+        products = db.session.query(Product).join(ProductAgency).filter(ProductAgency.agency_id == current_agency_id, Product.is_active == True).all()
     
     return render_template('inventory/transactions.html',
                          transactions=transactions,
@@ -354,9 +360,11 @@ def reports(current_agency_id=None):
         product_query = Product.query.filter_by(is_active=True)
         transaction_query = InventoryTransaction.query
     else:
-        product_query = Product.query.filter_by(agency_id=current_agency_id, is_active=True)
-        transaction_query = InventoryTransaction.query.join(Product).filter(
-            Product.agency_id == current_agency_id
+        from models import ProductAgency
+        product_query = db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id)\
+            .filter(ProductAgency.agency_id == current_agency_id, Product.is_active == True)
+        transaction_query = InventoryTransaction.query.join(Product).join(ProductAgency).filter(
+            ProductAgency.agency_id == current_agency_id
         )
     
     # Stock level analysis

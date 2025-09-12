@@ -14,10 +14,16 @@
             <div class="card-body">
                 <form method="POST">
                     <div class="row">
+                        <div class="mt-2">
+                            <label for="product_lookup" class="form-label mb-1">Search Existing Products</label>
+                            <select id="product_lookup" class="form-select" placeholder="Type name or SKU to search"></select>
+                            <input type="hidden" id="selected_product_id" name="selected_product_id" value="">
+                            <div class="form-text">Selecting will auto-fill fields; you can still edit.</div>
+                        </div>
                         <div class="col-md-8 mb-3">
                             <label for="name" class="form-label">Product Name *</label>
                             <input type="text" class="form-control" id="name" name="name" 
-                                   value="{{ product.name if product else '' }}" required>
+                                   value="{{ product.name if product else '' }}" autocomplete="off" required>
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="sku" class="form-label">SKU *</label>
@@ -104,16 +110,16 @@
                     
                     {% if session.role == 'super_admin' %}
                     <div class="mb-3">
-                        <label for="agency_id" class="form-label">Agency *</label>
-                        <select class="form-select" id="agency_id" name="agency_id" required>
+                        <label for="agency_id" class="form-label">Create Mapping For Agency (optional)</label>
+                        <select class="form-select" id="agency_id" name="agency_id">
                             <option value="">Select Agency</option>
                             {% for agency in agencies %}
-                            <option value="{{ agency.id }}" 
-                                    {{ 'selected' if product and product.agency_id == agency.id else '' }}>
+                            <option value="{{ agency.id }}">
                                 {{ agency.name }}
                             </option>
                             {% endfor %}
                         </select>
+                        <div class="form-text">If selected, an initial product-agency mapping will be created. You can add mappings later.</div>
                     </div>
                     {% endif %}
                     
@@ -150,6 +156,134 @@ document.addEventListener('DOMContentLoaded', function() {
     // Calculate margin when fields change
     document.getElementById('buy_price').addEventListener('input', calculateMargin);
     document.getElementById('sell_price').addEventListener('input', calculateMargin);
+
+    // Basic submit validation
+    const formEl = document.querySelector('form[method="POST"]');
+    if (formEl) {
+        formEl.addEventListener('submit', function(e) {
+            const name = (document.getElementById('name')?.value || '').trim();
+            const sku = (document.getElementById('sku')?.value || '').trim();
+            const buy = parseFloat(document.getElementById('buy_price')?.value || '0');
+            const sell = parseFloat(document.getElementById('sell_price')?.value || '0');
+            const mrp = parseFloat(document.getElementById('mrp_price')?.value || '0');
+
+            if (!name || !sku || buy <= 0 || sell <= 0 || mrp <= 0) {
+                e.preventDefault();
+                alert('Please ensure Name, SKU, Buy Price, Sell Price, and MRP are filled with valid values (> 0).');
+                return false;
+            }
+
+            if (sell > mrp) {
+                // Allow but warn; remove if you want to block
+                if (!confirm('Sell Price is greater than MRP. Continue?')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
+    }
+
+    // Product lookup with Tom Select (replaces datalist)
+    const nameInput = document.getElementById('name');
+    const productLookup = document.getElementById('product_lookup');
+
+    if (productLookup) {
+        const ts = new TomSelect(productLookup, {
+            valueField: 'id',
+            labelField: 'display_text',
+            searchField: ['name','sku','display_text'],
+            maxOptions: 50,
+            create: false,
+            preload: false,
+            allowEmptyOption: true,
+            placeholder: 'Type name or SKU to search',
+            load: function(query, callback) {
+                if (!query || query.length < 2) return callback();
+                fetch(`/order/api/search-products?q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(items => callback(items))
+                    .catch(() => callback());
+            },
+            render: {
+                option: function(item, escape) {
+                    return `<div>${escape(item.display_text)}</div>`;
+                },
+                item: function(item, escape) {
+                    return `<div>${escape(item.display_text)}</div>`;
+                }
+            },
+            onChange: function(value) {
+                const item = this.options[value];
+                const selectedIdInput = document.getElementById('selected_product_id');
+
+                if (!item) {
+                    // Clear selection when user clears the lookup
+                    if (selectedIdInput) selectedIdInput.value = '';
+                    return;
+                }
+
+                // Set hidden selected product id for backend mapping flow
+                if (selectedIdInput && item.id != null) selectedIdInput.value = String(item.id);
+
+                // Populate main fields
+                if (nameInput && item.name) nameInput.value = String(item.name);
+                const skuEl = document.getElementById('sku');
+                const sellPriceEl = document.getElementById('sell_price');
+                const buyPriceEl = document.getElementById('buy_price');
+                const mrpEl = document.getElementById('mrp_price');
+                const uomSel = document.getElementById('uom_id');
+                const catSel = document.getElementById('category_id');
+                const taxSel = document.getElementById('tax_master_id');
+
+                if (skuEl && item.sku) skuEl.value = String(item.sku).toUpperCase();
+                if (sellPriceEl && item.price != null) sellPriceEl.value = Number(item.price).toFixed(2);
+                if (buyPriceEl && item.buy_price != null) buyPriceEl.value = Number(item.buy_price).toFixed(2);
+                if (mrpEl && item.mrp_price != null) mrpEl.value = Number(item.mrp_price).toFixed(2);
+
+                if (catSel) {
+                    if (item.category_id != null) {
+                        catSel.value = String(item.category_id);
+                    } else if (item.category) {
+                        const wanted = String(item.category).toLowerCase();
+                        const opt = Array.from(catSel.options).find(o => o.textContent.toLowerCase().includes(wanted));
+                        if (opt) catSel.value = opt.value;
+                    }
+                }
+
+                if (uomSel) {
+                    if (item.uom_id != null) {
+                        uomSel.value = String(item.uom_id);
+                    } else if (item.uom) {
+                        const wanted = String(item.uom).toLowerCase();
+                        const opt = Array.from(uomSel.options).find(o => o.textContent.toLowerCase().includes(wanted));
+                        if (opt) uomSel.value = opt.value;
+                    }
+                }
+                // Try to map tax by id first, then code, then rate
+                if (taxSel) {
+                    let set = false;
+                    if (item.tax_master_id != null) {
+                        taxSel.value = String(item.tax_master_id);
+                        set = true;
+                    }
+                    if (!set && item.tax_code) {
+                        const optByCode = Array.from(taxSel.options).find(o => o.textContent.includes(item.tax_code));
+                        if (optByCode) { taxSel.value = optByCode.value; set = true; }
+                    }
+                    if (!set && (item.tax_rate != null)) {
+                        const rate = Number(item.tax_rate);
+                        const optByRate = Array.from(taxSel.options).find(o => {
+                            const m = o.textContent.match(/(\d+(?:\.\d+)?)%/);
+                            return m && Math.abs(parseFloat(m[1]) - rate) < 0.01;
+                        });
+                        if (optByRate) { taxSel.value = optByRate.value; set = true; }
+                    }
+                }
+
+                if (typeof calculateMargin === 'function') calculateMargin();
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

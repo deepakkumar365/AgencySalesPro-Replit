@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from app import db
 from models import (
-    Order, Product, Customer, Invoice, Payment, InventoryTransaction,
+    Order, Product, ProductAgency, Customer, Invoice, Payment, InventoryTransaction,
     User, Agency, Location
 )
 from reports import reports_bp
@@ -30,10 +30,11 @@ def unified_dashboard(current_agency_id=None):
         transaction_query = InventoryTransaction.query
     else:
         order_query = Order.query.filter_by(agency_id=current_agency_id)
-        product_query = Product.query.filter_by(agency_id=current_agency_id)
+        product_query = db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id)\
+            .filter(ProductAgency.agency_id == current_agency_id)
         invoice_query = Invoice.query.filter_by(agency_id=current_agency_id)
         payment_query = Payment.query.join(Invoice).filter(Invoice.agency_id == current_agency_id)
-        transaction_query = InventoryTransaction.query.join(Product).filter(Product.agency_id == current_agency_id)
+        transaction_query = InventoryTransaction.query.join(Product).join(ProductAgency).filter(ProductAgency.agency_id == current_agency_id)
     
     # Sales Performance (30 days)
     period_orders = order_query.filter(
