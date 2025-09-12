@@ -36,69 +36,75 @@
 <!-- Filters -->
 <div class="row mb-4">
     <div class="col-12">
+        {% set has_filters = filters.date_from or filters.date_to or filters.agency or filters.location or filters.status %}
         <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">
                     <i class="fas fa-filter me-2"></i>Filters
                 </h6>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#customerFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}" aria-controls="customerFilters">
+                    <i class="fas fa-sliders-h me-1"></i> Toggle
+                </button>
             </div>
-            <div class="card-body">
-                <form method="GET" class="row g-3">
-                    <div class="col-md-3">
-                        <label for="date_from" class="form-label">Date From</label>
-                        <input type="date" class="form-control" id="date_from" name="date_from" value="{{ filters.date_from or '' }}">
-                    </div>
-                    <div class="col-md-3">
-                        <label for="date_to" class="form-label">Date To</label>
-                        <input type="date" class="form-control" id="date_to" name="date_to" value="{{ filters.date_to or '' }}">
-                    </div>
-                    
-                    {% if session.role == 'super_admin' and agencies %}
-                    <div class="col-md-3">
-                        <label for="agency" class="form-label">Agency</label>
-                        <select class="form-select" id="agency" name="agency">
-                            <option value="">All Agencies</option>
-                            {% for agency in agencies %}
-                            <option value="{{ agency.id }}" {{ 'selected' if filters.agency == agency.id|string else '' }}>
-                                {{ agency.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    {% endif %}
-                    
-                    <div class="col-md-3">
-                        <label for="location" class="form-label">Location</label>
-                        <select class="form-select" id="location" name="location">
-                            <option value="">All Locations</option>
-                            {% for location in locations %}
-                            <option value="{{ location.id }}" {{ 'selected' if filters.location == location.id|string else '' }}>
-                                {{ location.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="col-md-3">
-                        <label for="status" class="form-label">Status</label>
-                        <select class="form-select" id="status" name="status">
-                            <option value="">All Status</option>
-                            <option value="active" {{ 'selected' if filters.status == 'active' else '' }}>Active</option>
-                            <option value="inactive" {{ 'selected' if filters.status == 'inactive' else '' }}>Inactive</option>
-                        </select>
-                    </div>
-                    
-                    <div class="col-md-3 d-flex align-items-end">
-                        <div class="btn-group w-100">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-search me-1"></i>Filter
-                            </button>
-                            <a href="{{ url_for('customer.list_customers') }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-times me-1"></i>Clear
-                            </a>
+            <div id="customerFilters" class="collapse {{ 'show' if has_filters else '' }}">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="date_from" class="form-label">Date From</label>
+                            <input type="date" class="form-control" id="date_from" name="date_from" value="{{ filters.date_from or '' }}">
                         </div>
-                    </div>
-                </form>
+                        <div class="col-md-3">
+                            <label for="date_to" class="form-label">Date To</label>
+                            <input type="date" class="form-control" id="date_to" name="date_to" value="{{ filters.date_to or '' }}">
+                        </div>
+                        
+                        {% if session.role == 'super_admin' and agencies %}
+                        <div class="col-md-3">
+                            <label for="agency" class="form-label">Agency</label>
+                            <select class="form-select" id="agency" name="agency">
+                                <option value="">All Agencies</option>
+                                {% for agency in agencies %}
+                                <option value="{{ agency.id }}" {{ 'selected' if filters.agency == agency.id|string else '' }}>
+                                    {{ agency.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="col-md-3">
+                            <label for="location" class="form-label">Location</label>
+                            <select class="form-select" id="location" name="location">
+                                <option value="">All Locations</option>
+                                {% for location in locations %}
+                                <option value="{{ location.id }}" {{ 'selected' if filters.location == location.id|string else '' }}>
+                                    {{ location.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">All Status</option>
+                                <option value="active" {{ 'selected' if filters.status == 'active' else '' }}>Active</option>
+                                <option value="inactive" {{ 'selected' if filters.status == 'inactive' else '' }}>Inactive</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="btn-group w-100">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search me-1"></i>Filter
+                                </button>
+                                <a href="{{ url_for('customer.list_customers') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-1"></i>Clear
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

@@ -26,6 +26,68 @@ def list_overrides(current_agency_id=None):
     agencies = Agency.query.all() if user_role == 'super_admin' else Agency.query.filter_by(id=current_agency_id).all()
     return render_template('product_overrides/list.html', rows=rows, agencies=agencies, current_filters={'agency': agency_id, 'search': search})
 
+@overrides_bp.route('/add', methods=['GET', 'POST'])
+@login_required
+@agency_access_required
+@log_activity('add_product_override')
+def add_override(current_agency_id=None):
+    """Add a product mapping to an agency, then redirect to edit overrides"""
+    user_role = session.get('role')
+    # For super_admin allow agency selection; for others use current agency
+    selected_agency_id = request.values.get('agency') if user_role == 'super_admin' else current_agency_id
+
+    if request.method == 'POST':
+        agency_id = int(request.form.get('agency_id')) if user_role == 'super_admin' else current_agency_id
+        selected_product_id = request.form.get('selected_product_id')
+        product_id = selected_product_id or request.form.get('product_id')
+        if not agency_id:
+            flash('Please select an agency.', 'error')
+            return redirect(url_for('product_overrides.add_override', agency=selected_agency_id))
+        if not product_id:
+            flash('Please select a product.', 'error')
+            return redirect(url_for('product_overrides.add_override', agency=agency_id))
+        try:
+            product_id = int(product_id)
+        except (TypeError, ValueError):
+            flash('Invalid product selected.', 'error')
+            return redirect(url_for('product_overrides.add_override', agency=agency_id))
+
+        product = Product.query.get(product_id)
+        if not product:
+            flash('Invalid product selected.', 'error')
+            return redirect(url_for('product_overrides.add_override', agency=agency_id))
+
+        mapping = ProductAgency.query.filter_by(product_id=product.id, agency_id=agency_id).first()
+        if mapping:
+            # Reactivate if needed and go to edit
+            if not mapping.is_active:
+                mapping.is_active = True
+                db.session.commit()
+            flash('Product is already mapped to this agency. You can edit its overrides now.', 'info')
+            return redirect(url_for('product_overrides.edit_override', product_id=product.id, agency=agency_id))
+
+        # Create mapping
+        mapping = ProductAgency(product_id=product.id, agency_id=agency_id, is_active=True)
+        db.session.add(mapping)
+        db.session.commit()
+        flash('Product added to agency successfully. You can now set overrides.', 'success')
+        return redirect(url_for('product_overrides.edit_override', product_id=product.id, agency=agency_id))
+
+    # GET -> show selection form
+    agencies = Agency.query.all() if user_role == 'super_admin' else Agency.query.filter_by(id=current_agency_id).all()
+
+    # If super_admin hasn’t selected an agency yet, show a minimal page to pick one
+    products = []
+    if selected_agency_id:
+        # Products not yet mapped to the selected agency (or inactive mapping allowed to re-add via POST)
+        from sqlalchemy import and_
+        products = db.session.query(Product).outerjoin(
+            ProductAgency,
+            and_(ProductAgency.product_id == Product.id, ProductAgency.agency_id == int(selected_agency_id))
+        ).filter(Product.is_active == True, ProductAgency.id.is_(None)).order_by(Product.name).limit(200).all()
+
+    return render_template('product_overrides/add.html', agencies=agencies, selected_agency_id=selected_agency_id, products=products)
+
 @overrides_bp.route('/<int:product_id>/edit', methods=['GET', 'POST'])
 @login_required
 @agency_access_required

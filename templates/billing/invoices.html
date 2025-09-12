@@ -11,61 +11,67 @@
 </div>
 
 <!-- Filters -->
+{% set has_filters = current_filters.status or current_filters.customer_id or current_filters.start_date or current_filters.end_date %}
 <div class="card mb-4">
-    <div class="card-header">
+    <div class="card-header d-flex justify-content-between align-items-center">
         <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filters</h6>
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#billingFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}" aria-controls="billingFilters">
+            <i class="fas fa-sliders-h me-1"></i> Toggle
+        </button>
     </div>
-    <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-2">
-                <label for="status" class="form-label">Status</label>
-                <select id="status" name="status" class="form-select">
-                    <option value="">All Statuses</option>
-                    <option value="pending" {{ 'selected' if current_filters.status == 'pending' }}>Pending</option>
-                    <option value="paid" {{ 'selected' if current_filters.status == 'paid' }}>Paid</option>
-                    <option value="partial" {{ 'selected' if current_filters.status == 'partial' }}>Partial</option>
-                    <option value="overdue" {{ 'selected' if current_filters.status == 'overdue' }}>Overdue</option>
-                    <option value="cancelled" {{ 'selected' if current_filters.status == 'cancelled' }}>Cancelled</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label for="customer_id" class="form-label">Customer</label>
-                <select id="customer_id" name="customer_id" class="form-select">
-                    <option value="">All Customers</option>
-                    {% for customer in customers %}
-                    <option value="{{ customer.id }}" {{ 'selected' if current_filters.customer_id == customer.id|string }}>
-                        {{ customer.name }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label for="start_date" class="form-label">Start Date</label>
-                <input type="date" id="start_date" name="start_date" class="form-control" 
-                       value="{{ current_filters.start_date or '' }}">
-            </div>
-            <div class="col-md-2">
-                <label for="end_date" class="form-label">End Date</label>
-                <input type="date" id="end_date" name="end_date" class="form-control" 
-                       value="{{ current_filters.end_date or '' }}">
-            </div>
-            <div class="col-md-1">
-                <label class="form-label">&nbsp;</label>
-                <div class="d-grid">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search"></i>
-                    </button>
+    <div id="billingFilters" class="collapse {{ 'show' if has_filters else '' }}">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-2">
+                    <label for="status" class="form-label">Status</label>
+                    <select id="status" name="status" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="pending" {{ 'selected' if current_filters.status == 'pending' }}>Pending</option>
+                        <option value="paid" {{ 'selected' if current_filters.status == 'paid' }}>Paid</option>
+                        <option value="partial" {{ 'selected' if current_filters.status == 'partial' }}>Partial</option>
+                        <option value="overdue" {{ 'selected' if current_filters.status == 'overdue' }}>Overdue</option>
+                        <option value="cancelled" {{ 'selected' if current_filters.status == 'cancelled' }}>Cancelled</option>
+                    </select>
                 </div>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">&nbsp;</label>
-                <div class="d-grid">
-                    <a href="{{ url_for('billing.list_invoices') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-times me-1"></i>Clear
-                    </a>
+                <div class="col-md-3">
+                    <label for="customer_id" class="form-label">Customer</label>
+                    <select id="customer_id" name="customer_id" class="form-select">
+                        <option value="">All Customers</option>
+                        {% for customer in customers %}
+                        <option value="{{ customer.id }}" {{ 'selected' if current_filters.customer_id == customer.id|string }}>
+                            {{ customer.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
                 </div>
-            </div>
-        </form>
+                <div class="col-md-2">
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input type="date" id="start_date" name="start_date" class="form-control" 
+                           value="{{ current_filters.start_date or '' }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="end_date" class="form-label">End Date</label>
+                    <input type="date" id="end_date" name="end_date" class="form-control" 
+                           value="{{ current_filters.end_date or '' }}">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <a href="{{ url_for('billing.list_invoices') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>Clear
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
