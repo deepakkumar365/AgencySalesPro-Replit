@@ -4,27 +4,76 @@ from auth.utils import login_required, agency_access_required
 from utils.decorators import log_activity
 from product_overrides import overrides_bp
 from models import Product, ProductAgency, Agency, Category, UOM, TaxMaster
+from sqlalchemy import func, or_, and_
 
 @overrides_bp.route('/')
 @login_required
 @agency_access_required
 def list_overrides(current_agency_id=None):
     user_role = session.get('role')
-    # Agency admin/staff: fixed to their agency; super_admin: choose agency via filter
-    agency_id = request.args.get('agency') if user_role == 'super_admin' else current_agency_id
+    # Build filters (super_admin can choose agency; others are fixed)
+    filters = {
+        'agency': request.args.get('agency') if user_role == 'super_admin' else current_agency_id,
+        'search': (request.args.get('search') or '').strip(),
+        'category': request.args.get('category') or '',
+        'status': request.args.get('status') or '',
+        'date_from': request.args.get('date_from') or '',
+        'date_to': request.args.get('date_to') or ''
+    }
 
     query = db.session.query(Product, ProductAgency).join(ProductAgency, ProductAgency.product_id == Product.id)
-    if agency_id:
-        query = query.filter(ProductAgency.agency_id == agency_id)
 
-    search = request.args.get('search', '').strip()
-    if search:
-        query = query.filter(db.or_(Product.name.ilike(f'%{search}%'), Product.sku.ilike(f'%{search}%')))
+    # Agency filter
+    if filters['agency']:
+        query = query.filter(ProductAgency.agency_id == filters['agency'])
+
+    # Search by name or SKU
+    if filters['search']:
+        s = f"%{filters['search']}%"
+        query = query.filter(or_(Product.name.ilike(s), Product.sku.ilike(s)))
+
+    # Category filter (effective category: override or product default)
+    if filters['category']:
+        try:
+            cat_id = int(filters['category'])
+            query = query.filter(func.coalesce(ProductAgency.category_id, Product.category_id) == cat_id)
+        except (TypeError, ValueError):
+            pass
+
+    # Status filter (mapping active/inactive)
+    if filters['status'] == 'active':
+        query = query.filter(ProductAgency.is_active.is_(True))
+    elif filters['status'] == 'inactive':
+        query = query.filter(ProductAgency.is_active.is_(False))
+
+    # Date range on mapping creation date
+    from datetime import datetime, timedelta
+    if filters['date_from']:
+        try:
+            dt_from = datetime.strptime(filters['date_from'], '%Y-%m-%d')
+            query = query.filter(ProductAgency.created_at >= dt_from)
+        except ValueError:
+            pass
+    if filters['date_to']:
+        try:
+            dt_to = datetime.strptime(filters['date_to'], '%Y-%m-%d') + timedelta(days=1)
+            query = query.filter(ProductAgency.created_at < dt_to)
+        except ValueError:
+            pass
 
     rows = query.order_by(Product.created_at.desc()).all()
 
+    # Dropdown data
     agencies = Agency.query.all() if user_role == 'super_admin' else Agency.query.filter_by(id=current_agency_id).all()
-    return render_template('product_overrides/list.html', rows=rows, agencies=agencies, current_filters={'agency': agency_id, 'search': search})
+    categories = Category.query.filter_by(is_active=True).all()
+
+    return render_template(
+        'product_overrides/list.html',
+        rows=rows,
+        agencies=agencies,
+        categories=categories,
+        filters=filters
+    )
 
 @overrides_bp.route('/add', methods=['GET', 'POST'])
 @login_required

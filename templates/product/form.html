@@ -27,8 +27,12 @@
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="sku" class="form-label">SKU *</label>
-                            <input type="text" class="form-control" id="sku" name="sku" 
-                                   value="{{ product.sku if product else '' }}" required>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="sku" name="sku" 
+                                       value="{{ product.sku if product else '' }}" required>
+                                <button type="button" id="btn-generate-sku" class="btn btn-outline-secondary">Generate</button>
+                            </div>
+                            <div class="form-text">Auto builds from Category, UOM and Name. You can edit.</div>
                         </div>
                     </div>
                     
@@ -67,7 +71,7 @@
                                 {% for category in categories %}
                                 <option value="{{ category.id }}" 
                                         {{ 'selected' if product and product.category_id == category.id else '' }}>
-                                    {{ category.name }}
+                                    {{ category.name }}{% if category.short_name %} ({{ category.short_name }}){% endif %}
                                 </option>
                                 {% endfor %}
                             </select>
@@ -179,6 +183,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     e.preventDefault();
                     return false;
                 }
+            }
+        });
+    }
+
+    // Generate SKU action
+    const btnGenSku = document.getElementById('btn-generate-sku');
+    if (btnGenSku) {
+        btnGenSku.addEventListener('click', async function() {
+            const name = (document.getElementById('name')?.value || '').trim();
+            const categoryId = document.getElementById('category_id')?.value || '';
+            const uomId = document.getElementById('uom_id')?.value || '';
+            if (!name) { alert('Enter product name first'); return; }
+            try {
+                const params = new URLSearchParams();
+                params.set('name', name);
+                if (categoryId) params.set('category_id', categoryId);
+                if (uomId) params.set('uom_id', uomId);
+                const res = await fetch(`/product/api/generate-sku?${params.toString()}`);
+                const data = await res.json();
+                if (data.success && data.sku) {
+                    const skuEl = document.getElementById('sku');
+                    if (skuEl) skuEl.value = String(data.sku).toUpperCase();
+                } else {
+                    alert(data.message || 'Failed to generate SKU');
+                }
+            } catch (e) {
+                alert('Error generating SKU');
             }
         });
     }

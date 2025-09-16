@@ -59,13 +59,18 @@ def create_category():
     """Create new category"""
     if request.method == 'POST':
         name = request.form.get('name')
+        short_name = request.form.get('short_name', '').strip()
         description = request.form.get('description')
-        if not name:
-            flash('Category name is required', 'error')
+        if not name or not short_name:
+            flash('Category name and short name are required', 'error')
+            return render_template('masters/category_form.html')
+        if len(short_name) != 3:
+            flash('Short name must be exactly 3 characters', 'error')
             return render_template('masters/category_form.html')
         
         category = Category(
             name=name,
+            short_name=short_name.upper(),
             description=description
         )
         
@@ -182,6 +187,7 @@ def api_categories():
     return jsonify([{
         'id': c.id,
         'name': c.name,
+        'short_name': c.short_name,
         'description': c.description
     } for c in categories])
 

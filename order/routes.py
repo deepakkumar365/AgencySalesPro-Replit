@@ -529,8 +529,9 @@ def search_products():
         'price': safe_float(pa.sell_price if pa and pa.sell_price is not None else p.sell_price, 0.0),
         'buy_price': safe_float(pa.buy_price if pa and getattr(pa, 'buy_price', None) is not None else p.buy_price, 0.0),
         'mrp_price': safe_float(pa.mrp_price if pa and getattr(pa, 'mrp_price', None) is not None else p.mrp_price, 0.0),
-        'uom': (pa.uom_ref.name if pa and pa.uom_ref else (p.uom_ref.name if p.uom_ref else 'pcs')),
+        'uom': ((pa.uom_ref.short_name.lower() if pa and pa.uom_ref and getattr(pa.uom_ref, 'short_name', None) else (p.uom_ref.short_name.lower() if p and p.uom_ref and getattr(p.uom_ref, 'short_name', None) else 'pcs'))),
         'uom_id': (int(pa.uom_id) if pa and getattr(pa, 'uom_id', None) is not None else (int(p.uom_id) if getattr(p, 'uom_id', None) is not None else None)),
+        'uom_short': (pa.uom_ref.short_name if pa and pa.uom_ref and getattr(pa.uom_ref, 'short_name', None) else (p.uom_ref.short_name if p and p.uom_ref and getattr(p.uom_ref, 'short_name', None) else '')), 
         'tax_rate': (
             safe_float(pa.tax_master_ref.tax_rate) if pa and pa.tax_master_ref else (
                 safe_float(p.tax_master_ref.tax_rate) if p and p.tax_master_ref else 18.0
@@ -541,5 +542,17 @@ def search_products():
         'stock_available': True,  # Stock tracking disabled
         'category': (pa.category_ref.name if pa and pa.category_ref else (p.category_ref.name if p and p.category_ref else '')),
         'category_id': (int(pa.category_id) if pa and getattr(pa, 'category_id', None) is not None else (int(p.category_id) if getattr(p, 'category_id', None) is not None else None)),
-        'display_text': f"{(pa.display_name if pa and pa.display_name else p.name)} ({p.sku}) - ₹{safe_float(pa.sell_price if pa and pa.sell_price is not None else p.sell_price, 0.0)}"
+        'category_short': (pa.category_ref.short_name if pa and pa.category_ref and getattr(pa.category_ref, 'short_name', None) else (p.category_ref.short_name if p and p.category_ref and getattr(p.category_ref, 'short_name', None) else '')),
+        'display_text': (
+            f"{(pa.display_name if pa and pa.display_name else p.name)} ({p.sku})"
+            + (
+                f" [{pa.category_ref.short_name}]" if pa and pa.category_ref and getattr(pa.category_ref, 'short_name', None)
+                else (f" [{p.category_ref.short_name}]" if p and p.category_ref and getattr(p.category_ref, 'short_name', None) else "")
+            )
+            + (
+                f" • {pa.uom_ref.short_name}" if pa and pa.uom_ref and getattr(pa.uom_ref, 'short_name', None)
+                else (f" • {p.uom_ref.short_name}" if p and p.uom_ref and getattr(p.uom_ref, 'short_name', None) else "")
+            )
+            + f" - ₹{safe_float(pa.sell_price if pa and pa.sell_price is not None else p.sell_price, 0.0)}"
+        )
     } for (p, pa) in results])

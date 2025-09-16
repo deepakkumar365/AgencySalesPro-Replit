@@ -69,7 +69,7 @@
                                 <option value="">All Categories</option>
                                 {% for category in categories %}
                                 <option value="{{ category.id }}" {{ 'selected' if filters.category == category.id|string else '' }}>
-                                    {{ category.name }}
+                                    {{ category.name }}{% if category.short_name %} ({{ category.short_name }}){% endif %}
                                 </option>
                                 {% endfor %}
                             </select>
