@@ -12,9 +12,39 @@
 
 <div class="row">
     <!-- Product Search and Cart -->
-    <div class="col-md-8">
+    <div class="col-md-9">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-user me-2"></i>Customer Information</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-4">
+                        <label for="customer-name" class="form-label">Name</label>
+                        <input type="text" id="customer-name" class="form-control"
+                               placeholder="Customer Name" value="Walk-in Customer">
+                    </div>
 
+                    <div class="col-12 col-md-3">
+                        <label for="customer-phone" class="form-label">Phone</label>
+                        <input type="tel" id="customer-phone" class="form-control"
+                               placeholder="Phone Number">
+                    </div>
 
+                    <div class="col-12 col-md-3">
+                        <label for="customer-email" class="form-label">Email (Optional)</label>
+                        <input type="email" id="customer-email" class="form-control"
+                               placeholder="Email Address">
+                    </div>
+
+                    <div class="col-12 col-md-2 d-grid">
+                        <button id="find-customer" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-search me-1"></i>Find Existing
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- Shopping Cart -->
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -38,16 +68,25 @@
                         <tbody id="inline-entry-tbody">
                             <!-- Inline entry row -->
                             <tr id="inline-entry-row">
-                                <td colspan="2">
-                                    <input id="inline-product-code" class="form-control form-control-sm" placeholder="Product code / SKU" autocomplete="off">
+                                <td>
+                                    <select id="product_lookup" class="form-select" placeholder="Type name or SKU to search"></select>
+                                    <input type="hidden" id="selected_product_id" name="selected_product_id" value="">
+                                </td>
+                                <td style="width: 120px;">
+                                    <input id="inline-price" type="number" step="0.01" class="form-control form-control-sm text-end" placeholder="Price" value="">
                                 </td>
                                 <td style="width: 120px;">
                                     <input id="inline-qty" type="number" class="form-control form-control-sm text-end" placeholder="Qty" value="1" min="1">
                                 </td>
-                                <td colspan="2">
-                                    <button id="inline-add" class="btn btn-sm btn-primary w-100">
-                                        <i class="fas fa-plus"></i> Add
-                                    </button>
+                                <td style="width: 120px;">
+                                    <input id="inline-total" type="text" class="form-control form-control-sm text-end" placeholder="Total" value="" disabled>
+                                </td>
+                                <td>
+                                    <div class="d-grid mb-2">
+                                        <button id="inline-add" class="btn btn-sm btn-primary w-100">
+                                            <i class="fas fa-plus"></i> Add
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
@@ -62,64 +101,47 @@
                     </table>
                 </div>
 
-                <!-- Cart Totals -->
-                <div class="row mt-3" id="cart-totals" style="display: none;">
-                    <div class="col-md-6 offset-md-6">
-                        <table class="table table-sm">
-                            <tr>
-                                <td>Subtotal:</td>
-                                <td class="text-end" id="subtotal">₹0.00</td>
-                            </tr>
-                            <tr>
-                                <td>Tax:</td>
-                                <td class="text-end">
-                                    <input type="number" id="tax" class="form-control form-control-sm text-end" 
-                                           value="0" step="0.01" min="0">
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Discount:</td>
-                                <td class="text-end">
-                                    <input type="number" id="discount" class="form-control form-control-sm text-end" 
-                                           value="0" step="0.01" min="0">
-                                </td>
-                            </tr>
-                            <tr class="fw-bold">
-                                <td>Total:</td>
-                                <td class="text-end" id="total">₹0.00</td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
+
             </div>
         </div>
     </div>
 
     <!-- Customer and Payment -->
-    <div class="col-md-4">
-        <!-- Customer Information -->
+    <div class="col-md-3">
+        <!-- Totals & Complete Sale on top -->
         <div class="card mb-3">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-user me-2"></i>Customer Information</h6>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-receipt me-2"></i>Totals</h6>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <label for="customer-name" class="form-label">Name</label>
-                    <input type="text" id="customer-name" class="form-control" 
-                           placeholder="Customer Name" value="Walk-in Customer">
+                <div id="cart-totals" style="display: none;">
+                    <table class="table table-sm">
+                        <tr>
+                            <td>Subtotal:</td>
+                            <td class="text-end" id="subtotal">₹0.00</td>
+                        </tr>
+                        <tr>
+                            <td>Tax:</td>
+                            <td class="text-end">
+                                <input type="number" id="tax" class="form-control form-control-sm text-end" 
+                                       value="0" step="0.01" min="0">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Discount:</td>
+                            <td class="text-end">
+                                <input type="number" id="discount" class="form-control form-control-sm text-end" 
+                                       value="0" step="0.01" min="0">
+                            </td>
+                        </tr>
+                        <tr class="fw-bold">
+                            <td>Total:</td>
+                            <td class="text-end" id="total">₹0.00</td>
+                        </tr>
+                    </table>
                 </div>
-                <div class="mb-3">
-                    <label for="customer-phone" class="form-label">Phone</label>
-                    <input type="tel" id="customer-phone" class="form-control" 
-                           placeholder="Phone Number">
-                </div>
-                <div class="mb-3">
-                    <label for="customer-email" class="form-label">Email (Optional)</label>
-                    <input type="email" id="customer-email" class="form-control" 
-                           placeholder="Email Address">
-                </div>
-                <button id="find-customer" class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-search me-1"></i>Find Existing
+                <button id="complete-sale" class="btn btn-success btn-lg w-100">
+                    <i class="fas fa-check-circle me-2"></i>Complete Sale
                 </button>
             </div>
         </div>
@@ -155,15 +177,6 @@
                           placeholder="Sale notes (optional)"></textarea>
             </div>
         </div>
-
-        <!-- Complete Sale -->
-        <div class="card">
-            <div class="card-body">
-                <button id="complete-sale" class="btn btn-success btn-lg w-100" disabled>
-                    <i class="fas fa-check-circle me-2"></i>Complete Sale
-                </button>
-            </div>
-        </div>
     </div>
 </div>
 {% endblock %}
@@ -172,17 +185,70 @@
 <script>
 let cart = [];
 
-// Inline entry: code + qty, keyboard-first
-const inlineCodeEl = document.getElementById('inline-product-code');
+// Inline entry: searchable select + qty
 const inlineQtyEl = document.getElementById('inline-qty');
 const inlineAddBtn = document.getElementById('inline-add');
+const productLookupEl = document.getElementById('product_lookup');
+const selectedProductIdEl = document.getElementById('selected_product_id');
+const inlinePriceEl = document.getElementById('inline-price');
+const inlineTotalEl = document.getElementById('inline-total');
 
-function focusCode() { inlineCodeEl && inlineCodeEl.focus(); }
-window.addEventListener('load', focusCode);
+// Initialize Tom Select for product lookup with remote search
+let productSelect;
+window.addEventListener('load', () => {
+  productSelect = new TomSelect('#product_lookup', {
+    valueField: 'id',
+    labelField: 'name',
+    searchField: ['name','sku','category'],
+    maxOptions: 50,
+    create: false,
+    placeholder: 'Type name or SKU to search',
+    render: {
+      option: (data, escape) => {
+        const name = escape(data.name || '');
+        const sku = escape(data.sku || '');
+        const price = Number(data.price || 0).toFixed(2);
+        return `<div>${name} <small class="text-muted">(${sku})</small> - ₹${price}</div>`;
+      },
+      item: (data, escape) => {
+        const name = escape(data.name || '');
+        const sku = escape(data.sku || '');
+        return `<div>${name} <small class="text-muted">(${sku})</small></div>`;
+      }
+    },
+    load: function(query, callback) {
+      const q = (query || '').trim();
+      if (q.length < 2) return callback();
+      fetch(`/pos/api/search_products?q=${encodeURIComponent(q)}`)
+        .then(resp => resp.json())
+        .then(items => callback(Array.isArray(items) ? items : []))
+        .catch(() => callback());
+    },
+    onChange: (value) => {
+      const item = productSelect.options[value];
+      if (!item) return;
+      const price = Number(item.price || 0);
+      inlinePriceEl.value = price.toFixed(2);
+      const qty = Math.max(1, parseInt(inlineQtyEl.value || '1', 10));
+      inlineTotalEl.value = (price * qty).toFixed(2);
+      selectedProductIdEl.value = value;
+      inlineQtyEl.focus();
+    },
+    persist: false,
+    preload: false
+  });
+  productSelect.focus();
+});
 
-// Enter moves from code -> qty; Enter on qty adds
-inlineCodeEl?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') { e.preventDefault(); inlineQtyEl?.focus(); }
+inlineQtyEl?.addEventListener('input', () => {
+  const price = parseFloat(inlinePriceEl.value || '0') || 0;
+  const qty = Math.max(1, parseInt(inlineQtyEl.value || '1', 10));
+  inlineTotalEl.value = (price * qty).toFixed(2);
+});
+inlinePriceEl?.addEventListener('input', () => {
+  const price = parseFloat(inlinePriceEl.value || '0') || 0;
+  const qty = Math.max(1, parseInt(inlineQtyEl.value || '1', 10));
+  inlineTotalEl.value = (price * qty).toFixed(2);
 });
 inlineQtyEl?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); inlineAddBtn?.click(); }
@@ -190,24 +256,46 @@ inlineQtyEl?.addEventListener('keydown', (e) => {
 
 inlineAddBtn?.addEventListener('click', async (e) => {
   e.preventDefault();
-  const code = (inlineCodeEl?.value || '').trim();
   const qty = Math.max(1, parseInt(inlineQtyEl?.value || '1', 10));
-  if (!code) { focusCode(); return; }
+
+  // If a product was explicitly selected from the lookup, use it directly
+  const selectedId = selectedProductIdEl?.value || '';
+  if (selectedId) {
+    const item = productSelect?.options?.[selectedId];
+    if (item) {
+      const name = item.name || '';
+      const sku = item.sku || '';
+      const price = Number(item.price || inlinePriceEl.value || 0);
+      addToCart({ id: parseInt(selectedId, 10), name, sku, price }, qty);
+      // Reset UI for next entry
+      inlinePriceEl.value = '';
+      inlineTotalEl.value = '';
+      inlineQtyEl.value = '1';
+      selectedProductIdEl.value = '';
+      productSelect?.clear(true);
+      productSelect?.setTextboxValue('');
+      productSelect?.focus();
+      return;
+    }
+  }
+
+  // Fallback: use the current text in the select control's search box
+  const typed = productSelect?.getValue() ? '' : (productSelect?.input?.value?.trim() || '');
+  if (!typed) { productSelect?.focus(); return; }
   try {
-    // Try exact SKU match first; if not found, fallback to name search
-    let items = await fetch(`/pos/api/search_products?q=${encodeURIComponent(code)}`).then(r => r.json());
-    if (Array.isArray(items)) {
-      // Prefer exact SKU match
-      let found = items.find(p => (p.sku || '').toLowerCase() === code.toLowerCase()) || items[0];
-      if (found) {
-        addToCart({ id: found.id, name: found.name, sku: found.sku, price: Number(found.price) || 0 }, qty);
-        inlineCodeEl.value = '';
-        inlineQtyEl.value = '1';
-        focusCode();
-      } else {
-        alert('Product not found');
-        focusCode();
-      }
+    let items = await fetch(`/pos/api/search_products?q=${encodeURIComponent(typed)}`).then(r => r.json());
+    if (Array.isArray(items) && items.length > 0) {
+      let found = items.find(p => (p.sku || '').toLowerCase() === typed.toLowerCase()) || items[0];
+      addToCart({ id: found.id, name: found.name, sku: found.sku, price: Number(found.price) || 0 }, qty);
+      // Reset UI
+      selectedProductIdEl.value = '';
+      productSelect?.clear(true);
+      productSelect?.clearOptions();
+      productSelect?.setTextboxValue('');
+      inlinePriceEl.value = '';
+      inlineTotalEl.value = '';
+      inlineQtyEl.value = '1';
+      productSelect?.focus();
     } else if (items && items.error) {
       alert(items.error);
     } else {
@@ -267,7 +355,7 @@ function updateCartDisplay() {
     
     if (cart.length === 0) {
         // Keep empty row visible
-        emptyCart.style.display = '';
+        if (emptyCart) emptyCart.style.display = '';
         cartItemsDiv.innerHTML = '';
         cartTotals.style.display = 'none';
         completeButton.disabled = true;
@@ -278,7 +366,7 @@ function updateCartDisplay() {
         return;
     }
     
-    emptyCart.style.display = 'none';
+    if (emptyCart) emptyCart.style.display = 'none';
     cartTotals.style.display = 'block';
     
     let html = '';
@@ -320,8 +408,9 @@ function updateCartDisplay() {
     
     document.getElementById('subtotal').textContent = `₹${subtotal.toFixed(2)}`;
     document.getElementById('total').textContent = `₹${total.toFixed(2)}`;
-    
-    completeButton.disabled = false;
+
+    // Enable complete button when valid
+    completeButton.disabled = (cart.length === 0) || !(document.getElementById('payment-method').value);
 }
 
 // Tax and discount change handlers
