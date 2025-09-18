@@ -2,29 +2,97 @@
 {% block content %}
 <div class="container-fluid">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4>My Product</h4>
+    <h4>
+      <i class="fas fa-sliders-h me-2"></i>Agency Product Overrides
+    </h4>
     <div class="d-flex align-items-center gap-2">
-      <form class="d-flex" method="GET">
-        {% if session.role == 'super_admin' %}
-        <select name="agency" class="form-select me-2" style="width: 260px;">
-          <option value="">Select Agency</option>
-          {% for a in agencies %}
-          <option value="{{ a.id }}" {{ 'selected' if current_filters.agency and current_filters.agency|int == a.id else '' }}>{{ a.name }}</option>
-          {% endfor %}
-        </select>
-        {% endif %}
-        <input name="search" class="form-control me-2" placeholder="Search by name or SKU" value="{{ current_filters.search or '' }}" />
-        <button class="btn btn-primary" type="submit">Filter</button>
-      </form>
-      {% if session.role != 'super_admin' or current_filters.agency %}
+      {% if session.role != 'super_admin' or filters.agency %}
       <a href="{{ url_for('product.create_product') }}" class="btn btn-primary">
-          <i class="fas fa-plus me-2"></i>Add Product
+        <i class="fas fa-plus me-2"></i>Add Product
       </a>
       {% endif %}
     </div>
   </div>
 
-  {% if session.role == 'super_admin' and not current_filters.agency %}
+  <!-- Filters -->
+  <div class="row mb-4">
+    <div class="col-12">
+      {% set has_filters = filters.date_from or filters.date_to or (session.role == 'super_admin' and filters.agency) or filters.category or filters.status or filters.search %}
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">
+            <i class="fas fa-filter me-2"></i>Filters
+          </h6>
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#overrideFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}" aria-controls="overrideFilters">
+            <i class="fas fa-sliders-h me-1"></i> Toggle
+          </button>
+        </div>
+        <div id="overrideFilters" class="collapse {{ 'show' if has_filters else '' }}">
+          <div class="card-body">
+            <form method="GET" class="row g-3">
+              <div class="col-md-3">
+                <label for="date_from" class="form-label">Date From</label>
+                <input type="date" class="form-control" id="date_from" name="date_from" value="{{ filters.date_from or '' }}">
+              </div>
+              <div class="col-md-3">
+                <label for="date_to" class="form-label">Date To</label>
+                <input type="date" class="form-control" id="date_to" name="date_to" value="{{ filters.date_to or '' }}">
+              </div>
+
+              {% if session.role == 'super_admin' and agencies %}
+              <div class="col-md-3">
+                <label for="agency" class="form-label">Agency</label>
+                <select class="form-select" id="agency" name="agency">
+                  <option value="">All Agencies</option>
+                  {% for a in agencies %}
+                  <option value="{{ a.id }}" {{ 'selected' if filters.agency == a.id|string else '' }}>{{ a.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              {% endif %}
+
+              <div class="col-md-3">
+                <label for="category" class="form-label">Category</label>
+                <select class="form-select" id="category" name="category">
+                  <option value="">All Categories</option>
+                  {% for category in categories %}
+                  <option value="{{ category.id }}" {{ 'selected' if filters.category == category.id|string else '' }}>{{ category.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="col-md-3">
+                <label for="status" class="form-label">Status</label>
+                <select class="form-select" id="status" name="status">
+                  <option value="">All Status</option>
+                  <option value="active" {{ 'selected' if filters.status == 'active' else '' }}>Active</option>
+                  <option value="inactive" {{ 'selected' if filters.status == 'inactive' else '' }}>Inactive</option>
+                </select>
+              </div>
+
+              <div class="col-md-3">
+                <label for="search" class="form-label">Search</label>
+                <input type="text" class="form-control" id="search" name="search" placeholder="Name or SKU" value="{{ filters.search or '' }}">
+              </div>
+
+              <div class="col-md-3 d-flex align-items-end">
+                <div class="btn-group w-100">
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search me-1"></i>Filter
+                  </button>
+                  <a href="{{ url_for('product_overrides.list_overrides') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times me-1"></i>Clear
+                  </a>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if session.role == 'super_admin' and not filters.agency %}
     <div class="alert alert-info">Select an Agency to view and edit overrides.</div>
   {% endif %}
 
@@ -65,10 +133,10 @@
             {% endif %}
           </td>
           <td>
-            {% if session.role == 'super_admin' and not current_filters.agency %}
+            {% if session.role == 'super_admin' and not filters.agency %}
               <span>Select Agency</span>
             {% else %}
-              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('product_overrides.edit_override', product_id=product.id, agency=current_filters.agency) }}">
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('product_overrides.edit_override', product_id=product.id, agency=filters.agency) }}">
                 <i class="fas fa-edit"></i>
               </a>
             {% endif %}

@@ -45,7 +45,7 @@
             <select class="form-select" name="category_id">
               <option value="">Use default</option>
               {% for c in categories %}
-              <option value="{{ c.id }}" {{ 'selected' if mapping.category_id and mapping.category_id == c.id else '' }}>{{ c.name }}</option>
+              <option value="{{ c.id }}" {{ 'selected' if mapping.category_id and mapping.category_id == c.id else '' }}>{{ c.name }}{% if c.short_name %} ({{ c.short_name }}){% endif %}</option>
               {% endfor %}
             </select>
           </div>
@@ -54,7 +54,7 @@
             <select class="form-select" name="uom_id">
               <option value="">Use default</option>
               {% for u in uoms %}
-              <option value="{{ u.id }}" {{ 'selected' if mapping.uom_id and mapping.uom_id == u.id else '' }}>{{ u.name }}</option>
+              <option value="{{ u.id }}" {{ 'selected' if mapping.uom_id and mapping.uom_id == u.id else '' }}>{{ u.name }}{% if u.short_name %} ({{ u.short_name }}){% endif %}</option>
               {% endfor %}
             </select>
           </div>

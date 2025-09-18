@@ -27,7 +27,7 @@
                             <th>Short Name</th>
                             <th>Description</th>
                             <th>Created</th>
-                            <th>Actions</th>
+                            <!--<th>Actions</th>-->
                         </tr>
                     </thead>
                     <tbody>
@@ -45,6 +45,7 @@
                                     {{ uom.created_at.strftime('%Y-%m-%d') if uom.created_at else '-' }}
                                 </small>
                             </td>
+                            <!--
                             <td>
                                 <div class="btn-group" role="group">
                                     <button class="btn btn-sm btn-outline-primary" title="Edit">
@@ -56,6 +57,7 @@
                                     </button>
                                 </div>
                             </td>
+                           -->
                         </tr>
                         {% endfor %}
                     </tbody>

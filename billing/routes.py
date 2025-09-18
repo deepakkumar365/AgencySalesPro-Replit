@@ -324,13 +324,20 @@ def add_payment_method(current_agency_id=None):
                 flash('Payment method with this name already exists', 'error')
                 return render_template('billing/add_payment_method.html')
             
+            # Generate a unique code
+            base_code = name.upper().replace(' ', '_')[:15]
+            unique_code = base_code
+            counter = 1
+            while PaymentMethod.query.filter_by(code=unique_code).first():
+                unique_code = f"{base_code}_{counter}"
+                counter += 1
+
             # Create payment method
             payment_method = PaymentMethod(
                 name=name,
-                method_type=method_type,
-                description=description,
+                code=unique_code,
                 agency_id=current_agency_id,
-                is_active=is_active
+                is_active=is_active,
             )
             
             db.session.add(payment_method)
