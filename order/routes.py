@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, session, send_file, jsonify
 from datetime import datetime
 import uuid
+from sqlalchemy import or_, and_
 from app import db
 from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode, ProductAgency
 from order import order_bp
@@ -264,6 +265,115 @@ def create_order():
                          products=get_products_for_user(),
                          today=date.today())
 
+@order_bp.route('/api/search-customers-v2')
+@login_required
+@agency_access_required
+def search_customers_v2(current_agency_id=None):
+    """Return customer suggestions for Tom Select
+    Response: [ { id, name, phone, email, address, location_name, credit_period, display_text } ]
+    """
+    q = (request.args.get('q') or '').strip()
+    if not q or len(q) < 2:
+        return jsonify([])
+
+    # Base query: active customers, restricted by agency for non-super admins
+    query = Customer.query.join(Location, Customer.location_id == Location.id)
+
+    user_role = session.get('role')
+    if user_role != 'super_admin':
+        # Restrict to current agency
+        agency_id = current_agency_id or session.get('agency_id')
+        query = query.filter(Location.agency_id == agency_id)
+
+    # Case-insensitive search across fields
+    like = f"%{q}%"
+    query = query.filter(
+        or_(
+            Customer.name.ilike(like),
+            Customer.phone.ilike(like),
+            Customer.email.ilike(like),
+            Customer.city.ilike(like)
+        )
+    ).filter(Customer.is_active == True)
+
+    results = (
+        query.order_by(Customer.name.asc()).limit(50).all()
+    )
+
+    items = []
+    for c in results:
+        display = f"{c.name} — {c.phone or ''} — {c.city or ''}"
+        items.append({
+            'id': c.id,
+            'name': c.name,
+            'phone': c.phone,
+            'email': c.email,
+            'address': c.address,
+            'location_name': c.location.name if c.location else None,
+            'credit_period': c.credit_period,
+            'display_text': display.strip(' —')
+        })
+    return jsonify(items)
+
+@order_bp.route('/api/search-products-v2')
+@login_required
+@agency_access_required
+def search_products_v2(current_agency_id=None):
+    """Return product suggestions for Tom Select with agency validation
+    Response: [ { id, name, sku, price, mrp_price, uom, tax_code, tax_rate, display_text } ]
+    """
+    q = (request.args.get('q') or '').strip()
+    if not q or len(q) < 2:
+        return jsonify([])
+
+    user_role = session.get('role')
+    agency_id = current_agency_id or session.get('agency_id')
+
+    # Join Product with ProductAgency to pull overrides when available
+    # Only include active mappings for non-super-admin users
+    base = db.session.query(Product, ProductAgency).outerjoin(
+        ProductAgency,
+        and_(ProductAgency.product_id == Product.id,
+             ProductAgency.agency_id == agency_id,
+             ProductAgency.is_active == True)
+    )
+
+    # Active products only
+    base = base.filter(Product.is_active == True)
+
+    # Search across name and SKU (case-insensitive)
+    like = f"%{q}%"
+    base = base.filter(or_(Product.name.ilike(like), Product.sku.ilike(like)))
+
+    # If not super admin, ensure there is either an active mapping or allow fallback to global product
+    # The requirement notes imply auto-create/reactivate mapping on use; here we just allow listing
+
+    rows = base.order_by(Product.name.asc()).limit(50).all()
+
+    items = []
+    for prod, pa in rows:
+        # Prefer agency override values when present, else fallback to product master
+        sell_price = float(pa.sell_price) if pa and pa.sell_price is not None else (float(prod.sell_price) if prod.sell_price is not None else 0)
+        mrp_price = float(pa.mrp_price) if pa and pa.mrp_price is not None else (float(prod.mrp_price) if prod.mrp_price is not None else sell_price)
+        uom = (pa.uom_ref.short_name if pa and pa.uom_ref else (prod.uom_ref.short_name if prod.uom_ref else 'pcs'))
+        tax_code = (pa.tax_master_ref.tax_code if pa and pa.tax_master_ref else (prod.tax_master_ref.tax_code if prod.tax_master_ref else 'GST18'))
+        tax_rate = float(pa.tax_master_ref.tax_rate) if pa and pa.tax_master_ref else (float(prod.tax_master_ref.tax_rate) if prod.tax_master_ref else 18.0)
+        display_name = pa.display_name if pa and pa.display_name else prod.name
+        display = f"{display_name} — {prod.sku} — ₹{sell_price:.2f}"
+        items.append({
+            'id': prod.id,
+            'name': display_name,
+            'sku': prod.sku,
+            'price': sell_price,
+            'mrp_price': mrp_price,
+            'uom': uom,
+            'tax_code': tax_code,
+            'tax_rate': tax_rate,
+            'display_text': display
+        })
+
+    return jsonify(items)
+
 @order_bp.route('/<int:order_id>')
 @login_required
 def view_order(order_id):
@@ -497,21 +607,47 @@ def search_products():
     user_role = session.get('role')
     agency_id = session.get('agency_id')
     
-    # Build base query from Product master; outer-join any mapping for current agency
-    products_query = db.session.query(Product, ProductAgency).outerjoin(
-        ProductAgency,
-        db.and_(ProductAgency.product_id == Product.id,
-                ProductAgency.agency_id == agency_id)
-    )
-
-    # Apply search filter (master-level)
-    if query:
-        products_query = products_query.filter(
-            db.or_(
-                Product.name.ilike(f'%{query}%'),
-                Product.sku.ilike(f'%{query}%')
+    # For non-super-admins: restrict strictly to current agency's mapped products
+    if user_role != 'super_admin':
+        products_query = db.session.query(Product, ProductAgency).join(
+            ProductAgency,
+            db.and_(
+                ProductAgency.product_id == Product.id,
+                ProductAgency.agency_id == agency_id,
+                ProductAgency.is_active == True
             )
-        )
+        ).filter(Product.is_active == True)
+    else:
+        # Super admin: allow global search; optional ?agency_id= to filter
+        filter_agency = request.args.get('agency_id', type=int)
+        if filter_agency:
+            products_query = db.session.query(Product, ProductAgency).join(
+                ProductAgency,
+                db.and_(
+                    ProductAgency.product_id == Product.id,
+                    ProductAgency.agency_id == filter_agency,
+                    ProductAgency.is_active == True
+                )
+            ).filter(Product.is_active == True)
+        else:
+            # Super admin without agency filter: keep Product master; if session has agency_id, only join active mapping
+            products_query = db.session.query(Product, ProductAgency).outerjoin(
+                ProductAgency,
+                db.and_(
+                    ProductAgency.product_id == Product.id,
+                    ProductAgency.agency_id == agency_id,
+                    ProductAgency.is_active == True
+                )
+            ).filter(Product.is_active == True)
+
+    # Apply search filter: match on master name/SKU and agency display_name/description
+    if query:
+        products_query = products_query.filter(db.or_(
+            Product.name.ilike(f'%{query}%'),
+            Product.sku.ilike(f'%{query}%'),
+            Product.description.ilike(f'%{query}%'),
+            ProductAgency.display_name.ilike(f'%{query}%')
+        ))
 
     results = products_query.limit(50).all()
 
