@@ -416,6 +416,7 @@ function updateCartDisplay() {
 // Tax and discount change handlers
 document.getElementById('tax').addEventListener('input', updateCartDisplay);
 document.getElementById('discount').addEventListener('input', updateCartDisplay);
+document.getElementById('payment-method').addEventListener('change', updateCartDisplay);
 
 // Clear cart
 document.getElementById('clear-cart').addEventListener('click', function() {

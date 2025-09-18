@@ -2,686 +2,318 @@
 
 {% block title %}Create Order - AgencySales Pro{% endblock %}
 
-{% block content %}
+{% block head %}
+{{ super() }}
 <style>
-.fullscreen-form {
-    min-height: calc(100vh - 120px);
-    display: flex;
-    flex-direction: column;
-}
+    /* --- Mobile-First App Styles --- */
+    .main-content {
+        max-width: 100%;
+        padding: 1rem;
+        padding-bottom: 90px;
+        /* Space for the fixed summary bar */
+    }
 
-.order-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-}
+    .form-control-sm {
+        font-size: 0.9rem;
+    }
 
-.customer-panel {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-}
+    .ts-control {
+        font-size: 0.9rem;
+    }
 
-.customer-info-row {
-    margin-bottom: 0.5rem;
-}
+    /* Transform table to a card list by default */
+    #order-items-table thead {
+        display: none;
+    }
 
-.order-items-section {
-    margin-bottom: 1rem;
-}
+    #order-items-table tbody,
+    #order-items-table tr,
+    #order-items-table td {
+        display: block;
+    }
 
-.summary-panel {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-top: 1rem;
-}
+    #order-items-table tr {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        background-color: var(--bs-tertiary-bg);
+    }
 
-.items-grid {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    overflow: hidden;
-}
+    #order-items-table td {
+        display: block;
+        /* Change from flex to block */
+        border: none;
+        padding: 0.4rem 0.5rem;
+        border-bottom: 1px dashed var(--bs-border-color-translucent);
+    }
 
-.grid-header {
-    background: #e9ecef;
-    font-weight: 600;
-    padding: 0.75rem 0.5rem;
-    border-bottom: 1px solid #dee2e6;
-}
+    #order-items-table td:last-child {
+        border-bottom: none;
+    }
 
-.grid-row {
-    padding: 0.5rem;
-    border-bottom: 1px solid #f1f3f4;
-    min-height: 60px;
-    align-items: center;
-}
+    /* Style the label to appear above the input */
+    #order-items-table td::before {
+        content: attr(data-label);
+        display: block;
+        font-weight: normal;
+        font-size: 0.75rem;
+        color: var(--bs-secondary-color);
+    }
 
-.grid-row:last-child {
-    border-bottom: none;
-}
+    /* Specific adjustments for item cards */
+    #order-items-body .item-name-cell {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 
-.items-scroll {
-    max-height: 400px;
-    overflow-y: auto;
-}
+    .order-item-row .item-name-cell::before {
+        display: none;
+    }
 
-.summary-item {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-    padding: 0.25rem 0;
-}
+    .order-item-row .remove-btn-cell {
+        justify-content: center;
+        padding-top: 0.75rem;
+    }
 
-.summary-total {
-    border-top: 2px solid #007bff;
-    padding-top: 0.5rem;
-    margin-top: 0.5rem;
-    font-weight: bold;
-    font-size: 1.1rem;
-}
+    .order-item-row .remove-btn-cell::before {
+        display: none;
+    }
 
-.form-control-sm {
-    font-size: 0.875rem;
-    padding: 0.25rem 0.5rem;
-}
+    .order-item-row .remove-item-btn {
+        width: 100%;
+    }
 
-.btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-}
+    #inline-entry-row {
+        background-color: var(--bs-body-bg);
+    }
 
-/* Autocomplete styles */
-.autocomplete-container {
-    position: relative;
-}
-
-.autocomplete-suggestions {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #dee2e6;
-    border-top: none;
-    border-radius: 0 0 0.375rem 0.375rem;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 1050;
-    display: none;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-.product-suggestions {
-    z-index: 1055 !important;
-}
-
-.autocomplete-suggestion {
-    padding: 0.5rem 0.75rem;
-    cursor: pointer;
-    border-bottom: 1px solid #f8f9fa;
-}
-
-.autocomplete-suggestion:hover,
-.autocomplete-suggestion.selected {
-    background-color: #f8f9fa;
-}
-
-.autocomplete-suggestion:last-child {
-    border-bottom: none;
-}
-
+    /* Default Summary Bar (was mobile-only) */
+    #summary-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--bs-body-bg);
+        border-top: 2px solid var(--bs-primary);
+        padding: 0.75rem 1rem;
+        z-index: 1030;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    }
 </style>
+{% endblock %}
 
-<div class="container-fluid fullscreen-form">
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Create Order</h2>
+    <div>
+        <a href="{{ url_for('order.list_orders') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Orders
+        </a>
+    </div>
+</div>
 
-    <form method="POST" id="orderForm">
-        <!-- Row 1: Customer Selection -->
-        <div class="customer-panel">
-            <h5 class="mb-3"><i class="fas fa-user me-2"></i>Customer Information</h5>
-            <div class="row">
-                <div class="col-md-4">
-                    <label for="customer_select" class="form-label fw-bold">Select Customer *</label>
-                    <div>
-                        <select id="customer_select" class="form-select" placeholder="Search customer by name, phone, or city..." autocomplete="off"></select>
-                        <input type="hidden" id="customer_id" name="customer_id" required>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <label for="delivery_date" class="form-label fw-bold">Delivery Date</label>
-                    <input type="date" class="form-control" id="delivery_date" name="delivery_date" 
-                           min="{{ today }}" value="{{ today }}">
-                </div>
-                <div class="col-md-4">
-                    <label for="notes" class="form-label fw-bold">Notes</label>
-                    <input type="text" class="form-control" id="notes" name="notes" 
-                           placeholder="Special instructions...">
-                </div>
+<div class="row g-3">
+    <!-- Main Order Form -->
+    <div class="col-12">
+        <!-- Customer Section -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-user-tag me-2"></i>Customer Details</h6>
             </div>
-            
-            <!-- Customer Info Display -->
-            <div id="customerInfo" class="mt-3" style="display: none;">
-                <div class="row customer-info-row">
-                    <div class="col-md-4">
-                        <strong>Address:</strong> <span id="customerAddress">-</span>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label for="customer-select" class="form-label">Select Customer</label>
+                        <select id="customer-select" placeholder="Search by name, phone, or city..."></select>
                     </div>
-                    <div class="col-md-2">
-                        <strong>Phone:</strong> <span id="customerPhone">-</span>
-                    </div>
-                    <div class="col-md-2">
-                        <strong>Email:</strong> <span id="customerEmail">-</span>
-                    </div>
-                    <div class="col-md-2">
-                        <strong>Location:</strong> <span id="customerLocation">-</span>
-                    </div>
-                    <div class="col-md-2">
-                        <strong>Credit Period:</strong> <span id="customerCredit">-</span>
+                    <div class="col-12" style="display: none;">
+                        <label class="form-label">Delivery Date</label>
+                        <input type="date" id="delivery-date" class="form-control"
+                            value="{{ default_delivery_date.strftime('%Y-%m-%d') }}">
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Row 2: Order Items -->
-        <div class="order-items-section">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Order Items</h5>
-                <button type="button" class="btn btn-primary btn-sm" onclick="addOrderItem()">
-                    <i class="fas fa-plus me-1"></i>Add Item
-                </button>
+        <!-- Order Items Section -->
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-sm" id="order-items-table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Item</th>
+                            <th style="width: 90px;">Qty</th>
+                            <th style="width: 120px;">Unit Price</th>
+                            <th style="width: 80px;">Disc %</th>
+                            <th style="width: 130px;" class="text-end">Line Total</th>
+                            <th style="width: 50px;"></th>
+                        </tr>
+                    </thead>
+                    <!-- Inline entry row -->
+                    <tbody id="inline-entry-tbody">
+                        <tr id="inline-entry-row" class="shadow-sm">
+                            <td data-label="Item"><select id="product-select"
+                                    placeholder="Search for products..."></select>
+                            </td>
+                            <td data-label="Qty"><input type="number" id="inline-qty"
+                                    class="form-control form-control-sm text-end" value="1" min="1"></td>
+                            <td data-label="Price"><input type="number" id="inline-price"
+                                    class="form-control form-control-sm text-end" step="0.01"></td>
+                            <td data-label="Disc %"><input type="number" id="inline-discount"
+                                    class="form-control form-control-sm text-end" value="0" min="0" max="100"></td>
+                            <td data-label="Total" class="text-end"><span id="inline-total"
+                                    class="fw-bold fs-6">₹0.00</span></td>
+                            <td class="remove-btn-cell">
+                                <button id="inline-add-btn"
+                                    class="btn btn-sm btn-primary w-100 d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-plus me-1"></i> Add
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <!-- Added items -->
+                    <tbody id="order-items-body">
+                        <tr id="no-items-row">
+                            <td colspan="10" class="text-center text-muted py-5">
+                                <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                <p>No items added yet. Use the search bar above to add products.</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-            
-            <div class="items-grid">
-                <!-- Grid Header -->
-                <div class="row grid-header m-0">
-                    <div class="col-auto text-center" style="width: 50px;">Sr</div>
-                    <div class="col-4">Product</div>
-                    <div class="col-1">UOM</div>
-                    <div class="col-1">Qty</div>
-                    <div class="col-1">MRP ₹</div>
-                    <div class="col-1">Disc %</div>
-                    <div class="col-1">Price ₹</div>
-                    <div class="col-1">Tax%</div>
-                    <div class="col-1">Total ₹</div>
-                    <div class="col-auto" style="width: 60px;">Action</div>
+        </div>
+
+        <!-- Order Adjustments -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-calculator me-2"></i>Order Adjustments</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <label for="order-subtotal" class="form-label">Subtotal</label>
+                    <input type="text" id="order-subtotal" class="form-control" value="₹0.00" readonly>
                 </div>
-                
-                <!-- Scrollable Items Container -->
-                <div class="items-scroll" id="orderItemsContainer">
-                    <!-- Order items will be added here dynamically -->
+                <div class="mb-2">
+                    <label for="order-tax" class="form-label">Tax</label>
+                    <input type="number" id="order-tax" class="form-control" value="0" min="0" step="0.01">
+                </div>
+                <div>
+                    <label for="order-discount" class="form-label">Discount</label>
+                    <input type="number" id="order-discount" class="form-control" value="0" min="0" step="0.01">
                 </div>
             </div>
         </div>
 
-        <!-- Row 3: Order Summary -->
-        <div class="summary-panel">
-            <h6 class="mb-3 text-primary">
-                <i class="fas fa-calculator me-2"></i>ORDER SUMMARY
-            </h6>
-            
-            <div class="summary-item">
-                <span>Total Items:</span>
-                <span id="totalItemsCount">0 lines</span>
-            </div>
-            
-            <div class="summary-item">
-                <span>Subtotal:</span>
-                <span id="subtotalAmount">₹ 0.00</span>
-            </div>
-            
-            <div class="summary-item">
-                <span>Total Tax:</span>
-                <span id="totalTaxAmount">₹ 0.00</span>
-            </div>
-            
-            <hr>
-            
-            <div class="summary-total">
-                <div class="summary-item">
-                    <span>GRAND TOTAL:</span>
-                    <span id="grandTotal" class="text-primary">₹ 0.00</span>
-                </div>
-            </div>
-            
-            <hr>
-            
-            <div class="mt-4">
-                <!-- Main Create Order button - full width on mobile, larger on desktop -->
-                <div class="mb-3">
-                    <button type="submit" class="btn btn-success btn-lg w-100">
-                        <i class="fas fa-check me-2"></i>Create Order
-                    </button>
-                </div>
-                
-                <!-- Secondary buttons - adjacent on big screens, stacked on small screens -->
-                <div class="row g-2">
-                    <div class="col-md-6 col-12">
-                        <button type="button" class="btn btn-outline-secondary w-100" onclick="resetForm()">
-                            <i class="fas fa-undo me-1"></i>Reset
-                        </button>
-                    </div>
-                    <div class="col-md-6 col-12">
-                        <a href="{{ url_for('order.list_orders') }}" class="btn btn-outline-primary w-100">
-                            <i class="fas fa-times me-1"></i>Cancel
-                        </a>
-                    </div>
-                </div>
+        <!-- Notes -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <label for="order-notes" class="form-label">Notes</label>
+                <textarea id="order-notes" class="form-control form-control-sm" rows="3"
+                    placeholder="Add any notes for this order..."></textarea>
             </div>
         </div>
-    </form>
+    </div>
+</div>
+
+<!-- Summary Bar (fixed at bottom) -->
+<div id="summary-bar">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <small class="text-muted">Grand Total</small>
+            <h4 id="summary-grand-total" class="mb-0 text-success fw-bold">₹0.00</h4>
+        </div>
+        <button id="save-order-btn" class="btn btn-success btn-lg">
+            <i class="fas fa-save me-2"></i>Save Order
+        </button>
+    </div>
+</div>
+
+<!-- Item Row Template -->
+<template id="item-row-template">
+    <tr class="order-item-row">
+        <td class="item-name-cell">
+            <div class="fw-bold item-name"></div>
+            <small class="text-muted item-sku"></small>
+        </td>
+        <td data-label="Qty"><input type="number" class="form-control form-control-sm text-end item-qty" value="1"
+                min="0.01" step="0.01"></td>
+        <td data-label="Unit Price"><input type="number" class="form-control form-control-sm text-end item-price"
+                step="0.01"></td>
+        <td data-label="Disc %"><input type="number" class="form-control form-control-sm text-end item-discount"
+                value="0" min="0" max="100"></td>
+        <td data-label="Line Total" class="text-end fw-bold item-line-total">₹0.00</td>
+        <td class="remove-btn-cell">
+            <button class="btn btn-sm btn-outline-danger remove-item-btn">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        </td>
+    </tr>
+</template>
 </div>
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/order_form.js') }}"></script>
 <script>
-let orderItemCounter = 0;
-let taxCodes = {};
-
-// Load tax codes and initialize form
-document.addEventListener('DOMContentLoaded', function() {
-    loadTaxCodes();
-    initCustomerSelect();
-    addOrderItem(); // Add first item
-});
-
-// Load tax codes from server
-async function loadTaxCodes() {
-    try {
-        const response = await fetch('/order/api/tax-codes');
-        if (response.ok) {
-            taxCodes = await response.json();
-        } else {
-            // Fallback tax codes
-            taxCodes = {
-                'GST0': { name: 'GST 0%', rate: 0 },
-                'GST5': { name: 'GST 5%', rate: 5 },
-                'GST12': { name: 'GST 12%', rate: 12 },
-                'GST18': { name: 'GST 18%', rate: 18 },
-                'GST28': { name: 'GST 28%', rate: 28 }
-            };
-        }
-    } catch (error) {
-        console.error('Error loading tax codes:', error);
-        // Use fallback
-        taxCodes = {
-            'GST0': { name: 'GST 0%', rate: 0 },
-            'GST5': { name: 'GST 5%', rate: 5 },
-            'GST12': { name: 'GST 12%', rate: 12 },
-            'GST18': { name: 'GST 18%', rate: 18 },
-            'GST28': { name: 'GST 28%', rate: 28 }
-        };
-    }
-}
-
-// Customer select (Tom Select)
-let selectedCustomer = null;
-let customerSelectInstance = null;
-
-function initCustomerSelect() {
-    const selectEl = document.getElementById('customer_select');
-    const hiddenInput = document.getElementById('customer_id');
-
-    customerSelectInstance = new TomSelect(selectEl, {
-        valueField: 'id',
-        labelField: 'display_text',
-        searchField: ['name','phone','email','city','display_text'],
-        maxOptions: 50,
-        create: false,
-        preload: false,
-        allowEmptyOption: true,
-        placeholder: 'Search customer by name, phone, or city...',
-        load: function(query, callback) {
-            if (!query || query.length < 2) return callback();
-            fetch(`/order/api/search-customers-v2?q=${encodeURIComponent(query)}`)
-                .then(res => res.json())
-                .then(items => callback(items))
-                .catch(() => callback());
-        },
-        render: {
-            option: function(item, escape) {
-                return `<div>${escape(item.display_text)}</div>`;
+    document.addEventListener('DOMContentLoaded', function () {
+        // Customer Search
+        const customerSelect = new TomSelect('#customer-select', {
+            valueField: 'id',
+            labelField: 'display_text',
+            searchField: ['name', 'phone', 'email', 'city'],
+            create: false,
+            load: function (query, callback) {
+                if (query.length < 2) return callback();
+                fetch(`/order/api/search-customers-v2?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => callback(data))
+                    .catch(() => callback());
             },
-            item: function(item, escape) {
-                return `<div>${escape(item.display_text)}</div>`;
-            }
-        },
-        onChange: function(value) {
-            hiddenInput.value = value || '';
-            const item = this.options[value];
-            if (item) {
-                selectedCustomer = {
-                    id: item.id,
-                    name: item.name,
-                    address: item.address,
-                    phone: item.phone,
-                    email: item.email,
-                    location: item.location_name,
-                    creditPeriod: item.credit_period
-                };
-                showCustomerInfo();
-            } else {
-                selectedCustomer = null;
-                hideCustomerInfo();
-            }
-        }
-    });
-}
-
-function showCustomerInfo() {
-    if (selectedCustomer) {
-        document.getElementById('customerAddress').textContent = selectedCustomer.address || 'N/A';
-        document.getElementById('customerPhone').textContent = selectedCustomer.phone || 'N/A';
-        document.getElementById('customerEmail').textContent = selectedCustomer.email || 'N/A';
-        document.getElementById('customerLocation').textContent = selectedCustomer.location || 'N/A';
-        document.getElementById('customerCredit').textContent = selectedCustomer.creditPeriod + ' days' || 'N/A';
-        document.getElementById('customerInfo').style.display = 'block';
-    }
-}
-
-function hideCustomerInfo() {
-    document.getElementById('customerInfo').style.display = 'none';
-}
-
-// Product select (Tom Select)
-const productSelectInstances = {};
-
-function initProductSelect(itemId) {
-    const selectEl = document.querySelector(`[data-item-id="${itemId}"].product-select`);
-    const hiddenInput = document.querySelector(`[data-item-id="${itemId}"].product-id-input`);
-    const itemRow = document.getElementById(`item-${itemId}`);
-    if (!selectEl || !itemRow) return;
-
-    productSelectInstances[itemId] = new TomSelect(selectEl, {
-        valueField: 'id',
-        labelField: 'display_text',
-        searchField: ['name','sku','display_text'],
-        maxOptions: 50,
-        create: false,
-        preload: false,
-        allowEmptyOption: true,
-        placeholder: 'Search products...',
-        load: function(query, callback) {
-            if (!query || query.length < 2) return callback();
-            fetch(`/order/api/search-products-v2?q=${encodeURIComponent(query)}`)
-                .then(res => res.json())
-                .then(items => callback(items))
-                .catch(() => callback());
-        },
-        render: {
-            option: function(item, escape) {
-                return `<div>${escape(item.display_text)}</div>`;
+            onChange: function (value) {
+                if (!value) return;
+                const customer = this.options[value];
+                OrderForm.setCustomer(customer);
             },
-            item: function(item, escape) {
-                return `<div>${escape(item.display_text)}</div>`;
+            onClear: function () {
+                // Also trigger our reset logic if the user clears the selection
+                OrderForm.resetCustomer();
             }
-        },
-        onChange: function(value) {
-            hiddenInput.value = value || '';
-            const product = this.options[value];
-            if (!product) {
-                clearProductFields(itemId);
-                return;
+        });
+
+        // Product Search
+        const productSelect = new TomSelect('#product-select', {
+            valueField: 'id',
+            labelField: 'display_text',
+            searchField: ['name', 'sku'],
+            create: false,
+            render: {
+                option: (data, escape) => `<div>${escape(data.display_text)}</div>`,
+                item: (data, escape) => `<div>${escape(data.name)}</div>`,
+            },
+            load: function (query, callback) {
+                if (query.length < 2) return callback();
+                fetch(`/order/api/search-products-v2?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => callback(data))
+                    .catch(() => callback());
+            },
+            onChange: function (value) {
+                if (!value) return;
+                const product = this.options[value];
+                OrderForm.selectProduct(product);
             }
-            // Auto-populate fields
-            const mrpInput = itemRow.querySelector('input[name="mrp_prices"]');
-            const priceInput = itemRow.querySelector('input[name="unit_prices"]');
-            const uomSelect = itemRow.querySelector('select[name="uoms"]');
-            const taxDisplayInput = itemRow.querySelector('input[name="tax_display"]');
-            const taxCodeInput = itemRow.querySelector('input[name="tax_codes"]');
+        });
 
-            if (mrpInput) mrpInput.value = (product.mrp_price ?? 0).toFixed(2);
-            if (priceInput) priceInput.value = (product.price ?? 0).toFixed(2);
-            if (uomSelect) {
-                for (let option of uomSelect.options) {
-                    if (option.value === (product.uom || option.value)) {
-                        option.selected = true;
-                        break;
-                    }
-                }
-            }
-            if (taxDisplayInput) taxDisplayInput.value = `${product.tax_rate ?? 18}%`;
-            if (taxCodeInput) taxCodeInput.value = product.tax_code || 'GST18';
-
-            const qtyInput = itemRow.querySelector('input[name="quantities"]');
-            if (qtyInput && qtyInput.value) {
-                calculateLineTotal(itemId);
-            }
-        }
+        // Initialize the OrderForm module
+        OrderForm.init({
+            customerSelectInstance: customerSelect,
+            productSelectInstance: productSelect
+        });
     });
-}
-
-function clearProductFields(itemId) {
-    const itemRow = document.getElementById(`item-${itemId}`);
-    if (itemRow) {
-        const mrpInput = itemRow.querySelector('input[name="mrp_prices"]');
-        const priceInput = itemRow.querySelector('input[name="unit_prices"]');
-        
-        if (mrpInput) mrpInput.value = '';
-        if (priceInput) priceInput.value = '';
-    }
-}
-
-// Add new order item
-function addOrderItem() {
-    orderItemCounter++;
-    const container = document.getElementById('orderItemsContainer');
-    
-    // Product search functionality will be handled separately
-    
-    const taxOptions = Object.keys(taxCodes).map(code => 
-        `<option value="${code}" ${code === 'GST18' ? 'selected' : ''}>${taxCodes[code].name}</option>`
-    ).join('');
-    
-    const itemHtml = `
-        <div class="row grid-row m-0" id="item-${orderItemCounter}">
-            <div class="col-auto text-center" style="width: 50px;">
-                <span class="item-serial">${orderItemCounter}</span>
-            </div>
-            <div class="col-4">
-                <div>
-                    <select class="form-select form-select-sm product-select" data-item-id="${orderItemCounter}"></select>
-                    <input type="hidden" name="products" class="product-id-input" data-item-id="${orderItemCounter}">
-                </div>
-            </div>
-            <div class="col-1">
-                <select class="form-select form-select-sm" name="uoms">
-                    <option value="pcs">Pcs</option>
-                    <option value="kg">Kg</option>
-                    <option value="ltr">Ltr</option>
-                    <option value="box">Box</option>
-                </select>
-            </div>
-            <div class="col-1">
-                <input type="number" class="form-control form-control-sm" name="quantities" 
-                       placeholder="Qty" min="1" required onchange="calculateLineTotal(${orderItemCounter})">
-            </div>
-            <div class="col-1">
-                <input type="number" class="form-control form-control-sm" name="mrp_prices" 
-                       placeholder="0.00" step="0.01" readonly>
-            </div>
-            <div class="col-1">
-                <input type="number" class="form-control form-control-sm" name="discounts" 
-                       placeholder="0" min="0" max="100" step="0.01" onchange="calculateLineTotal(${orderItemCounter})">
-            </div>
-            <div class="col-1">
-                <input type="number" class="form-control form-control-sm" name="unit_prices" 
-                       placeholder="0.00" step="0.01" onchange="calculateLineTotal(${orderItemCounter})">
-            </div>
-            <div class="col-1">
-                <input type="text" class="form-control form-control-sm tax-display" 
-                       name="tax_display" placeholder="18%" readonly style="background: #f8f9fa; font-size: 0.8rem;">
-                <input type="hidden" name="tax_codes" value="GST18">
-            </div>
-            <div class="col-1">
-                <input type="number" class="form-control form-control-sm" name="line_totals" 
-                       placeholder="0.00" step="0.01" readonly>
-            </div>
-            <div class="col-auto text-center" style="width: 60px;">
-                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeOrderItem(${orderItemCounter})" 
-                        ${orderItemCounter === 1 ? 'disabled' : ''}>
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `;
-    
-    container.insertAdjacentHTML('beforeend', itemHtml);
-    
-    // Initialize product select for the new item
-    initProductSelect(orderItemCounter);
-    
-    updateItemNumbers();
-    calculateOrderTotals();
-}
-
-// Remove order item
-function removeOrderItem(itemId) {
-    const item = document.getElementById(`item-${itemId}`);
-    if (item) {
-        item.remove();
-        updateItemNumbers();
-        calculateOrderTotals();
-        
-        // Enable remove button for first item if there are multiple items
-        const firstRemoveBtn = document.querySelector('#orderItemsContainer .btn-outline-danger');
-        const itemCount = document.querySelectorAll('#orderItemsContainer .grid-row').length;
-        if (firstRemoveBtn && itemCount > 1) {
-            firstRemoveBtn.disabled = false;
-        } else if (firstRemoveBtn && itemCount === 1) {
-            firstRemoveBtn.disabled = true;
-        }
-    }
-}
-
-// Update item serial numbers
-function updateItemNumbers() {
-    const items = document.querySelectorAll('#orderItemsContainer .item-serial');
-    items.forEach((item, index) => {
-        item.textContent = index + 1;
-    });
-}
-
-// Update item pricing when product is selected
-function updateItemPricing(itemId) {
-    const row = document.getElementById(`item-${itemId}`);
-    const productSelect = row.querySelector('select[name="products"]');
-    const option = productSelect.options[productSelect.selectedIndex];
-    
-    if (option.value) {
-        const mrpInput = row.querySelector('input[name="mrp_prices"]');
-        const priceInput = row.querySelector('input[name="unit_prices"]');
-        
-        mrpInput.value = option.dataset.mrp || option.dataset.price;
-        priceInput.value = option.dataset.price;
-        
-        calculateLineTotal(itemId);
-    }
-}
-
-// Calculate line total for an item
-function calculateLineTotal(itemId) {
-    const row = document.getElementById(`item-${itemId}`);
-    const quantity = parseFloat(row.querySelector('input[name="quantities"]').value) || 0;
-    const unitPrice = parseFloat(row.querySelector('input[name="unit_prices"]').value) || 0;
-    const discount = parseFloat(row.querySelector('input[name="discounts"]').value) || 0;
-    const taxCode = row.querySelector('input[name="tax_codes"]').value;
-    
-    // Calculate discounted price
-    const discountAmount = (unitPrice * discount / 100);
-    const discountedPrice = unitPrice - discountAmount;
-    
-    // Calculate tax
-    const taxRate = taxCodes[taxCode] ? taxCodes[taxCode].rate : 18;
-    const subtotal = discountedPrice * quantity;
-    const taxAmount = (subtotal * taxRate / 100);
-    const lineTotal = subtotal + taxAmount;
-    
-    // Update line total
-    row.querySelector('input[name="line_totals"]').value = lineTotal.toFixed(2);
-    
-    calculateOrderTotals();
-}
-
-// Calculate order totals
-function calculateOrderTotals() {
-    let totalItems = 0;
-    let subtotal = 0;
-    let totalTax = 0;
-    
-    const rows = document.querySelectorAll('#orderItemsContainer .grid-row');
-    rows.forEach(row => {
-        const quantity = parseFloat(row.querySelector('input[name="quantities"]').value) || 0;
-        const unitPrice = parseFloat(row.querySelector('input[name="unit_prices"]').value) || 0;
-        const discount = parseFloat(row.querySelector('input[name="discounts"]').value) || 0;
-        const taxCode = row.querySelector('input[name="tax_codes"]').value;
-        
-        if (quantity > 0 && unitPrice > 0) {
-            totalItems++;
-            const discountAmount = (unitPrice * discount / 100);
-            const discountedPrice = unitPrice - discountAmount;
-            const itemSubtotal = discountedPrice * quantity;
-            const taxRate = taxCodes[taxCode] ? taxCodes[taxCode].rate : 18;
-            const itemTax = (itemSubtotal * taxRate / 100);
-            
-            subtotal += itemSubtotal;
-            totalTax += itemTax;
-        }
-    });
-    
-    const grandTotal = subtotal + totalTax;
-    
-    // Update summary panel
-    document.getElementById('totalItemsCount').textContent = `${totalItems} lines`;
-    document.getElementById('subtotalAmount').textContent = `₹ ${subtotal.toFixed(2)}`;
-    document.getElementById('totalTaxAmount').textContent = `₹ ${totalTax.toFixed(2)}`;
-    document.getElementById('grandTotal').textContent = `₹ ${grandTotal.toFixed(2)}`;
-}
-
-// Save draft functionality
-function saveDraft() {
-    alert('Save draft functionality will be implemented in the next phase');
-}
-
-// Reset form
-function resetForm() {
-    if (confirm('Are you sure you want to reset the form? All data will be lost.')) {
-        document.getElementById('orderForm').reset();
-        document.getElementById('orderItemsContainer').innerHTML = '';
-        orderItemCounter = 0;
-        addOrderItem();
-        document.getElementById('customerInfo').style.display = 'none';
-        calculateOrderTotals();
-    }
-}
-
-// Form submission handling
-document.getElementById('orderForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    // Validate that there's at least one item with quantity and price
-    const rows = document.querySelectorAll('#orderItemsContainer .grid-row');
-    let hasValidItems = false;
-    
-    rows.forEach(row => {
-        const quantity = parseFloat(row.querySelector('input[name="quantities"]').value) || 0;
-        const unitPrice = parseFloat(row.querySelector('input[name="unit_prices"]').value) || 0;
-        if (quantity > 0 && unitPrice > 0) {
-            hasValidItems = true;
-        }
-    });
-    
-    if (!hasValidItems) {
-        alert('Please add at least one item with valid quantity and price.');
-        return;
-    }
-    
-    // If validation passes, submit the form
-    this.submit();
-});
 </script>
 {% endblock %}
+```
+```diff

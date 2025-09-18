@@ -263,7 +263,8 @@ def create_sale(current_agency_id=None):
                 email=customer_info.get('email'),
                 phone=customer_info.get('phone'),
                 address=customer_info.get('address'),
-                location_id=location_id
+                location_id=location_id,
+                is_active=True
             )
             db.session.add(customer)
             db.session.flush()  # Get customer ID
@@ -304,16 +305,22 @@ def create_sale(current_agency_id=None):
             # Product availability is assumed
             
             # Create order item
+            # Align with the newer OrderItem model structure
             order_item = OrderItem(
                 order_id=order.id,
                 product_id=product.id,
                 quantity=quantity,
                 unit_price=unit_price,
-                total_price=quantity * unit_price
+                mrp_price=unit_price, # Assuming unit_price is MRP for POS
+                discount_percentage=0, # No line-item discount in POS UI
+                discounted_price=unit_price,
+                tax_code='GST0', # Default, as POS doesn't handle line-item tax
+                tax_rate=0,
+                tax_amount=0,
+                line_total=quantity * unit_price,
+                total_price=quantity * unit_price, # For backward compatibility if needed
             )
             db.session.add(order_item)
-            
-            # Inventory tracking disabled - no stock updates
             
             total_amount += order_item.total_price
         
