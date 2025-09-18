@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Suppliers - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-truck-loading me-2"></i>Manage Suppliers</h2>
+    <div>
+        <a href="{{ url_for('inventory.add_supplier') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Create Supplier
+        </a>
+        <a href="{{ url_for('inventory.dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Filter Form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-center">
+            <div class="col-md-9">
+                <label for="search" class="visually-hidden">Search</label>
+                <input type="text" class="form-control" id="search" name="search" placeholder="Search by name, contact, or email..." value="{{ request.args.get('search', '') }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter me-2"></i>Filter
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Suppliers Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Supplier List</h5>
+    </div>
+    <div class="card-body">
+        {% if suppliers.items %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Supplier Name</th>
+                        <th>Contact Person</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for supplier in suppliers.items %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold">{{ supplier.name }}</div>
+                            <small class="text-muted">{{ supplier.address or '' }}</small>
+                        </td>
+                        <td>{{ supplier.contact_person or 'N/A' }}</td>
+                        <td>{{ supplier.email or 'N/A' }}</td>
+                        <td>{{ supplier.phone or 'N/A' }}</td>
+                        <td>
+                            {% if supplier.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('inventory.edit_supplier', supplier_id=supplier.id) }}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form action="{{ url_for('inventory.toggle_supplier_status', supplier_id=supplier.id) }}" method="POST" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Toggle Status">
+                                    <i class="fas fa-toggle-on"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+            <i class="fas fa-box-open fa-3x mb-3"></i>
+            <p>No suppliers found. <a href="{{ url_for('inventory.add_supplier') }}">Create one now</a>.</p>
+        </div>
+        {% endif %}
+    </div>
+    {% if suppliers.pages > 1 %}
+    <div class="card-footer">
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mb-0">
+                {% for page_num in suppliers.iter_pages() %}
+                    {% if page_num %}
+                        <li class="page-item {{ 'active' if suppliers.page == page_num else '' }}">
+                            <a class="page-link" href="{{ url_for('inventory.list_suppliers', page=page_num, **request.args) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -269,12 +269,27 @@ def transaction_history(current_agency_id=None):
 def list_suppliers(current_agency_id=None):
     """List suppliers for inventory management"""
     user_role = session.get('role')
-    
+    search = request.args.get('search', '').strip()
+
     if user_role == 'super_admin':
-        suppliers = Supplier.query.all()
+        query = Supplier.query
     else:
-        suppliers = Supplier.query.filter_by(agency_id=current_agency_id).all()
-    
+        query = Supplier.query.filter_by(agency_id=current_agency_id)
+
+    if search:
+        query = query.filter(
+            db.or_(
+                Supplier.name.ilike(f'%{search}%'),
+                Supplier.contact_person.ilike(f'%{search}%'),
+                Supplier.email.ilike(f'%{search}%')
+            )
+        )
+
+    suppliers = query.order_by(Supplier.name).paginate(
+        page=request.args.get('page', 1, type=int),
+        per_page=20,
+        error_out=False
+    )
     return render_template('inventory/suppliers.html', suppliers=suppliers)
 
 @inventory_bp.route('/add_supplier', methods=['GET', 'POST'])
