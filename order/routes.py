@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, session, send_file, jsonify
 from datetime import datetime
 import uuid
+from sqlalchemy import or_, and_
 from app import db
 from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode, ProductAgency
 from order import order_bp
@@ -117,152 +118,228 @@ def list_orders(current_agency_id=None):
 @login_required
 @log_activity('create_order')
 def create_order():
+    """
+    Handles the creation of a new order.
+    GET: Renders the new dynamic order form.
+    POST: Accepts a JSON payload to create the order.
+    """
     if request.method == 'POST':
-        customer_id = request.form.get('customer_id')
-        products_data = request.form.getlist('products')
-        quantities = request.form.getlist('quantities')
-        uoms = request.form.getlist('uoms')
-        mrp_prices = request.form.getlist('mrp_prices')
-        unit_prices = request.form.getlist('unit_prices')
-        discounts = request.form.getlist('discounts')
-        tax_codes = request.form.getlist('tax_codes')
-        line_totals = request.form.getlist('line_totals')
-        # payment_status removed as per requirement
-        notes = request.form.get('notes')
-        delivery_date = request.form.get('delivery_date')
-        
+        data = request.get_json()
         user_role = session.get('role')
         current_agency_id = session.get('agency_id')
         user_id = session.get('user_id')
-        
-        if not customer_id:
-            flash('Customer is required', 'error')
-            return render_template('order/form.html', 
-                                 customers=get_customers_for_user(),
-                                 products=get_products_for_user())
-        
-        if not products_data or not quantities:
-            flash('At least one product is required', 'error')
-            return render_template('order/form.html',
-                                 customers=get_customers_for_user(),
-                                 products=get_products_for_user())
-        
-        # Validate customer belongs to user's agency
-        customer = Customer.query.get(customer_id)
-        if not customer:
-            flash('Invalid customer selected', 'error')
-            return render_template('order/form.html',
-                                 customers=get_customers_for_user(),
-                                 products=get_products_for_user())
-        
-        if user_role != 'super_admin' and customer.location.agency_id != current_agency_id:
-            flash('You can only create orders for your agency customers', 'error')
-            return render_template('order/form.html',
-                                 customers=get_customers_for_user(),
-                                 products=get_products_for_user())
-        
-        # Generate order number
-        order_number = f"ORD-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:8].upper()}"
-        
-        # Create order with enhanced fields
-        order = Order()
-        order.order_number = order_number
-        order.customer_id = customer_id
-        order.agency_id = customer.location.agency_id
-        order.salesperson_id = user_id
-        order.status = 'pending'
-        order.payment_status = 'pending'  # Default to pending
-        order.total_amount = 0
-        order.subtotal_amount = 0
-        order.total_tax_amount = 0
-        order.total_items_count = 0
-        order.discount = 0  # Legacy field
-        order.tax = 0       # Legacy field
-        order.notes = notes
-        
-        if delivery_date:
-            order.delivery_date = datetime.strptime(delivery_date, '%Y-%m-%d')
-        
-        db.session.add(order)
-        db.session.flush()  # Get order ID
-        
-        # Add enhanced order items
-        subtotal = 0
-        total_tax = 0
-        valid_items = 0
-        
-        for i, product_id in enumerate(products_data):
-            if (i < len(quantities) and quantities[i] and 
-                i < len(unit_prices) and unit_prices[i]):
+
+        try:
+            customer_id = data.get('customer_id')
+            items = data.get('items', [])
+            tax_amount = float(data.get('tax', 0))
+            discount_amount = float(data.get('discount', 0))
+
+            if not customer_id or not items:
+                return jsonify({'error': 'Customer and at least one item are required.'}), 400
+
+            customer = Customer.query.get(customer_id)
+            if not customer:
+                return jsonify({'error': 'Invalid customer selected.'}), 404
+
+            if user_role != 'super_admin' and customer.location.agency_id != current_agency_id:
+                return jsonify({'error': 'Customer does not belong to your agency.'}), 403
+
+            order_number = f"ORD-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:8].upper()}"
+            
+            order = Order(
+                order_number=order_number,
+                customer_id=customer.id,
+                agency_id=customer.location.agency_id,
+                salesperson_id=user_id,
+                status='pending',
+                payment_status='pending',
+                notes=data.get('notes'),
+                order_date=datetime.utcnow(),
+                tax=tax_amount,
+                discount=discount_amount
+            )
+            if data.get('delivery_date'):
+                order.delivery_date = datetime.strptime(data['delivery_date'], '%Y-%m-%d')
+
+            db.session.add(order)
+            db.session.flush()
+
+            subtotal = 0
+
+            for item_data in items:
+                product = Product.query.get(item_data['id'])
+                if not product:
+                    db.session.rollback()
+                    return jsonify({'error': f"Product with ID {item_data['id']} not found."}), 400
+
+                # Auto-create/activate ProductAgency mapping if needed
+                if user_role != 'super_admin':
+                    pa_mapping = ProductAgency.query.filter_by(product_id=product.id, agency_id=customer.location.agency_id).first()
+                    if not pa_mapping:
+                        pa_mapping = ProductAgency(product_id=product.id, agency_id=customer.location.agency_id, is_active=True)
+                        db.session.add(pa_mapping)
+                    elif not pa_mapping.is_active:
+                        pa_mapping.is_active = True
+
+                quantity = float(item_data['quantity'])
+                unit_price = float(item_data['price'])
+                discount_pct = float(item_data.get('discount', 0))
+
+                discounted_price = unit_price * (1 - (discount_pct / 100))
+                line_total = discounted_price * quantity
+
+                order_item = OrderItem(
+                    order_id=order.id,
+                    product_id=product.id,
+                    quantity=quantity,
+                    uom=product.uom_ref.short_name if product.uom_ref else 'pcs',
+                    unit_price=unit_price,
+                    mrp_price=product.mrp_price or unit_price,
+                    discount_percentage=discount_pct,
+                    discounted_price=discounted_price,
+                    tax_code='N/A', # Tax is now at order level
+                    tax_rate=0,
+                    tax_amount=0,
+                    line_total=line_total,
+                    total_price=line_total  # Backward compatibility
+                )
+                db.session.add(order_item)
                 
-                quantity = int(quantities[i])
-                unit_price = float(unit_prices[i])
-                product = Product.query.get(product_id)
-                
-                if product and quantity > 0 and unit_price > 0:
-                    # Validate product has a mapping to the order's agency
-                    from models import ProductAgency
-                    if user_role != 'super_admin':
-                        if not ProductAgency.query.filter_by(product_id=product.id, agency_id=customer.location.agency_id, is_active=True).first():
-                            continue
-                    
-                    # Get enhanced item data
-                    uom = uoms[i] if i < len(uoms) else 'pcs'
-                    mrp_price = float(mrp_prices[i]) if i < len(mrp_prices) and mrp_prices[i] else unit_price
-                    discount_pct = float(discounts[i]) if i < len(discounts) and discounts[i] else 0
-                    tax_code = tax_codes[i] if i < len(tax_codes) else 'GST18'
-                    
-                    # Calculate pricing
-                    discount_amount = (unit_price * discount_pct / 100)
-                    discounted_price = unit_price - discount_amount
-                    
-                    # Get tax rate
-                    tax_rate = 18.0  # Default GST 18%
-                    tax_code_obj = IndianTaxCode.query.filter_by(code=tax_code, is_active=True).first()
-                    if tax_code_obj:
-                        tax_rate = float(tax_code_obj.rate)
-                    
-                    # Calculate tax and line total
-                    line_subtotal = discounted_price * quantity
-                    tax_amount = (line_subtotal * tax_rate / 100)
-                    line_total = line_subtotal + tax_amount
-                    
-                    order_item = OrderItem()
-                    order_item.order_id = order.id
-                    order_item.product_id = product_id
-                    order_item.quantity = quantity
-                    order_item.uom = uom
-                    order_item.unit_price = unit_price
-                    order_item.mrp_price = mrp_price
-                    order_item.discount_percentage = discount_pct
-                    order_item.discounted_price = discounted_price
-                    order_item.tax_code = tax_code
-                    order_item.tax_rate = tax_rate
-                    order_item.tax_amount = tax_amount
-                    order_item.line_total = line_total
-                    order_item.total_price = line_total  # For backward compatibility
-                    
-                    subtotal += line_subtotal
-                    total_tax += tax_amount
-                    valid_items += 1
-                    db.session.add(order_item)
-        
-        # Update order totals
-        order.subtotal_amount = subtotal
-        order.total_tax_amount = total_tax
-        order.total_amount = subtotal + total_tax
-        order.total_items_count = valid_items
-        db.session.commit()
-        
-        flash('Order created successfully!', 'success')
-        return redirect(url_for('order.list_orders'))
+                subtotal += line_total
+
+            order.subtotal_amount = subtotal
+            order.total_tax_amount = tax_amount # From payload
+            order.total_amount = subtotal + tax_amount - discount_amount
+            order.total_items_count = len(items)
+            
+            # Legacy fields (optional, can be removed if not needed elsewhere)
+            # order.discount = 0 # This was already a global discount
+            # order.tax = tax_amount # This is already set
+
+            db.session.commit()
+            flash('Order created successfully!', 'success')
+            return jsonify({'success': True, 'order_id': order.id, 'redirect_url': url_for('order.view_order', order_id=order.id)})
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': f'An unexpected error occurred: {str(e)}'}), 500
     
     # Add today's date for the template
-    from datetime import date
+    from datetime import date, timedelta
+    today = date.today()
+    default_delivery_date = today + timedelta(days=10)
     return render_template('order/form.html',
-                         customers=get_customers_for_user(),
-                         products=get_products_for_user(),
-                         today=date.today())
+                         default_delivery_date=default_delivery_date)
+
+@order_bp.route('/api/search-customers-v2')
+@login_required
+@agency_access_required
+def search_customers_v2(current_agency_id=None):
+    """Return customer suggestions for Tom Select
+    Response: [ { id, name, phone, email, address, location_name, credit_period, display_text } ]
+    """
+    q = (request.args.get('q') or '').strip()
+    if not q or len(q) < 2:
+        return jsonify([])
+
+    # Base query: active customers, restricted by agency for non-super admins
+    query = Customer.query.join(Location, Customer.location_id == Location.id)
+
+    user_role = session.get('role')
+    if user_role != 'super_admin':
+        # Restrict to current agency
+        agency_id = current_agency_id or session.get('agency_id')
+        query = query.filter(Location.agency_id == agency_id)
+
+    # Case-insensitive search across fields
+    like = f"%{q}%"
+    query = query.filter(
+        or_(
+            Customer.name.ilike(like),
+            Customer.phone.ilike(like),
+            Customer.email.ilike(like),
+            Customer.city.ilike(like)
+        )
+    ).filter(Customer.is_active == True)
+
+    results = (
+        query.order_by(Customer.name.asc()).limit(50).all()
+    )
+
+    items = []
+    for c in results:
+        display = f"{c.name} — {c.phone or ''} — {c.city or ''}"
+        items.append({
+            'id': c.id,
+            'name': c.name,
+            'phone': c.phone,
+            'email': c.email,
+            'address': c.address,
+            'location_name': c.location.name if c.location else None,
+            'credit_period': c.credit_period,
+            'display_text': display.strip(' —')
+        })
+    return jsonify(items)
+
+@order_bp.route('/api/search-products-v2')
+@login_required
+@agency_access_required
+def search_products_v2(current_agency_id=None):
+    """Return product suggestions for Tom Select with agency validation
+    Response: [ { id, name, sku, price, mrp_price, uom, tax_code, tax_rate, display_text } ]
+    """
+    q = (request.args.get('q') or '').strip()
+    if not q or len(q) < 2:
+        return jsonify([])
+
+    user_role = session.get('role')
+    agency_id = current_agency_id or session.get('agency_id')
+
+    # Join Product with ProductAgency to pull overrides when available
+    # Only include active mappings for non-super-admin users
+    base = db.session.query(Product).outerjoin(
+        ProductAgency,
+        and_(ProductAgency.product_id == Product.id,
+             ProductAgency.agency_id == agency_id)
+    )
+    base = base.add_entity(ProductAgency)
+
+    # Active products only
+    base = base.filter(Product.is_active == True)
+
+    # Search across name and SKU (case-insensitive)
+    like = f"%{q}%"
+    base = base.filter(or_(Product.name.ilike(like), Product.sku.ilike(like)))
+
+    # If not super admin, ensure there is either an active mapping or allow fallback to global product
+    # The requirement notes imply auto-create/reactivate mapping on use; here we just allow listing
+
+    rows = base.order_by(Product.name.asc()).limit(50).all()
+
+    items = []
+    for prod, pa in rows:
+        # Prefer agency override values when present, else fallback to product master
+        sell_price = float(pa.sell_price) if pa and pa.sell_price is not None else (float(prod.sell_price) if prod.sell_price is not None else 0)
+        mrp_price = float(pa.mrp_price) if pa and pa.mrp_price is not None else (float(prod.mrp_price) if prod.mrp_price is not None else sell_price)
+        uom = (pa.uom_ref.short_name if pa and pa.uom_ref else (prod.uom_ref.short_name if prod.uom_ref else 'pcs'))
+        tax_code = (pa.tax_master_ref.tax_code if pa and pa.tax_master_ref else (prod.tax_master_ref.tax_code if prod.tax_master_ref else 'GST18'))
+        tax_rate = float(pa.tax_master_ref.tax_rate) if pa and pa.tax_master_ref else (float(prod.tax_master_ref.tax_rate) if prod.tax_master_ref else 18.0)
+        display_name = pa.display_name if pa and pa.display_name else prod.name
+        display = f"{display_name} — {prod.sku} — ₹{sell_price:.2f}"
+        items.append({
+            'id': prod.id,
+            'name': display_name,
+            'sku': prod.sku,
+            'price': sell_price,
+            'mrp_price': mrp_price,
+            'uom': uom,
+            'tax_code': tax_code,
+            'tax_rate': tax_rate,
+            'display_text': display
+        })
+
+    return jsonify(items)
 
 @order_bp.route('/<int:order_id>')
 @login_required
@@ -497,21 +574,47 @@ def search_products():
     user_role = session.get('role')
     agency_id = session.get('agency_id')
     
-    # Build base query from Product master; outer-join any mapping for current agency
-    products_query = db.session.query(Product, ProductAgency).outerjoin(
-        ProductAgency,
-        db.and_(ProductAgency.product_id == Product.id,
-                ProductAgency.agency_id == agency_id)
-    )
-
-    # Apply search filter (master-level)
-    if query:
-        products_query = products_query.filter(
-            db.or_(
-                Product.name.ilike(f'%{query}%'),
-                Product.sku.ilike(f'%{query}%')
+    # For non-super-admins: restrict strictly to current agency's mapped products
+    if user_role != 'super_admin':
+        products_query = db.session.query(Product, ProductAgency).join(
+            ProductAgency,
+            db.and_(
+                ProductAgency.product_id == Product.id,
+                ProductAgency.agency_id == agency_id,
+                ProductAgency.is_active == True
             )
-        )
+        ).filter(Product.is_active == True)
+    else:
+        # Super admin: allow global search; optional ?agency_id= to filter
+        filter_agency = request.args.get('agency_id', type=int)
+        if filter_agency:
+            products_query = db.session.query(Product, ProductAgency).join(
+                ProductAgency,
+                db.and_(
+                    ProductAgency.product_id == Product.id,
+                    ProductAgency.agency_id == filter_agency,
+                    ProductAgency.is_active == True
+                )
+            ).filter(Product.is_active == True)
+        else:
+            # Super admin without agency filter: keep Product master; if session has agency_id, only join active mapping
+            products_query = db.session.query(Product, ProductAgency).outerjoin(
+                ProductAgency,
+                db.and_(
+                    ProductAgency.product_id == Product.id,
+                    ProductAgency.agency_id == agency_id,
+                    ProductAgency.is_active == True
+                )
+            ).filter(Product.is_active == True)
+
+    # Apply search filter: match on master name/SKU and agency display_name/description
+    if query:
+        products_query = products_query.filter(db.or_(
+            Product.name.ilike(f'%{query}%'),
+            Product.sku.ilike(f'%{query}%'),
+            Product.description.ilike(f'%{query}%'),
+            ProductAgency.display_name.ilike(f'%{query}%')
+        ))
 
     results = products_query.limit(50).all()
 
@@ -529,8 +632,9 @@ def search_products():
         'price': safe_float(pa.sell_price if pa and pa.sell_price is not None else p.sell_price, 0.0),
         'buy_price': safe_float(pa.buy_price if pa and getattr(pa, 'buy_price', None) is not None else p.buy_price, 0.0),
         'mrp_price': safe_float(pa.mrp_price if pa and getattr(pa, 'mrp_price', None) is not None else p.mrp_price, 0.0),
-        'uom': (pa.uom_ref.name if pa and pa.uom_ref else (p.uom_ref.name if p.uom_ref else 'pcs')),
+        'uom': ((pa.uom_ref.short_name.lower() if pa and pa.uom_ref and getattr(pa.uom_ref, 'short_name', None) else (p.uom_ref.short_name.lower() if p and p.uom_ref and getattr(p.uom_ref, 'short_name', None) else 'pcs'))),
         'uom_id': (int(pa.uom_id) if pa and getattr(pa, 'uom_id', None) is not None else (int(p.uom_id) if getattr(p, 'uom_id', None) is not None else None)),
+        'uom_short': (pa.uom_ref.short_name if pa and pa.uom_ref and getattr(pa.uom_ref, 'short_name', None) else (p.uom_ref.short_name if p and p.uom_ref and getattr(p.uom_ref, 'short_name', None) else '')), 
         'tax_rate': (
             safe_float(pa.tax_master_ref.tax_rate) if pa and pa.tax_master_ref else (
                 safe_float(p.tax_master_ref.tax_rate) if p and p.tax_master_ref else 18.0
@@ -541,5 +645,17 @@ def search_products():
         'stock_available': True,  # Stock tracking disabled
         'category': (pa.category_ref.name if pa and pa.category_ref else (p.category_ref.name if p and p.category_ref else '')),
         'category_id': (int(pa.category_id) if pa and getattr(pa, 'category_id', None) is not None else (int(p.category_id) if getattr(p, 'category_id', None) is not None else None)),
-        'display_text': f"{(pa.display_name if pa and pa.display_name else p.name)} ({p.sku}) - ₹{safe_float(pa.sell_price if pa and pa.sell_price is not None else p.sell_price, 0.0)}"
+        'category_short': (pa.category_ref.short_name if pa and pa.category_ref and getattr(pa.category_ref, 'short_name', None) else (p.category_ref.short_name if p and p.category_ref and getattr(p.category_ref, 'short_name', None) else '')),
+        'display_text': (
+            f"{(pa.display_name if pa and pa.display_name else p.name)} ({p.sku})"
+            + (
+                f" [{pa.category_ref.short_name}]" if pa and pa.category_ref and getattr(pa.category_ref, 'short_name', None)
+                else (f" [{p.category_ref.short_name}]" if p and p.category_ref and getattr(p.category_ref, 'short_name', None) else "")
+            )
+            + (
+                f" • {pa.uom_ref.short_name}" if pa and pa.uom_ref and getattr(pa.uom_ref, 'short_name', None)
+                else (f" • {p.uom_ref.short_name}" if p and p.uom_ref and getattr(p.uom_ref, 'short_name', None) else "")
+            )
+            + f" - ₹{safe_float(pa.sell_price if pa and pa.sell_price is not None else p.sell_price, 0.0)}"
+        )
     } for (p, pa) in results])

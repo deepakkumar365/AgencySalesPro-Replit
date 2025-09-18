@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash, session, send_file
+from flask import render_template, request, redirect, url_for, flash, session, send_file, jsonify
 from werkzeug.utils import secure_filename
 import pandas as pd
 import io
@@ -9,6 +9,7 @@ from product import product_bp
 from auth.utils import login_required, agency_access_required
 from utils.decorators import log_activity
 from utils.excel_utils import export_products_to_excel, import_products_from_excel
+from utils.sku import generate_sku
 
 @product_bp.route('/')
 @login_required
@@ -119,7 +120,7 @@ def list_products(current_agency_id=None):
 def create_product():
     if request.method == 'POST':
         name = request.form.get('name')
-        sku = request.form.get('sku')
+        sku = (request.form.get('sku') or '').strip().upper()
         buy_price = request.form.get('buy_price')
         sell_price = request.form.get('sell_price')
         mrp_price = request.form.get('mrp_price')
@@ -130,6 +131,18 @@ def create_product():
         
         user_role = session.get('role')
         current_agency_id = session.get('agency_id')
+        
+        # Auto-generate SKU if missing
+        if name and not sku:
+            try:
+                sku = generate_sku(name=name, 
+                                   category_id=int(category_id) if category_id else None,
+                                   uom_id=int(uom_id) if uom_id else None)
+            except Exception:
+                # Fallback minimal SKU
+                from datetime import datetime
+                base = (name or 'PROD')[:4].upper()
+                sku = f"CAT-UOM-{base}-{datetime.utcnow().strftime('%H%M%S')}"
         
         if not all([name, sku, buy_price, sell_price, mrp_price]):
             flash('Name, SKU, Buy Price, Sell Price, and MRP are required', 'error')
@@ -191,8 +204,17 @@ def create_product():
 
         # No selection => creating a new product: enforce global SKU uniqueness
         if Product.query.filter_by(sku=sku).first():
-            flash('SKU already exists. Please use search to select the existing product instead of creating a duplicate.', 'error')
-            return render_template('product/form.html', agencies=get_agencies_for_user())
+            # If collision, try auto-generate a new SKU once
+            try:
+                sku = generate_sku(name=name, 
+                                   category_id=int(category_id) if category_id else None,
+                                   uom_id=int(uom_id) if uom_id else None)
+            except Exception:
+                sku = None
+            
+            if not sku or Product.query.filter_by(sku=sku).first():
+                flash('SKU already exists. Please use search to select the existing product instead of creating a duplicate.', 'error')
+                return render_template('product/form.html', agencies=get_agencies_for_user())
         
         try:
             buy_price = float(buy_price) if buy_price else 0.0
@@ -278,13 +300,23 @@ def edit_product(product_id):
     
     if request.method == 'POST':
         product.name = request.form.get('name')
-        product.sku = request.form.get('sku')
+        product.sku = (request.form.get('sku') or '').strip().upper()
         buy_price = request.form.get('buy_price')
         sell_price = request.form.get('sell_price')
         mrp_price = request.form.get('mrp_price')
         category_id = request.form.get('category_id')
         uom_id = request.form.get('uom_id')
         tax_master_id = request.form.get('tax_master_id')
+        
+        # Auto-generate SKU if missing
+        if product.name and not product.sku:
+            try:
+                generated = generate_sku(name=product.name, 
+                                         category_id=int(category_id) if category_id else product.category_id,
+                                         uom_id=int(uom_id) if uom_id else product.uom_id)
+                product.sku = generated
+            except Exception:
+                pass
         
         if not all([product.name, product.sku, buy_price, sell_price, mrp_price]):
             flash('Name, SKU, Buy Price, Sell Price, and MRP are required', 'error')
@@ -329,6 +361,22 @@ def edit_product(product_id):
                          categories=categories,
                          uoms=uoms,
                          tax_masters=tax_masters)
+
+@product_bp.route('/api/generate-sku', methods=['GET'])
+@login_required
+def api_generate_sku():
+    name = (request.args.get('name') or '').strip()
+    category_id = request.args.get('category_id')
+    uom_id = request.args.get('uom_id')
+    if not name:
+        return jsonify({'success': False, 'message': 'name is required'}), 400
+    try:
+        sku = generate_sku(name=name,
+                           category_id=int(category_id) if category_id else None,
+                           uom_id=int(uom_id) if uom_id else None)
+        return jsonify({'success': True, 'sku': sku})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @product_bp.route('/<int:product_id>/toggle_status', methods=['POST'])
 @login_required

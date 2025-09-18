@@ -19,6 +19,13 @@
                             <input type="text" class="form-control" id="name" name="name" 
                                    value="{{ category.name if category else '' }}" required>
                         </div>
+
+                        <div class="mb-3">
+                            <label for="short_name" class="form-label">Short Name (3 letters) *</label>
+                            <input type="text" class="form-control" id="short_name" name="short_name"
+                                   value="{{ category.short_name if category else '' }}" maxlength="3" minlength="3" required>
+                            <small class="text-muted">Exactly 3 characters, e.g., "BVG".</small>
+                        </div>
                         
                         <div class="mb-3">
                             <label for="description" class="form-label">Description</label>

@@ -283,7 +283,7 @@ class PaymentMethod(db.Model):
     __tablename__ = 'ASP_payment_methods'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)  # Cash, Credit Card, Debit Card, Digital Wallet, etc.
-    code = db.Column(db.String(20), unique=True, nullable=False)
+    code = db.Column(db.String(50), unique=True, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -433,6 +433,7 @@ class Category(db.Model):
     __tablename__ = 'ASP_categories'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    short_name = db.Column(db.String(3))  # 3-letter short code (validated in app)
     description = db.Column(db.Text)
     # agency_id removed: global master
     is_active = db.Column(db.Boolean, default=True)

@@ -24,23 +24,25 @@
                     <thead class="table-dark">
                         <tr>
                             <th>Name</th>
+                            <th>Short</th>
                             <th>Description</th>
                             <th>Created</th>
-                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for category in categories %}
                         <tr>
                             <td>
-                                <strong>{{ category.name }}</strong>
+                                <strong>{{ category.name }}</strong>{% if category.short_name %} <small class="text-muted">({{ category.short_name }})</small>{% endif %}
                             </td>
+                            <td>{{ category.short_name or '-' }}</td>
                             <td>{{ category.description or '-' }}</td>
                             <td>
                                 <small>
                                     {{ category.created_at.strftime('%Y-%m-%d') if category.created_at else '-' }}
                                 </small>
                             </td>
+                            <!--
                             <td>
                                 <div class="btn-group" role="group">
                                     <button class="btn btn-sm btn-outline-primary" title="Edit">
@@ -52,6 +54,7 @@
                                     </button>
                                 </div>
                             </td>
+                            -->
                         </tr>
                         {% endfor %}
                     </tbody>
