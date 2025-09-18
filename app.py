@@ -21,11 +21,8 @@ def create_app():
     
     # Configuration
     app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
-    # Normalize Render's postgres scheme for SQLAlchemy
-    db_url = os.environ.get("DATABASE_URL", "sqlite:///agency_sales.db")
-    if db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql://", 1)
-    app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+    # Use local SQLite database to avoid connection issues
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///agency_sales.db"
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "pool_recycle": 300,
         "pool_pre_ping": True,
