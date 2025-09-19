@@ -9,7 +9,7 @@
     .main-content {
         max-width: 100%;
         padding: 1rem;
-        padding-bottom: 90px;
+        padding-bottom: 150px;
         /* Space for the fixed summary bar */
     }
 
@@ -21,7 +21,7 @@
         font-size: 0.9rem;
     }
 
-    /* Transform table to a card list by default */
+    /* On mobile, transform table to a card list */
     #order-items-table thead {
         display: none;
     }
@@ -71,6 +71,49 @@
         display: none;
     }
 
+    /* --- Mobile Cart-Like Item Row --- */
+    .order-item-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .order-item-row .item-name-cell {
+        flex-grow: 1;
+        padding: 0;
+        min-width: 0; /* Allow flex item to shrink */
+    }
+    .order-item-row .item-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-shrink: 0; /* Prevent controls from shrinking */
+    }
+    .order-item-row .item-qty {
+        width: 70px;
+    }
+    .order-item-row .item-price { width: 90px; }
+
+    /* Quantity Stepper */
+    .qty-stepper {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem; /* Space between buttons and input */
+    }
+    .qty-stepper .btn-qty {
+        width: 2rem;
+        height: 2rem;
+        line-height: 1;
+    }
+    .qty-stepper .item-qty {
+        width: 50px;
+        text-align: center;
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.25rem;
+    }
+
+    .order-item-row .remove-item-btn {
+        margin-left: auto; /* Pushes remove button to the right */
+    }
     .order-item-row .remove-btn-cell {
         justify-content: center;
         padding-top: 0.75rem;
@@ -95,10 +138,42 @@
         left: 0;
         right: 0;
         background-color: var(--bs-body-bg);
-        border-top: 2px solid var(--bs-primary);
+        border-top: 1px solid var(--bs-border-color);
         padding: 0.75rem 1rem;
         z-index: 1030;
         box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Desktop styles */
+    @media (min-width: 768px) {
+        #order-items-table thead {
+            display: table-header-group;
+        }
+
+        #order-items-table tbody,
+        #order-items-table tr,
+        #order-items-table td {
+            display: table-row;
+        }
+
+        #order-items-table td::before {
+            display: none;
+        }
+        /* Restore table layout for item rows on desktop */
+        .order-item-row {
+            display: table-row;
+        }
+        .order-item-row .item-name-cell,
+        .order-item-row .item-controls {
+            display: table-cell;
+            width: auto;
+        }
+        .order-item-row .item-controls .item-qty,
+        .order-item-row .item-controls .item-price,
+        .order-item-row .item-controls .item-discount,
+        .order-item-row .item-controls .item-line-total {
+            display: table-cell;
+        }
     }
 </style>
 {% endblock %}
@@ -106,7 +181,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Create Order</h2>
-    <div>
+    <div class="d-none d-md-block">
         <a href="{{ url_for('order.list_orders') }}" class="btn btn-sm btn-outline-secondary">
             <i class="fas fa-arrow-left me-2"></i>Back to Orders
         </a>
@@ -127,7 +202,7 @@
                         <label for="customer-select" class="form-label">Select Customer</label>
                         <select id="customer-select" placeholder="Search by name, phone, or city..."></select>
                     </div>
-                    <div class="col-12" style="display: none;">
+                    <div class="col-12">
                         <label class="form-label">Delivery Date</label>
                         <input type="date" id="delivery-date" class="form-control"
                             value="{{ default_delivery_date.strftime('%Y-%m-%d') }}">
@@ -146,8 +221,7 @@
                             <th style="width: 90px;">Qty</th>
                             <th style="width: 120px;">Unit Price</th>
                             <th style="width: 80px;">Disc %</th>
-                            <th style="width: 130px;" class="text-end">Line Total</th>
-                            <th style="width: 50px;"></th>
+                            <th style="width: 130px;" class="text-end" colspan="2">Line Total</th>
                         </tr>
                     </thead>
                     <!-- Inline entry row -->
@@ -162,14 +236,8 @@
                                     class="form-control form-control-sm text-end" step="0.01"></td>
                             <td data-label="Disc %"><input type="number" id="inline-discount"
                                     class="form-control form-control-sm text-end" value="0" min="0" max="100"></td>
-                            <td data-label="Total" class="text-end"><span id="inline-total"
+                            <td data-label="Total" class="text-end"  colspan="2"><span id="inline-total"
                                     class="fw-bold fs-6">₹0.00</span></td>
-                            <td class="remove-btn-cell">
-                                <button id="inline-add-btn"
-                                    class="btn btn-sm btn-primary w-100 d-flex align-items-center justify-content-center">
-                                    <i class="fas fa-plus me-1"></i> Add
-                                </button>
-                            </td>
                         </tr>
                     </tbody>
                     <!-- Added items -->
@@ -186,22 +254,28 @@
         </div>
 
         <!-- Order Adjustments -->
-        <div class="card mt-3">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-calculator me-2"></i>Order Adjustments</h6>
-            </div>
-            <div class="card-body">
-                <div class="mb-2">
-                    <label for="order-subtotal" class="form-label">Subtotal</label>
-                    <input type="text" id="order-subtotal" class="form-control" value="₹0.00" readonly>
-                </div>
-                <div class="mb-2">
-                    <label for="order-tax" class="form-label">Tax</label>
-                    <input type="number" id="order-tax" class="form-control" value="0" min="0" step="0.01">
-                </div>
-                <div>
-                    <label for="order-discount" class="form-label">Discount</label>
-                    <input type="number" id="order-discount" class="form-control" value="0" min="0" step="0.01">
+        <div class="accordion mt-3" id="adjustmentsAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingOne">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                        <i class="fas fa-calculator me-2"></i>Order Adjustments & Notes
+                    </button>
+                </h2>
+                <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne"
+                    data-bs-parent="#adjustmentsAccordion">
+                    <div class="accordion-body">
+                        <div class="mb-2">
+                            <label for="order-subtotal" class="form-label">Subtotal</label>
+                            <input type="text" id="order-subtotal" class="form-control" value="₹0.00" readonly>
+                        </div>
+                        <div class="mb-2">
+                            <label for="order-tax" class="form-label">Tax (Amount)</label>
+                            <input type="number" id="order-tax" class="form-control" value="0" min="0" step="0.01">
+                        </div>
+                        <label for="order-discount" class="form-label">Discount (Amount)</label>
+                        <input type="number" id="order-discount" class="form-control" value="0" min="0" step="0.01">
+                    </div>
                 </div>
             </div>
         </div>
@@ -219,14 +293,20 @@
 
 <!-- Summary Bar (fixed at bottom) -->
 <div id="summary-bar">
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center mb-2">
         <div>
             <small class="text-muted">Grand Total</small>
             <h4 id="summary-grand-total" class="mb-0 text-success fw-bold">₹0.00</h4>
         </div>
-        <button id="save-order-btn" class="btn btn-success btn-lg">
-            <i class="fas fa-save me-2"></i>Save Order
-        </button>
+        <div class="d-flex gap-2">
+            <button id="inline-add-btn" class="btn btn-primary btn-lg d-none d-md-inline-flex align-items-center">
+                <i class="fas fa-plus"></i>
+                <span class="d-none d-sm-inline ms-1">Add</span>
+            </button>
+            <button id="save-order-btn" class="btn btn-success btn-lg">
+                <i class="fas fa-save me-2"></i>Save Order
+            </button>
+        </div>
     </div>
 </div>
 
@@ -234,20 +314,24 @@
 <template id="item-row-template">
     <tr class="order-item-row">
         <td class="item-name-cell">
-            <div class="fw-bold item-name"></div>
+            <div class="fw-bold item-name text-truncate"></div>
             <small class="text-muted item-sku"></small>
         </td>
-        <td data-label="Qty"><input type="number" class="form-control form-control-sm text-end item-qty" value="1"
-                min="0.01" step="0.01"></td>
-        <td data-label="Unit Price"><input type="number" class="form-control form-control-sm text-end item-price"
-                step="0.01"></td>
-        <td data-label="Disc %"><input type="number" class="form-control form-control-sm text-end item-discount"
-                value="0" min="0" max="100"></td>
-        <td data-label="Line Total" class="text-end fw-bold item-line-total">₹0.00</td>
+        <td class="item-controls-cell" colspan="4">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-primary  btn-qty" data-action="decrement">-</button>
+                <input type="number" class="form-control form-control-sm item-qty" name="item_quantity" value="1" min="1.00" step="1.00">
+                    <button type="button" class="btn btn-sm btn-primary  btn-qty" data-action="increment">+</button>
+                </div>
+                <div class="text-end fw-bold item-line-total" style="width: 75px; flex-shrink: 0;">₹0.00</div>
+            </div>
+            <!-- Hidden inputs for calculation -->
+            <input type="hidden" class="item-price">
+            <input type="hidden" class="item-discount">
+        </td>
         <td class="remove-btn-cell">
-            <button class="btn btn-sm btn-outline-danger remove-item-btn">
-                <i class="fas fa-trash-alt"></i>
-            </button>
+            <button class="btn btn-sm btn-outline-danger  remove-item-btn"><i class="fas fa-trash-alt"></i></button>
         </td>
     </tr>
 </template>
@@ -315,5 +399,3 @@
     });
 </script>
 {% endblock %}
-```
-```diff

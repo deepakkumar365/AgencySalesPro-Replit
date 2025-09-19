@@ -2,95 +2,435 @@
 
 {% block title %}Edit Order {{ order.order_number }} - AgencySales Pro{% endblock %}
 
+{% block head %}
+{{ super() }}
+<style>
+    /* --- Mobile-First App Styles --- */
+    .main-content {
+        max-width: 100%;
+        padding: 1rem;
+        padding-bottom: 150px;
+        /* Space for the fixed summary bar */
+    }
+
+    .form-control-sm {
+        font-size: 0.9rem;
+    }
+
+    .ts-control {
+        font-size: 0.9rem;
+    }
+
+    /* On mobile, transform table to a card list */
+    #order-items-table thead {
+        display: none;
+    }
+
+    #order-items-table tbody,
+    #order-items-table tr,
+    #order-items-table td {
+        display: block;
+    }
+
+    #order-items-table tr {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        background-color: var(--bs-tertiary-bg);
+    }
+
+    #order-items-table td {
+        display: block;
+        /* Change from flex to block */
+        border: none;
+        padding: 0.4rem 0.5rem;
+        border-bottom: 1px dashed var(--bs-border-color-translucent);
+    }
+
+    #order-items-table td:last-child {
+        border-bottom: none;
+    }
+
+    /* Style the label to appear above the input */
+    #order-items-table td::before {
+        content: attr(data-label);
+        display: block;
+        font-weight: normal;
+        font-size: 0.75rem;
+        color: var(--bs-secondary-color);
+    }
+
+    /* Specific adjustments for item cards */
+    #order-items-body .item-name-cell {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .order-item-row .item-name-cell::before {
+        display: none;
+    }
+
+    /* --- Mobile Cart-Like Item Row --- */
+    .order-item-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .order-item-row .item-name-cell {
+        flex-grow: 1;
+        padding: 0;
+        min-width: 0; /* Allow flex item to shrink */
+    }
+    .order-item-row .item-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-shrink: 0; /* Prevent controls from shrinking */
+    }
+    
+    /* Quantity Stepper */
+    .qty-stepper {
+        display: flex;
+        align-items: center;
+    }
+    .qty-stepper .btn-qty {
+        /* Using Bootstrap classes now, but can keep this for overrides */
+        width: 2rem;
+        height: 2rem;
+        line-height: 1;
+    }
+    .qty-stepper .item-qty {
+        width: 50px; /* A bit more space for the number */
+        text-align: center;
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.25rem;
+    }
+
+    .order-item-row .remove-item-btn {
+        margin-left: auto; /* Pushes remove button to the right */
+    }
+    .order-item-row .remove-btn-cell {
+        justify-content: center;
+        padding-top: 0.75rem;
+    }
+
+    .order-item-row .remove-btn-cell::before {
+        display: none;
+    }
+
+    .order-item-row .remove-item-btn {
+        width: 100%;
+    }
+
+    #inline-entry-row {
+        background-color: var(--bs-body-bg);
+    }
+
+    /* Default Summary Bar (was mobile-only) */
+    #summary-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--bs-body-bg);
+        border-top: 1px solid var(--bs-border-color);
+        padding: 0.75rem 1rem;
+        z-index: 1030;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Desktop styles */
+    @media (min-width: 768px) {
+        #order-items-table thead {
+            display: table-header-group;
+        }
+
+        #order-items-table tbody,
+        #order-items-table tr,
+        #order-items-table td {
+            display: table-row;
+        }
+
+        #order-items-table td::before {
+            display: none;
+        }
+        /* Restore table layout for item rows on desktop */
+        .order-item-row {
+            display: table-row;
+        }
+        .order-item-row .item-name-cell,
+        .order-item-row .item-controls {
+            display: table-cell;
+            width: auto;
+        }
+        .order-item-row .item-controls .item-qty,
+        .order-item-row .item-controls .item-price,
+        .order-item-row .item-controls .item-discount,
+        .order-item-row .item-controls .item-line-total {
+            display: table-cell;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card">
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Order {{ order.order_number }}</h2>
+    <div class="d-none d-md-block">
+        <a href="{{ url_for('order.view_order', order_id=order.id) }}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-times me-2"></i>Cancel Edit
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Main Order Form -->
+    <div class="col-12">
+        <!-- Customer Section -->
+        <div class="card mb-3">
             <div class="card-header">
-                <h4 class="mb-0">
-                    <i class="fas fa-edit me-2"></i>Edit Order {{ order.order_number }}
-                </h4>
+                <h6 class="mb-0"><i class="fas fa-user-tag me-2"></i>Customer Details</h6>
             </div>
             <div class="card-body">
-                <form method="POST">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Customer</label>
-                            <input type="text" class="form-control" value="{{ order.customer.name }}" readonly>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="delivery_date" class="form-label">Delivery Date</label>
-                            <input type="date" class="form-control" id="delivery_date" name="delivery_date"
-                                   value="{{ order.delivery_date.strftime('%Y-%m-%d') if order.delivery_date else '' }}">
-                        </div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label for="customer-select" class="form-label">Customer</label>
+                        <input type="text" class="form-control" value="{{ order.customer.name }}" readonly>
+                        <input type="hidden" id="customer-id" value="{{ order.customer.id }}">
                     </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Order Items</label>
-                        <div class="table-responsive">
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Product</th>
-                                        <th>Quantity</th>
-                                        <th>Unit Price</th>
-                                        <th>Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for item in order.order_items %}
-                                    <tr>
-                                        <td>{{ item.product.name }}</td>
-                                        <td>{{ item.quantity }}</td>
-                                        <td>₹{{ "%.2f"|format(item.unit_price) }}</td>
-                                        <td>₹{{ "%.2f"|format(item.total_price) }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        <small>Note: Product items cannot be modified after order creation.</small>
+                    <div class="col-12">
+                        <label class="form-label">Delivery Date</label>
+                        <input type="date" id="delivery-date" class="form-control"
+                            value="{{ default_delivery_date.strftime('%Y-%m-%d') }}">
                     </div>
-                    
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="discount" class="form-label">Discount</label>
-                            <div class="input-group">
-                                <span class="input-group-text">₹</span>
-                                <input type="number" step="0.01" class="form-control" id="discount" 
-                                       name="discount" value="{{ order.discount }}">
-                            </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Items Section -->
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-sm" id="order-items-table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Item</th>
+                            <th style="width: 90px;">Qty</th>
+                            <th style="width: 120px;">Unit Price</th>
+                            <th style="width: 80px;">Disc %</th>
+                            <th style="width: 130px;" class="text-end" colspan="2">Line Total</th>
+                        </tr>
+                    </thead>
+                    <!-- Inline entry row -->
+                    <tbody id="inline-entry-tbody">
+                        <tr id="inline-entry-row" class="shadow-sm">
+                            <td data-label="Item"><select id="product-select"
+                                    placeholder="Search for products..."></select>
+                            </td>
+                            <td data-label="Qty"><input type="number" id="inline-qty"
+                                    class="form-control form-control-sm text-end" value="1" min="1"></td>
+                            <td data-label="Price"><input type="number" id="inline-price"
+                                    class="form-control form-control-sm text-end" step="0.01"></td>
+                            <td data-label="Disc %"><input type="number" id="inline-discount"
+                                    class="form-control form-control-sm text-end" value="0" min="0" max="100"></td>
+                            <td data-label="Total" class="text-end" colspan="2"><span id="inline-total"
+                                    class="fw-bold fs-6">₹0.00</span></td>
+                        </tr>
+                    </tbody>
+                    <!-- Added items -->
+                    <tbody id="order-items-body">
+                        <tr id="no-items-row">
+                            <td colspan="10" class="text-center text-muted py-5">
+                                <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                <p>No items added yet. Use the search bar above to add products.</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Order Adjustments -->
+        <div class="accordion mt-3" id="adjustmentsAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingOne">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                        <i class="fas fa-calculator me-2"></i>Order Adjustments & Notes
+                    </button>
+                </h2>
+                <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne"
+                    data-bs-parent="#adjustmentsAccordion">
+                    <div class="accordion-body">
+                        <div class="mb-2">
+                            <label for="order-subtotal" class="form-label">Subtotal</label>
+                            <input type="text" id="order-subtotal" class="form-control" value="₹0.00" readonly>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="tax" class="form-label">Tax</label>
-                            <div class="input-group">
-                                <span class="input-group-text">₹</span>
-                                <input type="number" step="0.01" class="form-control" id="tax" 
-                                       name="tax" value="{{ order.tax }}">
-                            </div>
+                        <div class="mb-2">
+                            <label for="order-tax" class="form-label">Tax (Amount)</label>
+                            <input type="number" id="order-tax" class="form-control" value="{{ order.tax or 0 }}" min="0" step="0.01">
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Current Total</label>
-                            <div class="form-control-plaintext">
-                                <strong>₹{{ "%.2f"|format(order.total_amount) }}</strong>
-                            </div>
-                        </div>
+                        <label for="order-discount" class="form-label">Discount (Amount)</label>
+                        <input type="number" id="order-discount" class="form-control" value="{{ order.discount or 0 }}" min="0" step="0.01">
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="notes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="3">{{ order.notes or '' }}</textarea>
-                    </div>
-                    
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{{ url_for('order.view_order', order_id=order.id) }}" class="btn btn-secondary">Cancel</a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-2"></i>Update Order
-                        </button>
-                    </div>
-                </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <label for="order-notes" class="form-label">Notes</label>
+                <textarea id="order-notes" class="form-control form-control-sm" rows="3"
+                    placeholder="Add any notes for this order...">{{ order.notes or '' }}</textarea>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Summary Bar (fixed at bottom) -->
+<div id="summary-bar">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+            <small class="text-muted">Grand Total</small>
+            <h4 id="summary-grand-total" class="mb-0 text-success fw-bold">₹0.00</h4>
+        </div>
+        <div class="d-flex gap-2">
+            <button id="inline-add-btn" class="btn btn-primary btn-lg d-none d-md-inline-flex align-items-center">
+                <i class="fas fa-plus"></i>
+                <span class="d-none d-sm-inline ms-1">Add</span>
+            </button>
+            <button id="save-order-btn" class="btn btn-success btn-lg">
+                <i class="fas fa-save me-2"></i>Update Order
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Item Row Template -->
+<template id="item-row-template">
+    <tr class="order-item-row">
+        <td class="item-name-cell">
+            <div class="fw-bold item-name text-truncate"></div>
+            <small class="text-muted item-sku"></small>
+        </td>
+        <td class="item-controls-cell" colspan="3">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-primary  btn-qty" data-action="decrement">-</button>
+                    <input type="number" class="form-control form-control-sm item-qty" style="width: 45px; text-align: center;" name="item_quantity" value="1" min="1.00" max="1000.00" step="1.00">
+                    <button type="button" class="btn btn-sm btn-primary  btn-qty" data-action="increment">+</button>
+                </div>
+            </div>
+            <!-- Hidden inputs for calculation -->
+            <input type="hidden" class="item-price">
+            <input type="hidden" class="item-discount">
+        </td>
+        <td class="text-end">
+            <div class="text-end fw-bold item-line-total">₹0.00</div>
+        </td>
+        <td class="remove-btn-cell">
+            <button class="btn btn-sm btn-outline-danger  remove-item-btn"><i class="fas fa-trash-alt"></i></button>
+        </td>
+    </tr>
+</template>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/order_form.js') }}"></script>
+<script>
+    // Convert Jinja order data to a JavaScript object
+    const existingOrderData = {
+        items: [
+            {% for item in order.order_items %}
+            {
+                id: {{ item.product.id }},
+                name: "{{ item.product.name | e }}",
+                sku: "{{ item.product.sku | e }}",
+                price: {{ item.unit_price }},
+                quantity: {{ item.quantity }},
+                discount: {{ item.discount_percentage or 0 }}
+            },
+            {% endfor %}
+        ]
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Override the saveOrder function from order_form.js
+        const updateOrder = async function() {
+            const state = OrderForm.getState(); // Assumes order_form.js exposes its state
+            if (state.items.length === 0) {
+                return showNotification('Please add at least one item to the order.', 'error');
+            }
+
+            const payload = {
+                customer_id: document.getElementById('customer-id').value,
+                delivery_date: document.getElementById('delivery-date').value,
+                notes: document.getElementById('order-notes').value,
+                tax: parseFloat(document.getElementById('order-tax').value) || 0,
+                discount: parseFloat(document.getElementById('order-discount').value) || 0,
+                items: state.items,
+            };
+
+            const btn = document.getElementById('save-order-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Updating...';
+
+            try {
+                const response = await fetch("{{ url_for('order.edit_order', order_id=order.id) }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    window.location.href = result.redirect_url;
+                } else {
+                    showNotification(result.error || 'Failed to update order.', 'error');
+                }
+            } catch (error) {
+                showNotification('An unexpected error occurred.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save me-2"></i>Update Order';
+            }
+        }
+
+        // Product Search
+        const productSelect = new TomSelect('#product-select', {
+            valueField: 'id',
+            labelField: 'display_text',
+            searchField: ['name', 'sku'],
+            create: false,
+            render: {
+                option: (data, escape) => `<div>${escape(data.display_text)}</div>`,
+                item: (data, escape) => `<div>${escape(data.name)}</div>`,
+            },
+            load: function (query, callback) {
+                if (query.length < 2) return callback();
+                fetch(`/order/api/search-products-v2?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => callback(data))
+                    .catch(() => callback());
+            },
+            onChange: function (value) {
+                if (!value) return;
+                const product = this.options[value];
+                OrderForm.selectProduct(product);
+            }
+        });
+
+        // Initialize the OrderForm module
+        OrderForm.init({
+            productSelectInstance: productSelect,
+            initialItems: existingOrderData.items,
+            isEditMode: true,
+            // Override the default save function with our update logic
+            saveFunction: updateOrder
+        });
+    });
+</script>
 {% endblock %}

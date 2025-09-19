@@ -9,7 +9,7 @@ const OrderForm = (function() {
         items: [],
         taxCodes: {},
         customerSelect: null,
-        productSelect: null,
+        productSelect: null
     };
 
     // DOM Elements
@@ -59,7 +59,10 @@ const OrderForm = (function() {
 
         document.querySelector(DOMElements.orderItemsBody).addEventListener('change', handleItemChange);
         document.querySelector(DOMElements.orderItemsBody).addEventListener('click', handleItemClick);
+        
+        // Use the overridden save function if it exists, otherwise use the default
         document.querySelector(DOMElements.saveOrderBtn).addEventListener('click', saveOrder);
+
         document.querySelector(DOMElements.orderTax).addEventListener('input', calculateTotals);
         document.querySelector(DOMElements.orderDiscount).addEventListener('input', calculateTotals);
     }
@@ -84,7 +87,12 @@ const OrderForm = (function() {
     }
 
     function setCustomer(customer) {
-        state.customer = customer;
+        // In edit mode, customer is fixed. In create mode, we set it.
+        if (state.isEditMode) {
+            state.customer = { id: document.getElementById('customer-id').value };
+        } else {
+            state.customer = customer;
+        }
         // The UI panel is gone, but we still need to set the customer in the state.
         // state.customerSelect.disable(); // Keep the customer field enabled for easy changes.
         state.productSelect.focus();
@@ -92,8 +100,10 @@ const OrderForm = (function() {
 
     function resetCustomer() {
         state.customer = null;
-        state.customerSelect.clear();
-        state.customerSelect.enable();
+        if (state.customerSelect) {
+            state.customerSelect.clear();
+            state.customerSelect.enable();
+        }
     }
 
     function selectProduct(product) {
@@ -155,10 +165,10 @@ const OrderForm = (function() {
 
                 row.querySelector('.item-name').textContent = item.name;
                 row.querySelector('.item-sku').textContent = item.sku;
-                row.querySelector('.item-qty').value = item.quantity;
-                row.querySelector('.item-price').value = item.price.toFixed(2);
-                row.querySelector('.item-discount').value = item.discount;
-                
+                const qtyInput = row.querySelector('.item-qty');
+                qtyInput.value = item.quantity;
+                row.querySelector('.item-price').value = item.price; // Hidden input
+                row.querySelector('.item-discount').value = item.discount; // Hidden input
                 body.appendChild(row);
             });
         }
@@ -187,6 +197,7 @@ const OrderForm = (function() {
             // Update the row display
             const row = document.querySelector(`tr[data-item-id='${item.id}']`);
             if (row) {
+                // Update the single line total display
                 row.querySelector('.item-line-total').textContent = `₹${lineTotal.toFixed(2)}`;
             }
             
@@ -214,23 +225,47 @@ const OrderForm = (function() {
         if (!item) return;
 
         if (target.classList.contains('item-qty')) item.quantity = parseFloat(target.value);
-        if (target.classList.contains('item-price')) item.price = parseFloat(target.value);
-        if (target.classList.contains('item-discount')) item.discount = parseFloat(target.value);
+        // Price and discount are now hidden inputs, but logic remains the same if they were visible
+        // if (target.classList.contains('item-price')) item.price = parseFloat(target.value);
+        // if (target.classList.contains('item-discount')) item.discount = parseFloat(target.value);
 
         calculateTotals();
     }
 
     function handleItemClick(e) {
-        if (e.target.closest('.remove-item-btn')) {
+        const removeBtn = e.target.closest('.remove-item-btn');
+        const qtyBtn = e.target.closest('.btn-qty');
+
+        if (removeBtn) {
             const row = e.target.closest('tr');
             const itemId = parseInt(row.dataset.itemId);
             state.items = state.items.filter(i => i.id !== itemId);
             renderItems();
+        } else if (qtyBtn) {
+            const row = qtyBtn.closest('tr');
+            const qtyInput = row.querySelector('.item-qty');
+            let currentValue = parseFloat(qtyInput.value);
+            const step = parseFloat(qtyInput.step) || 1;
+
+            if (qtyBtn.dataset.action === 'increment') {
+                currentValue += step;
+            } else {
+                currentValue = Math.max(step, currentValue - step); // Prevent going below min
+            }
+            qtyInput.value = currentValue.toFixed(2).replace('.00', '');
+
+            // Manually trigger change event to recalculate totals
+            qtyInput.dispatchEvent(new Event('change', { bubbles: true }));
         }
     }
 
     async function saveOrder() {
-        if (!state.customer) {
+        // In edit mode, the customer is pre-filled and read-only.
+        const customerId = state.isEditMode 
+            ? document.getElementById('customer-id').value 
+            : (state.customer ? state.customer.id : null);
+
+        if (!customerId) {
             return showNotification('Please select a customer.', 'error');
         }
         if (state.items.length === 0) {
@@ -238,7 +273,7 @@ const OrderForm = (function() {
         }
 
         const payload = {
-            customer_id: state.customer.id,
+            customer_id: customerId,
             delivery_date: document.querySelector(DOMElements.deliveryDate).value,
             notes: document.querySelector(DOMElements.orderNotes).value,
             tax: parseFloat(document.querySelector(DOMElements.orderTax).value) || 0,
@@ -274,15 +309,22 @@ const OrderForm = (function() {
     // Public Methods
     return {
         init: function(config) {
-            state.customerSelect = config.customerSelectInstance;
+            state.customerSelect = config.customerSelectInstance || null;
             state.productSelect = config.productSelectInstance;
+            state.isEditMode = config.isEditMode || false;
+            if (config.initialItems) {
+                state.items = config.initialItems;
+            }
             // fetchTaxCodes is not needed as per-item tax is removed
             fetchTaxCodes();
             bindEvents();
             renderItems(); // Initial render
         },
+        getState: () => state, // Expose state for edit page
         resetCustomer: resetCustomer,
         setCustomer: setCustomer,
-        selectProduct: selectProduct
+        selectProduct: selectProduct,
+        // Expose saveOrder so it can be overridden
+        saveOrder: saveOrder
     };
 })();
