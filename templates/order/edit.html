@@ -205,22 +205,6 @@
         color: var(--primary-dark);
     }
 
-    .save-order-btn {
-        min-width: 160px;
-        height: 50px;
-        border-radius: 12px;
-        background: var(--accent-green);
-        border: none;
-        color: white;
-        font-size: 1.1rem;
-        font-weight: bold;
-        padding: 0 1.5rem;
-    }
-
-    .save-order-btn:hover {
-        background: #5ab082;
-    }
-
     /* Customer Section */
     .customer-section {
         background: white;
@@ -399,11 +383,6 @@
         .cart-table tbody td:first-child:before {
             display: none;
         }
-
-        .cart-qty-input {
-            width: 100%;
-            max-width: 80px;
-        }
     }
 </style>
 {% endblock %}
@@ -453,7 +432,7 @@
     </div>
 
     <!-- Cart Items -->
-    <div class="cart-section mb-2">
+    <div class="cart-section mb-3">
         <div class="cart-table-container">
             <table class="table table-sm cart-table" id="cart-table">
                 <thead>
@@ -462,7 +441,7 @@
                         <th>Quantity</th>
                         <th>Price</th>
                         <th>Total</th>
-                        <th></th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody id="cart-items">
@@ -488,12 +467,12 @@
 </div>
 
 <!-- Fixed Bottom Summary -->
-<div class="cart-summary mb-2">
-    <div class="total-display">
+<div class="cart-summary mb-2 cart-summary mb-2 d-flex justify-content-between align-items-center">
+    <div class="total-display d-flex align-items-center">
         <span class="total-label">Total:</span>
         <span class="total-amount" id="summary-grand-total">₹{{ order.grand_total or '0.00' }}</span>
     </div>
-    <button id="save-order-btn" class="save-order-btn">
+    <button id="save-order-btn" class="btn btn-success btn-lg">
         <i class="fas fa-save me-2"></i>Update Order
     </button>
 </div>
@@ -601,7 +580,7 @@ function updateCartDisplay() {
                 <div class="cart-total">₹${(item.price * item.quantity).toFixed(2)}</div>
             </td>
             <td data-label="Action">
-                <button class="cart-remove-btn" onclick="removeFromCart(${item.id})">
+                <button class="btn btn-outline-danger cart-remove-btn" onclick="removeFromCart(${item.id})">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
