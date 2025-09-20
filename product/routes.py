@@ -61,8 +61,9 @@ def list_products(current_agency_id=None):
 
     # Show unique products by default for super_admin unless an agency filter is applied
     if user_role == 'super_admin' and not agency_filter:
-        # PostgreSQL DISTINCT ON requires ORDER BY to start with the distinct columns
+        # Use PostgreSQL-specific DISTINCT ON for performance
         query = query.order_by(Product.id, Product.created_at.desc()).distinct(Product.id)
+
     else:
         query = query.order_by(Product.created_at.desc())
     products = query.all()
