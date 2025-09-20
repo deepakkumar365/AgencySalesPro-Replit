@@ -3,39 +3,189 @@
 {% block title %}Orders - AgencySales Pro{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>
-                <i class="fas fa-shopping-cart me-2"></i>Orders
-            </h1>
-            <div class="btn-group">
-                <a href="{{ url_for('order.export_orders') }}" class="btn btn-outline-info">
-                    <i class="fas fa-download me-2"></i>Export
-                </a>
-                <a href="{{ url_for('pos.new_sale') }}" class="btn btn-primary">
-                    <i class="fas fa-plus me-2"></i>Create Order
-                </a>
-            </div>
-        </div>
+<style>
+/* Mobile-First Order List Styles */
+.order-header {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-light) 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.order-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.order-header .btn-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.order-header .btn {
+    min-height: 44px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: var(--primary-dark);
+    border: 2px solid white;
+    background: white;
+}
+
+.order-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid var(--bs-border-color);
+    margin-bottom: 1rem;
+    padding: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.order-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.order-number {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary-dark);
+}
+
+.order-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.order-info-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.order-info-item i {
+    width: 16px;
+    text-align: center;
+    color: var(--bs-secondary);
+}
+
+.order-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.order-actions .btn {
+    min-height: 40px;
+    min-width: 40px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.filter-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid var(--bs-border-color);
+    margin-bottom: 2rem;
+}
+
+.filter-header {
+    background: var(--accent-light);
+    color: var(--primary-dark);
+    padding: 1rem 1.5rem;
+    border-radius: 12px 12px 0 0;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 767.98px) {
+    .order-header {
+        padding: 1rem;
+        text-align: center;
+        flex-direction: column;
+    }
+    
+    .order-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .order-header .btn-group {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .order-header .btn {
+        flex: 1;
+        font-size: 0.9rem;
+        padding: 0.75rem;
+    }
+    
+    .order-actions {
+        justify-content: center;
+    }
+    
+    .filter-card .form-control,
+    .filter-card .form-select {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+}
+
+@media (min-width: 768px) {
+    .order-header h1 {
+        font-size: 2rem;
+    }
+}
+</style>
+
+<div class="order-header">
+    <h1>
+        <i class="fas fa-shopping-cart me-2"></i>Orders
+    </h1>
+    <div class="btn-group">
+        <a href="{{ url_for('order.export_orders') }}" class="btn">
+            <i class="fas fa-download me-2"></i><span class="d-none d-sm-inline">Export</span>
+        </a>
+        <a href="{{ url_for('pos.new_sale') }}" class="btn">
+            <i class="fas fa-plus me-2"></i><span class="d-none d-sm-inline">Create Order</span>
+        </a>
     </div>
 </div>
 
 <!-- Filters -->
-<div class="row mb-4">
-    <div class="col-12">
-        {% set has_filters = filters.date_from or filters.date_to or filters.agency or filters.location or filters.customer or filters.salesperson or filters.status %}
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">
-                    <i class="fas fa-filter me-2"></i>Filters
-                </h6>
-                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#orderFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}" aria-controls="orderFilters">
-                    <i class="fas fa-sliders-h me-1"></i> Toggle
-                </button>
-            </div>
-            <div id="orderFilters" class="collapse {{ 'show' if has_filters else '' }}">
-                <div class="card-body">
+{% set has_filters = filters.date_from or filters.date_to or filters.agency or filters.location or filters.customer or filters.salesperson or filters.status %}
+<div class="filter-card">
+    <div class="filter-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="fas fa-filter me-2"></i>Filters
+        </h6>
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#orderFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}" aria-controls="orderFilters">
+            <i class="fas fa-sliders-h me-1"></i><span class="d-none d-sm-inline"> Toggle</span>
+        </button>
+    </div>
+    <div id="orderFilters" class="collapse {{ 'show' if has_filters else '' }}">
+        <div class="card-body">
                     <form method="GET" class="row g-3">
                         <div class="col-md-3">
                             <label for="date_from" class="form-label">Date From</label>
@@ -122,27 +272,107 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
+        <div class="row">
+            <div class="col-12">
                 {% if orders %}
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="mb-0">{{ orders|length }} order{{ 's' if orders|length != 1 else '' }} found</h6>
                 </div>
-                <div class="table-responsive">
+                
+                <!-- Mobile Card Layout -->
+                <div class="d-block d-md-none">
+                    {% for order in orders %}
+                    <div class="order-card">
+                        <div class="order-card-header">
+                            <div class="order-number">{{ order.order_number }}</div>
+                            {% set status_class = {
+                                'pending': 'warning',
+                                'confirmed': 'info',
+                                'shipped': 'primary',
+                                'delivered': 'success',
+                                'cancelled': 'danger'
+                            } %}
+                            <span class="badge bg-{{ status_class.get(order.status, 'secondary') }}">
+                                {{ order.status.title() }}
+                            </span>
+                        </div>
+                        
+                        <div class="order-info">
+                            <div class="order-info-item">
+                                <i class="fas fa-user"></i>
+                                <span><strong>{{ order.customer.name }}</strong></span>
+                            </div>
+                            
+                            <div class="order-info-item">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span>{{ order.customer.location.name }}</span>
+                            </div>
+                            
+                            <div class="order-info-item">
+                                <i class="fas fa-user-tie"></i>
+                                <span>{{ order.salesperson.full_name }}</span>
+                            </div>
+                            
+                            <div class="order-info-item">
+                                <i class="fas fa-rupee-sign"></i>
+                                <span>₹{{ "%.2f"|format(order.total_amount) }}</span>
+                            </div>
+                            
+                            <div class="order-info-item">
+                                <i class="fas fa-calendar"></i>
+                                <span>{{ order.order_date.strftime('%Y-%m-%d') }}</span>
+                            </div>
+                            
+                            {% if order.delivery_date %}
+                            <div class="order-info-item">
+                                <i class="fas fa-truck"></i>
+                                <span>Delivery: {{ order.delivery_date.strftime('%Y-%m-%d') }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="order-actions">
+                            <a href="{{ url_for('order.view_order', order_id=order.id) }}" 
+                               class="btn btn-outline-info" title="View Order">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            
+                            {% if order.status in ['pending', 'confirmed'] %}
+                            {% if session.role == 'salesperson' and order.salesperson_id == session.user_id or session.role != 'salesperson' %}
+                            <a href="{{ url_for('order.edit_order', order_id=order.id) }}" 
+                               class="btn btn-outline-primary" title="Edit Order">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% endif %}
+                            {% endif %}
+                            
+                            {% if order.status in ['pending', 'cancelled'] %}
+                            {% if session.role in ['super_admin', 'agency_admin'] or (session.role == 'salesperson' and order.salesperson_id == session.user_id) %}
+                            <form method="POST" action="{{ url_for('order.delete_order', order_id=order.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-outline-danger" title="Delete Order"
+                                        onclick="return confirm('Are you sure you want to delete this order?')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Desktop Table Layout -->
+                <div class="table-responsive d-none d-md-block">
                     <table class="table table-hover">
                         <thead>
                             <tr>
                                 <th>Order #</th>
                                 <th>Customer</th>
-                                <th class="d-none-mobile">Salesperson</th>
+                                <th>Salesperson</th>
                                 <th>Status</th>
-                                <th class="d-none-mobile">Total</th>
-                                <th class="d-none-mobile">Date</th>
+                                <th>Total</th>
+                                <th>Date</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -159,7 +389,7 @@
                                     {{ order.customer.name }}
                                     <br><small>{{ order.customer.location.name }}</small>
                                 </td>
-                                <td class="d-none-mobile">{{ order.salesperson.full_name }}</td>
+                                <td>{{ order.salesperson.full_name }}</td>
                                 <td>
                                     {% set status_class = {
                                         'pending': 'warning',
@@ -172,8 +402,8 @@
                                         {{ order.status.title() }}
                                     </span>
                                 </td>
-                                <td class="d-none-mobile">₹{{ "%.2f"|format(order.total_amount) }}</td>
-                                <td class="d-none-mobile">{{ order.order_date.strftime('%Y-%m-%d') }}</td>
+                                <td>₹{{ "%.2f"|format(order.total_amount) }}</td>
+                                <td>{{ order.order_date.strftime('%Y-%m-%d') }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
                                         <a href="{{ url_for('order.view_order', order_id=order.id) }}" 
@@ -207,18 +437,17 @@
                         </tbody>
                     </table>
                 </div>
+                
                 {% else %}
                 <div class="text-center py-5">
                     <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
                     <h5>No orders found</h5>
-                    <p>Start by creating your first order.</p>
-                    <a href="{{ url_for('order.create_order') }}" class="btn btn-primary">
+                    <p class="text-muted">Start by creating your first order.</p>
+                    <a href="{{ url_for('pos.new_sale') }}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>Create Order
                     </a>
                 </div>
                 {% endif %}
             </div>
         </div>
-    </div>
-</div>
 {% endblock %}

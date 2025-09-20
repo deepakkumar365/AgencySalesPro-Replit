@@ -3,84 +3,289 @@
 {% block title %}Order {{ order.order_number }} - AgencySales Pro{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>
-                <i class="fas fa-shopping-cart me-2"></i>Order {{ order.order_number }}
-            </h1>
-            <div class="d-flex gap-2">
-                {% if order.status in ['pending', 'confirmed'] %}
-                {% if session.role == 'salesperson' and order.salesperson_id == session.user_id or session.role != 'salesperson' %}
-                <a href="{{ url_for('order.edit_order', order_id=order.id) }}" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Edit Order">
-                    <i class="fas fa-edit"></i>
-                </a>
-                {% endif %}
-                {% endif %}
-                <a href="{{ url_for('order.list_orders') }}" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Back to Orders">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-            </div>
-        </div>
+<style>
+/* Mobile-First Order View Styles */
+.order-view-header {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-light) 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.order-view-header h1 {
+    margin: 0 0 1rem 0;
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.order-view-header .btn-group {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.order-view-header .btn {
+    min-height: 44px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: var(--primary-dark);
+    border: 2px solid white;
+    background: white;
+    flex: 1;
+    min-width: 120px;
+}
+
+.order-detail-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid var(--bs-border-color);
+    margin-bottom: 2rem;
+}
+
+.order-detail-header {
+    background: var(--accent-light);
+    color: var(--primary-dark);
+    border-radius: 12px 12px 0 0;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.order-detail-body {
+    padding: 1.5rem;
+}
+
+.order-info-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.order-info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0.75rem;
+    background: var(--bs-gray-50);
+    border-radius: 8px;
+    gap: 1rem;
+}
+
+.order-info-label {
+    font-weight: 600;
+    color: var(--primary-dark);
+    flex-shrink: 0;
+    min-width: 120px;
+}
+
+.order-info-value {
+    text-align: right;
+    flex-grow: 1;
+    word-break: break-word;
+}
+
+.order-items-container {
+    overflow-x: auto;
+}
+
+.order-item-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: var(--bs-gray-50);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 767.98px) {
+    .order-view-header {
+        padding: 1rem;
+    }
+    
+    .order-view-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .order-detail-body {
+        padding: 1rem;
+    }
+    
+    .order-info-item {
+        flex-direction: column;
+        text-align: left;
+        gap: 0.5rem;
+    }
+    
+    .order-info-label {
+        min-width: auto;
+        color: var(--bs-secondary);
+        font-size: 0.9rem;
+    }
+    
+    .order-info-value {
+        text-align: left;
+        font-weight: 500;
+    }
+    
+    .form-control, .form-select {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+}
+
+@media (min-width: 768px) {
+    .order-view-header h1 {
+        font-size: 2rem;
+    }
+    
+    .order-detail-body {
+        padding: 2rem;
+    }
+    
+    .order-info-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+</style>
+
+<div class="order-view-header">
+    <h1>
+        <i class="fas fa-shopping-cart me-2"></i>Order {{ order.order_number }}
+    </h1>
+    <div class="btn-group">
+        {% if order.status in ['pending', 'confirmed'] %}
+        {% if session.role == 'salesperson' and order.salesperson_id == session.user_id or session.role != 'salesperson' %}
+        <a href="{{ url_for('order.edit_order', order_id=order.id) }}" class="btn" title="Edit Order">
+            <i class="fas fa-edit me-2"></i>Edit Order
+        </a>
+        {% endif %}
+        {% endif %}
+        <a href="{{ url_for('order.list_orders') }}" class="btn" title="Back to Orders">
+            <i class="fas fa-arrow-left me-2"></i>Back to Orders
+        </a>
     </div>
 </div>
 
 <div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
+    <div class="col-lg-8 order-2 order-lg-1">
+        <div class="order-detail-card">
+            <div class="order-detail-header">
                 <h5 class="mb-0">Order Details</h5>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-borderless">
-                        <tr>
-                            <td><strong>Order Number:</strong></td>
-                            <td>{{ order.order_number }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Customer:</strong></td>
-                            <td>{{ order.customer.name }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Location:</strong></td>
-                            <td>{{ order.customer.location.name }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Agency:</strong></td>
-                            <td>{{ order.agency.name }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Salesperson:</strong></td>
-                            <td>{{ order.salesperson.full_name }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Order Date:</strong></td>
-                            <td>{{ order.order_date.strftime('%Y-%m-%d %H:%M') }}</td>
-                        </tr>
-                        {% if order.delivery_date %}
-                        <tr>
-                            <td><strong>Delivery Date:</strong></td>
-                            <td>{{ order.delivery_date.strftime('%Y-%m-%d') }}</td>
-                        </tr>
-                        {% endif %}
-                        {% if order.notes %}
-                        <tr>
-                            <td><strong>Notes:</strong></td>
-                            <td>{{ order.notes }}</td>
-                        </tr>
-                        {% endif %}
-                    </table>
+            <div class="order-detail-body">
+                <div class="order-info-grid">
+                    <div class="order-info-item">
+                        <div class="order-info-label">Order Number:</div>
+                        <div class="order-info-value">{{ order.order_number }}</div>
+                    </div>
+                    
+                    <div class="order-info-item">
+                        <div class="order-info-label">Customer:</div>
+                        <div class="order-info-value">{{ order.customer.name }}</div>
+                    </div>
+                    
+                    <div class="order-info-item">
+                        <div class="order-info-label">Location:</div>
+                        <div class="order-info-value">{{ order.customer.location.name }}</div>
+                    </div>
+                    
+                    <div class="order-info-item">
+                        <div class="order-info-label">Agency:</div>
+                        <div class="order-info-value">{{ order.agency.name }}</div>
+                    </div>
+                    
+                    <div class="order-info-item">
+                        <div class="order-info-label">Salesperson:</div>
+                        <div class="order-info-value">{{ order.salesperson.full_name }}</div>
+                    </div>
+                    
+                    <div class="order-info-item">
+                        <div class="order-info-label">Order Date:</div>
+                        <div class="order-info-value">{{ order.order_date.strftime('%Y-%m-%d %H:%M') }}</div>
+                    </div>
+                    
+                    {% if order.delivery_date %}
+                    <div class="order-info-item">
+                        <div class="order-info-label">Delivery Date:</div>
+                        <div class="order-info-value">{{ order.delivery_date.strftime('%Y-%m-%d') }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if order.notes %}
+                    <div class="order-info-item">
+                        <div class="order-info-label">Notes:</div>
+                        <div class="order-info-value">{{ order.notes }}</div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
         
-        <div class="card mt-4">
-            <div class="card-header">
+        <div class="order-detail-card">
+            <div class="order-detail-header">
                 <h5 class="mb-0">Order Items</h5>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
+            <div class="order-detail-body">
+                <!-- Mobile Item Cards -->
+                <div class="d-block d-lg-none">
+                    {% for item in order.order_items %}
+                    <div class="order-item-card">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <strong>{{ item.product.name }}</strong>
+                            <span class="badge bg-primary">₹{{ "%.2f"|format(item.total_price) }}</span>
+                        </div>
+                        
+                        <div class="row g-2 text-sm">
+                            <div class="col-6">
+                                <small class="text-muted">SKU:</small><br>
+                                <code>{{ item.product.sku }}</code>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Quantity:</small><br>
+                                {{ item.quantity }}
+                            </div>
+                        </div>
+                        
+                        <div class="mt-2">
+                            <small class="text-muted">Unit Price: ₹{{ "%.2f"|format(item.unit_price) }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Mobile Order Summary -->
+                    <div class="order-item-card border-primary bg-light">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal:</span>
+                            <strong>₹{{ "%.2f"|format(order.order_items|sum(attribute='total_price')) }}</strong>
+                        </div>
+                        
+                        {% if order.discount > 0 %}
+                        <div class="d-flex justify-content-between mb-2 text-warning">
+                            <span>Discount:</span>
+                            <strong>-₹{{ "%.2f"|format(order.discount) }}</strong>
+                        </div>
+                        {% endif %}
+                        
+                        {% if order.tax > 0 %}
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Tax:</span>
+                            <strong>₹{{ "%.2f"|format(order.tax) }}</strong>
+                        </div>
+                        {% endif %}
+                        
+                        <hr>
+                        <div class="d-flex justify-content-between">
+                            <strong class="h6">Total Amount:</strong>
+                            <strong class="h6 text-success">₹{{ "%.2f"|format(order.total_amount) }}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Table -->
+                <div class="table-responsive d-none d-lg-block">
                     <table class="table">
                         <thead>
                             <tr>
@@ -130,12 +335,12 @@
         </div>
     </div>
     
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
+    <div class="col-lg-4 order-1 order-lg-2 mb-4 mb-lg-0">
+        <div class="order-detail-card">
+            <div class="order-detail-header">
                 <h5 class="mb-0">Order Status</h5>
             </div>
-            <div class="card-body">
+            <div class="order-detail-body">
                 {% set status_class = {
                     'pending': 'warning',
                     'confirmed': 'info',
@@ -169,21 +374,46 @@
             </div>
         </div>
         
-        <div class="card mt-4">
-            <div class="card-header">
+        <div class="order-detail-card">
+            <div class="order-detail-header">
                 <h5 class="mb-0">Customer Info</h5>
             </div>
-            <div class="card-body">
-                <p><strong>{{ order.customer.name }}</strong></p>
-                {% if order.customer.email %}
-                <p><i class="fas fa-envelope me-2"></i>{{ order.customer.email }}</p>
-                {% endif %}
-                {% if order.customer.phone %}
-                <p><i class="fas fa-phone me-2"></i>{{ order.customer.phone }}</p>
-                {% endif %}
-                {% if order.customer.address %}
-                <p><i class="fas fa-map-marker-alt me-2"></i>{{ order.customer.address }}</p>
-                {% endif %}
+            <div class="order-detail-body">
+                <div class="order-info-grid">
+                    <div class="order-info-item">
+                        <div class="order-info-label">
+                            <i class="fas fa-user me-2"></i>Name:
+                        </div>
+                        <div class="order-info-value">{{ order.customer.name }}</div>
+                    </div>
+                    
+                    {% if order.customer.email %}
+                    <div class="order-info-item">
+                        <div class="order-info-label">
+                            <i class="fas fa-envelope me-2"></i>Email:
+                        </div>
+                        <div class="order-info-value">{{ order.customer.email }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if order.customer.phone %}
+                    <div class="order-info-item">
+                        <div class="order-info-label">
+                            <i class="fas fa-phone me-2"></i>Phone:
+                        </div>
+                        <div class="order-info-value">{{ order.customer.phone }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if order.customer.address %}
+                    <div class="order-info-item">
+                        <div class="order-info-label">
+                            <i class="fas fa-map-marker-alt me-2"></i>Address:
+                        </div>
+                        <div class="order-info-value">{{ order.customer.address }}</div>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
