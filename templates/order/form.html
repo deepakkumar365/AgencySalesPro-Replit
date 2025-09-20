@@ -9,7 +9,8 @@
     .cart-container {
         max-width: 100%;
         padding: 1rem;
-        padding-bottom: 120px; /* Space for fixed bottom bar */
+        padding-bottom: 120px;
+        /* Space for fixed bottom bar */
     }
 
     /* Product Search Section */
@@ -18,7 +19,7 @@
         border-radius: 12px;
         padding: 1rem;
         margin-bottom: 2.5rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .search-row {
@@ -82,7 +83,7 @@
         border-radius: 12px;
         padding: 1rem;
         margin-bottom: 0.75rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         display: flex;
         align-items: center;
         gap: 1rem;
@@ -155,7 +156,7 @@
         border-top: 1px solid var(--bs-border-color);
         padding: 1rem;
         z-index: 1030;
-        box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -184,29 +185,13 @@
         color: var(--primary-dark);
     }
 
-    .place-order-btn {
-        min-width: 160px;
-        height: 50px;
-        border-radius: 12px;
-        background: var(--accent-green);
-        border: none;
-        color: white;
-        font-size: 1.1rem;
-        font-weight: bold;
-        padding: 0 1.5rem;
-    }
-
-    .place-order-btn:hover {
-        background: #5ab082;
-    }
-
     /* Customer Section */
     .customer-section {
         background: white;
         border-radius: 12px;
         padding: 1rem;
         margin-bottom: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .ts-control {
@@ -219,7 +204,7 @@
         background: white;
         border-radius: 12px;
         margin-bottom: 2rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .notes-header {
@@ -249,7 +234,7 @@
         background: white;
         border-radius: 12px;
         margin-bottom: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         overflow: hidden;
     }
 
@@ -274,11 +259,25 @@
         padding: 0.75rem 0.5rem;
     }
 
-    .cart-table thead th:nth-child(1) { width: 45%; }
-    .cart-table thead th:nth-child(2) { width: 10%; }
-    .cart-table thead th:nth-child(3) { width: 15%; }
-    .cart-table thead th:nth-child(4) { width: 15%; }
-    .cart-table thead th:nth-child(5) { width: 15%; }
+    .cart-table thead th:nth-child(1) {
+        width: 45%;
+    }
+
+    .cart-table thead th:nth-child(2) {
+        width: 10%;
+    }
+
+    .cart-table thead th:nth-child(3) {
+        width: 15%;
+    }
+
+    .cart-table thead th:nth-child(4) {
+        width: 15%;
+    }
+
+    .cart-table thead th:nth-child(5) {
+        width: 15%;
+    }
 
     .cart-table tbody tr {
         border-bottom: 1px solid #e9ecef;
@@ -311,7 +310,8 @@
         padding: 0;
     }
 
-    .cart-price, .cart-total {
+    .cart-price,
+    .cart-total {
         font-weight: 600;
         color: #212529;
         font-size: 0.9rem;
@@ -352,7 +352,7 @@
         .cart-table thead {
             display: none;
         }
-        
+
         .cart-table tbody tr {
             display: block;
             background: white;
@@ -361,20 +361,20 @@
             margin-bottom: 0.5rem;
             padding: 0.75rem;
         }
-        
+
         .cart-table tbody td {
             display: block;
             padding: 0.25rem 0;
             border: none;
         }
-        
+
         .cart-table tbody td:before {
             content: attr(data-label) ": ";
             font-weight: 600;
             color: #495057;
             margin-right: 0.5rem;
         }
-        
+
         .cart-table tbody td:first-child:before {
             display: none;
         }
@@ -405,7 +405,7 @@
             <i class="fas fa-user me-1"></i>Select Customer
         </label>
         <select id="customer-select" placeholder="Search by name, phone, or city..."></select>
-        
+
         <!-- Hidden delivery date with default 10 days -->
         <input type="date" id="delivery-date" class="d-none" value="{{ default_delivery_date.strftime('%Y-%m-%d') }}">
     </div>
@@ -425,7 +425,7 @@
     </div>
 
     <!-- Cart Items -->
-    <div class="cart-section mb-2">
+    <div class="cart-section mb-4">
         <div class="cart-table-container">
             <table class="table table-sm cart-table" id="cart-table">
                 <thead>
@@ -453,7 +453,7 @@
             </div>
         </div>
         <div class="notes-content" id="notes-content" style="display: none;">
-            <textarea id="order-notes" class="form-control" rows="3" 
+            <textarea id="order-notes" class="form-control" rows="3"
                 placeholder="Add any special instructions or notes for this order..."></textarea>
         </div>
     </div>
@@ -461,18 +461,17 @@
 
 <!-- Fixed Bottom Summary -->
 <div class="cart-summary container-fluid">
-    <div class="total-display row">
-        <div class="col-sm">            
-            <span class="total-label">Total:</span>
+    <div class="container-fluid total-display d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <span class="total-label me-2">Total:</span>
             <span class="total-amount" id="summary-grand-total">₹0.00</span>
         </div>
-        <div class="col-sm">
-            <button id="save-order-btn" class="place-order-btn">
-                <i class="fas fa-check me-2"></i>Place Order
-            </button>
-        </div>
+        <button id="save-order-btn" class="btn btn-success btn-lg">
+            <i class="fas fa-check me-2"></i>Place Order
+        </button>
     </div>
 </div>
+
 
 
 <!-- Hidden inputs for backend compatibility -->
@@ -484,71 +483,71 @@
 {% block scripts %}
 {{ super() }}
 <script>
-// Cart functionality
-let cart = [];
-let selectedCustomer = null;
-let selectedProduct = null;
+    // Cart functionality
+    let cart = [];
+    let selectedCustomer = null;
+    let selectedProduct = null;
 
-// Toggle notes section
-function toggleNotes() {
-    const content = document.getElementById('notes-content');
-    const chevron = document.getElementById('notes-chevron');
-    
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        chevron.classList.remove('fa-chevron-right');
-        chevron.classList.add('fa-chevron-down');
-    } else {
-        content.style.display = 'none';
-        chevron.classList.remove('fa-chevron-down');
-        chevron.classList.add('fa-chevron-right');
+    // Toggle notes section
+    function toggleNotes() {
+        const content = document.getElementById('notes-content');
+        const chevron = document.getElementById('notes-chevron');
+
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            chevron.classList.remove('fa-chevron-right');
+            chevron.classList.add('fa-chevron-down');
+        } else {
+            content.style.display = 'none';
+            chevron.classList.remove('fa-chevron-down');
+            chevron.classList.add('fa-chevron-right');
+        }
     }
-}
 
-// Cart management
-function addToCart(product, quantity = 1) {
-    const existingItem = cart.find(item => item.id === product.id);
-    
-    if (existingItem) {
-        existingItem.quantity += quantity;
-    } else {
-        cart.push({
-            id: product.id,
-            name: product.name,
-            sku: product.sku,
-            price: product.price,
-            quantity: quantity
-        });
-    }
-    
-    updateCartDisplay();
-    updateTotal();
-}
+    // Cart management
+    function addToCart(product, quantity = 1) {
+        const existingItem = cart.find(item => item.id === product.id);
 
-function removeFromCart(productId) {
-    cart = cart.filter(item => item.id !== productId);
-    updateCartDisplay();
-    updateTotal();
-}
+        if (existingItem) {
+            existingItem.quantity += quantity;
+        } else {
+            cart.push({
+                id: product.id,
+                name: product.name,
+                sku: product.sku,
+                price: product.price,
+                quantity: quantity
+            });
+        }
 
-function updateQuantity(productId, newQuantity) {
-    const item = cart.find(item => item.id === productId);
-    if (item && newQuantity > 0) {
-        item.quantity = newQuantity;
         updateCartDisplay();
         updateTotal();
     }
-}
 
-function updateCartDisplay() {
-    const cartContainer = document.getElementById('cart-items');
-    
-    // Clear the container
-    cartContainer.innerHTML = '';
-    
-    if (cart.length === 0) {
-        // Show empty cart message
-        cartContainer.innerHTML = `
+    function removeFromCart(productId) {
+        cart = cart.filter(item => item.id !== productId);
+        updateCartDisplay();
+        updateTotal();
+    }
+
+    function updateQuantity(productId, newQuantity) {
+        const item = cart.find(item => item.id === productId);
+        if (item && newQuantity > 0) {
+            item.quantity = newQuantity;
+            updateCartDisplay();
+            updateTotal();
+        }
+    }
+
+    function updateCartDisplay() {
+        const cartContainer = document.getElementById('cart-items');
+
+        // Clear the container
+        cartContainer.innerHTML = '';
+
+        if (cart.length === 0) {
+            // Show empty cart message
+            cartContainer.innerHTML = `
             <tr>
                 <td colspan="5" class="empty-cart-message">
                     <i class="fas fa-shopping-cart"></i>
@@ -557,13 +556,13 @@ function updateCartDisplay() {
                 </td>
             </tr>
         `;
-        return;
-    }
-    
-    // Add cart items as table rows
-    cart.forEach(item => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
+            return;
+        }
+
+        // Add cart items as table rows
+        cart.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
             <td data-label="Product">
                 <div class="cart-product-name">${item.name}</div>
             </td>
@@ -577,127 +576,127 @@ function updateCartDisplay() {
                 <div class="cart-total">₹${(item.price * item.quantity).toFixed(2)}</div>
             </td>
             <td data-label="Action">
-                <button class="cart-remove-btn" onclick="removeFromCart(${item.id})">
+                <button class="btn btn-outline-danger cart-remove-btn" onclick="removeFromCart(${item.id})">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
         `;
-        cartContainer.appendChild(row);
-    });
-}
-
-function updateTotal() {
-    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    document.getElementById('summary-grand-total').textContent = `₹${total.toFixed(2)}`;
-    document.getElementById('order-subtotal').value = total.toFixed(2);
-}
-
-// Save order function
-async function saveOrder() {
-    if (!selectedCustomer) {
-        alert('Please select a customer');
-        return;
-    }
-    
-    if (cart.length === 0) {
-        alert('Please add at least one item to the cart');
-        return;
-    }
-    
-    const orderData = {
-        customer_id: selectedCustomer.id,
-        delivery_date: document.getElementById('delivery-date').value,
-        notes: document.getElementById('order-notes').value,
-        tax: 0,
-        discount: 0,
-        items: cart.map(item => ({
-            id: item.id,
-            quantity: item.quantity,
-            price: item.price,
-            discount: 0
-        }))
-    };
-    
-    const btn = document.getElementById('save-order-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Order...';
-    
-    try {
-        const response = await fetch('/order/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(orderData)
+            cartContainer.appendChild(row);
         });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            window.location.href = result.redirect_url;
-        } else {
-            alert(result.error || 'Failed to create order');
-        }
-    } catch (error) {
-        alert('An error occurred while creating the order');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-check me-2"></i>Place Order';
     }
-}
 
-document.addEventListener('DOMContentLoaded', function () {
-    // Customer Search
-    const customerSelect = new TomSelect('#customer-select', {
-        valueField: 'id',
-        labelField: 'display_text',
-        searchField: ['name', 'phone', 'email', 'city'],
-        create: false,
-        load: function (query, callback) {
-            if (query.length < 2) return callback();
-            fetch(`/order/api/search-customers-v2?q=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(data => callback(data))
-                .catch(() => callback());
-        },
-        onChange: function (value) {
-            if (!value) return;
-            selectedCustomer = this.options[value];
+    function updateTotal() {
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        document.getElementById('summary-grand-total').textContent = `₹${total.toFixed(2)}`;
+        document.getElementById('order-subtotal').value = total.toFixed(2);
+    }
+
+    // Save order function
+    async function saveOrder() {
+        if (!selectedCustomer) {
+            alert('Please select a customer');
+            return;
         }
-    });
 
-    // Product Search
-    const productSelect = new TomSelect('#product-select', {
-        valueField: 'id',
-        labelField: 'display_text',
-        searchField: ['name', 'sku'],
-        create: false,
-        render: {
-            option: (data, escape) => `<div>${escape(data.display_text)}</div>`,
-            item: (data, escape) => `<div>${escape(data.name)}</div>`,
-        },
-        load: function (query, callback) {
-            if (query.length < 2) return callback();
-            fetch(`/order/api/search-products-v2?q=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(data => callback(data))
-                .catch(() => callback());
-        },
-        onChange: function (value) {
-            if (!value) return;
-            selectedProduct = this.options[value];
-            document.getElementById('inline-price').value = selectedProduct.price;
-            
-            // Automatically add to cart when product is selected
-            addToCart(selectedProduct, 1);
-            
-            // Clear the selection
-            this.clear();
-            selectedProduct = null;
+        if (cart.length === 0) {
+            alert('Please add at least one item to the cart');
+            return;
         }
+
+        const orderData = {
+            customer_id: selectedCustomer.id,
+            delivery_date: document.getElementById('delivery-date').value,
+            notes: document.getElementById('order-notes').value,
+            tax: 0,
+            discount: 0,
+            items: cart.map(item => ({
+                id: item.id,
+                quantity: item.quantity,
+                price: item.price,
+                discount: 0
+            }))
+        };
+
+        const btn = document.getElementById('save-order-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Order...';
+
+        try {
+            const response = await fetch('/order/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                window.location.href = result.redirect_url;
+            } else {
+                alert(result.error || 'Failed to create order');
+            }
+        } catch (error) {
+            alert('An error occurred while creating the order');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check me-2"></i>Place Order';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Customer Search
+        const customerSelect = new TomSelect('#customer-select', {
+            valueField: 'id',
+            labelField: 'display_text',
+            searchField: ['name', 'phone', 'email', 'city'],
+            create: false,
+            load: function (query, callback) {
+                if (query.length < 2) return callback();
+                fetch(`/order/api/search-customers-v2?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => callback(data))
+                    .catch(() => callback());
+            },
+            onChange: function (value) {
+                if (!value) return;
+                selectedCustomer = this.options[value];
+            }
+        });
+
+        // Product Search
+        const productSelect = new TomSelect('#product-select', {
+            valueField: 'id',
+            labelField: 'display_text',
+            searchField: ['name', 'sku'],
+            create: false,
+            render: {
+                option: (data, escape) => `<div>${escape(data.display_text)}</div>`,
+                item: (data, escape) => `<div>${escape(data.name)}</div>`,
+            },
+            load: function (query, callback) {
+                if (query.length < 2) return callback();
+                fetch(`/order/api/search-products-v2?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => callback(data))
+                    .catch(() => callback());
+            },
+            onChange: function (value) {
+                if (!value) return;
+                selectedProduct = this.options[value];
+                document.getElementById('inline-price').value = selectedProduct.price;
+
+                // Automatically add to cart when product is selected
+                addToCart(selectedProduct, 1);
+
+                // Clear the selection
+                this.clear();
+                selectedProduct = null;
+            }
+        });
+
+
+        // Save order button
+        document.getElementById('save-order-btn').addEventListener('click', saveOrder);
     });
-
-
-    // Save order button
-    document.getElementById('save-order-btn').addEventListener('click', saveOrder);
-});
 </script>
 {% endblock %}
