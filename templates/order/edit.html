@@ -644,6 +644,7 @@
 let cart = [];
 let selectedCustomer = { id: {{ order.customer.id }}, name: "{{ order.customer.name }}" };
 let selectedProduct = null;
+let catalogProducts = [];
 
 // Toggle notes section
 function toggleNotes() {
@@ -870,6 +871,91 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Load existing items
     loadExistingItems();
+
+    // Load products into catalog
+    loadAllProducts();
 });
+
+// Product Catalog Functions
+async function loadAllProducts() {
+    const catalogBody = document.getElementById('catalog-body');
+    catalogBody.innerHTML = '<tr id="catalog-loading"><td colspan="5" class="text-center py-3"><i class="fas fa-spinner fa-spin me-2"></i>Loading products...</td></tr>';
+    
+    try {
+        // Use the existing product search API with empty query to get all products
+        const response = await fetch('/order/api/search-products-v2?q=');
+        const products = await response.json();
+        
+        catalogProducts = products;
+        displayCatalogProducts(products);
+    } catch (error) {
+        catalogBody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Failed to load products</td></tr>';
+    }
+}
+
+function displayCatalogProducts(products) {
+    const catalogBody = document.getElementById('catalog-body');
+    
+    if (products.length === 0) {
+        catalogBody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">No products available</td></tr>';
+        return;
+    }
+    
+    catalogBody.innerHTML = '';
+    
+    products.forEach(product => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td data-label="Product">
+                <div class="product-info">
+                    <div class="product-icon">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <div class="product-details">
+                        <p class="product-name">${product.name}</p>
+                        <p class="product-code">${product.sku || 'SKU-' + product.id}</p>
+                    </div>
+                </div>
+            </td>
+            <td data-label="Quantity">
+                <div class="catalog-qty-control">
+                    <button class="catalog-qty-btn" onclick="updateCatalogQty(${product.id}, -1)">-</button>
+                    <input type="number" class="catalog-qty-input" id="catalog-qty-${product.id}" value="1" min="1" max="100">
+                    <button class="catalog-qty-btn" onclick="updateCatalogQty(${product.id}, 1)">+</button>
+                </div>
+            </td>
+            <td data-label="Price">
+                <div class="product-price">₹${parseFloat(product.price).toFixed(2)}</div>
+            </td>
+            <td data-label="Status">
+                <span class="product-status status-in-stock">In Stock</span>
+            </td>
+            <td data-label="Action">
+                <button class="catalog-add-btn" onclick="addFromCatalog(${product.id})">
+                    <i class="fas fa-plus"></i>Add
+                </button>
+            </td>
+        `;
+        catalogBody.appendChild(row);
+    });
+}
+
+function updateCatalogQty(productId, change) {
+    const qtyInput = document.getElementById(`catalog-qty-${productId}`);
+    const currentQty = parseInt(qtyInput.value);
+    const newQty = Math.max(1, Math.min(100, currentQty + change));
+    qtyInput.value = newQty;
+}
+
+function addFromCatalog(productId) {
+    const product = catalogProducts.find(p => p.id === productId);
+    const qtyInput = document.getElementById(`catalog-qty-${productId}`);
+    const quantity = parseInt(qtyInput.value);
+    
+    if (product && quantity > 0) {
+        addToCart(product, quantity);
+        qtyInput.value = 1; // Reset quantity to 1
+    }
+}
 </script>
 {% endblock %}
