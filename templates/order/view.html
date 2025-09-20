@@ -9,16 +9,16 @@
             <h1>
                 <i class="fas fa-shopping-cart me-2"></i>Order {{ order.order_number }}
             </h1>
-            <div class="btn-group">
+            <div class="d-flex gap-2">
                 {% if order.status in ['pending', 'confirmed'] %}
                 {% if session.role == 'salesperson' and order.salesperson_id == session.user_id or session.role != 'salesperson' %}
-                <a href="{{ url_for('order.edit_order', order_id=order.id) }}" class="btn btn-primary">
-                    <i class="fas fa-edit me-2"></i>Edit Order
+                <a href="{{ url_for('order.edit_order', order_id=order.id) }}" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Edit Order">
+                    <i class="fas fa-edit"></i>
                 </a>
                 {% endif %}
                 {% endif %}
-                <a href="{{ url_for('order.list_orders') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Orders
+                <a href="{{ url_for('order.list_orders') }}" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Back to Orders">
+                    <i class="fas fa-arrow-left"></i>
                 </a>
             </div>
         </div>
