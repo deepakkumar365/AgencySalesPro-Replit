@@ -3,41 +3,123 @@
 {% block title %}{{ 'Edit' if customer else 'Create' }} Customer - AgencySales Pro{% endblock %}
 
 {% block content %}
+<style>
+/* Mobile-First Customer Form Styles */
+.customer-form-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.customer-form-header {
+    background: var(--accent-light);
+    color: var(--primary-dark);
+    border-radius: 12px 12px 0 0;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.customer-form-body {
+    padding: 1.5rem;
+}
+
+.form-control, .form-select {
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    min-height: 44px;
+}
+
+.form-label {
+    font-weight: 600;
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+}
+
+.btn {
+    min-height: 44px;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 767.98px) {
+    .customer-form-header h4 {
+        font-size: 1.3rem;
+    }
+    
+    .customer-form-body {
+        padding: 1rem;
+    }
+    
+    .form-control, .form-select {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+    
+    .btn-group .btn {
+        width: 100%;
+    }
+    
+    /* Single column on mobile */
+    .mobile-stack > .col-md-6 {
+        margin-bottom: 1rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .customer-form-body {
+        padding: 2rem;
+    }
+}
+</style>
+
 <div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="customer-form-card">
+            <div class="customer-form-header">
                 <h4 class="mb-0">
                     <i class="fas fa-user-friends me-2"></i>{{ 'Edit' if customer else 'Create' }} Customer
                 </h4>
             </div>
-            <div class="card-body">
+            <div class="customer-form-body">
                 <form method="POST">
                     <div class="mb-3">
                         <label for="name" class="form-label">Customer Name *</label>
                         <input type="text" class="form-control" id="name" name="name" 
-                               value="{{ customer.name if customer else '' }}" required>
+                               value="{{ customer.name if customer else '' }}" required 
+                               placeholder="Enter customer full name">
                     </div>
                     
-                    <div class="row">
+                    <div class="row mobile-stack">
                         <div class="col-md-6 mb-3">
                             <label for="email" class="form-label">Email</label>
                             <input type="email" class="form-control" id="email" name="email" 
-                                   value="{{ customer.email if customer else '' }}">
+                                   value="{{ customer.email if customer else '' }}"
+                                   placeholder="customer@example.com">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="phone" class="form-label">Phone</label>
                             <input type="tel" class="form-control" id="phone" name="phone" 
-                                   value="{{ customer.phone if customer else '' }}">
+                                   value="{{ customer.phone if customer else '' }}"
+                                   placeholder="+91 98765 43210">
                         </div>
                     </div>
                     
                     <div class="mb-3">
                         <label for="address" class="form-label">Address</label>
-                        <textarea class="form-control" id="address" name="address" rows="3">{{ customer.address if customer else '' }}</textarea>
+                        <textarea class="form-control" id="address" name="address" rows="3" 
+                                  placeholder="Enter complete address with street, city, and postal code">{{ customer.address if customer else '' }}</textarea>
                     </div>
                     
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <label for="location_id" class="form-label">Location *</label>
                         <select class="form-select" id="location_id" name="location_id" required>
                             <option value="">Select Location</option>
@@ -50,8 +132,10 @@
                         </select>
                     </div>
                     
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{{ url_for('customer.list_customers') }}" class="btn btn-secondary">Cancel</a>
+                    <div class="btn-group d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('customer.list_customers') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Cancel
+                        </a>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save me-2"></i>{{ 'Update' if customer else 'Create' }} Customer
                         </button>
