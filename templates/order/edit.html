@@ -307,11 +307,7 @@
                 <select id="product-select" placeholder="Search for products..."></select>
             </div>
             <div class="search-qty">
-                <div class="qty-control">
-                    <button type="button" class="qty-btn" id="qty-decrease">-</button>
-                    <input type="number" id="inline-qty" class="qty-input" value="1" min="1">
-                    <button type="button" class="qty-btn" id="qty-increase">+</button>
-                </div>
+                <input type="number" id="inline-qty" class="qty-input" value="1" min="1">
             </div>
             <button id="inline-add-btn" class="btn btn-primary add-btn">
                 <i class="fas fa-plus"></i>
@@ -360,11 +356,7 @@
             <div class="item-price"></div>
         </div>
         <div class="item-controls">
-            <div class="qty-control">
-                <button type="button" class="qty-btn item-decrease">-</button>
-                <input type="number" class="qty-input item-qty" value="1" min="1">
-                <button type="button" class="qty-btn item-increase">+</button>
-            </div>
+            <input type="number" class="qty-input item-qty" value="1" min="1">
             <div class="item-total">₹0.00</div>
             <button class="remove-btn">
                 <i class="fas fa-trash"></i>
@@ -389,6 +381,7 @@
 // Cart functionality for editing orders
 let cart = [];
 let selectedCustomer = { id: {{ order.customer.id }}, name: "{{ order.customer.name }}" };
+let selectedProduct = null;
 
 // Toggle notes section
 function toggleNotes() {
@@ -457,20 +450,8 @@ function updateCartDisplay() {
         itemElement.querySelector('.existing-item-id').value = item.existingItemId || '';
         
         // Quantity controls
-        const decreaseBtn = itemElement.querySelector('.item-decrease');
-        const increaseBtn = itemElement.querySelector('.item-increase');
         const qtyInput = itemElement.querySelector('.qty-input');
         const removeBtn = itemElement.querySelector('.remove-btn');
-        
-        decreaseBtn.addEventListener('click', () => {
-            if (item.quantity > 1) {
-                updateQuantity(item.id, item.quantity - 1);
-            }
-        });
-        
-        increaseBtn.addEventListener('click', () => {
-            updateQuantity(item.id, item.quantity + 1);
-        });
         
         qtyInput.addEventListener('change', (e) => {
             const newQty = parseInt(e.target.value);
@@ -590,44 +571,27 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         onChange: function (value) {
             if (!value) return;
-            const product = this.options[value];
-            document.getElementById('inline-price').value = product.price;
-            this.clear();
+            selectedProduct = this.options[value];
+            document.getElementById('inline-price').value = selectedProduct.price;
         }
-    });
-
-    // Quantity controls for search
-    document.getElementById('qty-decrease').addEventListener('click', () => {
-        const input = document.getElementById('inline-qty');
-        if (input.value > 1) {
-            input.value = parseInt(input.value) - 1;
-        }
-    });
-    
-    document.getElementById('qty-increase').addEventListener('click', () => {
-        const input = document.getElementById('inline-qty');
-        input.value = parseInt(input.value) + 1;
     });
 
     // Add to cart button
     document.getElementById('inline-add-btn').addEventListener('click', () => {
-        const productSelect = document.getElementById('product-select');
         const qtyInput = document.getElementById('inline-qty');
         const priceInput = document.getElementById('inline-price');
         
-        if (!productSelect.value || !priceInput.value) {
+        if (!selectedProduct || !priceInput.value) {
             alert('Please select a product first');
             return;
         }
         
-        // Get the product data from TomSelect
-        const productData = productSelect.tomselect.options[productSelect.value];
-        if (productData) {
-            productData.price = parseFloat(priceInput.value);
-            addToCart(productData, parseInt(qtyInput.value));
-            qtyInput.value = 1;
-            priceInput.value = '';
-        }
+        selectedProduct.price = parseFloat(priceInput.value);
+        addToCart(selectedProduct, parseInt(qtyInput.value));
+        qtyInput.value = 1;
+        priceInput.value = '';
+        productSelect.clear();
+        selectedProduct = null;
     });
 
     // Save order button
