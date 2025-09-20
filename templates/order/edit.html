@@ -265,8 +265,8 @@
         }
     }
 
-    /* Product Catalog Styles */
-    .catalog-section {
+    /* Cart Table Styles */
+    .cart-section {
         background: white;
         border-radius: 12px;
         margin-bottom: 1rem;
@@ -274,71 +274,58 @@
         overflow: hidden;
     }
 
-    .catalog-header {
+    .cart-header {
         background: #f8f9fa;
         padding: 1rem;
         border-bottom: 1px solid var(--bs-border-color);
-        display: flex;
-        justify-content: between;
-        align-items: center;
     }
 
-    .catalog-header h6 {
+    .cart-header h6 {
         color: #495057;
         font-weight: 600;
         margin: 0;
-        flex: 1;
     }
 
-    .catalog-actions {
-        display: flex;
-        gap: 0.5rem;
+    .cart-table-container {
+        min-height: 200px;
     }
 
-    .catalog-table-container {
-        max-height: 400px;
-        overflow-y: auto;
-    }
-
-    .catalog-table {
+    .cart-table {
         margin-bottom: 0;
     }
 
-    .catalog-table thead {
+    .cart-table thead {
         background: #6c757d;
         color: white;
-        position: sticky;
-        top: 0;
-        z-index: 10;
     }
 
-    .catalog-table thead th {
+    .cart-table thead th {
         border: none;
         font-weight: 500;
         font-size: 0.875rem;
         padding: 0.75rem 0.5rem;
     }
 
-    .catalog-table tbody tr {
+    .cart-table tbody tr {
         border-bottom: 1px solid #e9ecef;
     }
 
-    .catalog-table tbody tr:hover {
+    .cart-table tbody tr:hover {
         background-color: #f8f9fa;
     }
 
-    .catalog-table tbody td {
+    .cart-table tbody td {
         padding: 0.75rem 0.5rem;
         vertical-align: middle;
     }
 
-    .product-info {
+    .cart-product-info {
         display: flex;
         align-items: center;
         gap: 0.75rem;
     }
 
-    .product-icon {
+    .cart-product-icon {
         width: 32px;
         height: 32px;
         background: #007bff;
@@ -351,124 +338,76 @@
         flex-shrink: 0;
     }
 
-    .product-details {
+    .cart-product-details {
         flex: 1;
         min-width: 0;
     }
 
-    .product-name {
+    .cart-product-name {
         font-weight: 500;
         color: #212529;
         margin: 0;
         line-height: 1.2;
     }
 
-    .product-code {
+    .cart-product-code {
         font-size: 0.75rem;
         color: #6c757d;
         margin: 0;
     }
 
-    .catalog-qty-control {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-        justify-content: center;
-    }
-
-    .catalog-qty-btn {
-        width: 28px;
-        height: 28px;
-        border: 1px solid #dee2e6;
-        background: white;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: #495057;
-    }
-
-    .catalog-qty-btn:hover {
-        background: #f8f9fa;
-        border-color: #adb5bd;
-    }
-
-    .catalog-qty-input {
-        width: 50px;
-        height: 28px;
+    .cart-qty-input {
+        width: 70px;
+        height: 32px;
         border: 1px solid #dee2e6;
         border-radius: 4px;
         text-align: center;
         font-size: 0.875rem;
         padding: 0;
-        margin: 0 2px;
     }
 
-    .product-price {
+    .cart-price, .cart-total {
         font-weight: 600;
         color: #212529;
         font-size: 0.9rem;
     }
 
-    .product-status {
-        display: inline-block;
-        padding: 0.25rem 0.5rem;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .status-in-stock {
-        background: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
-    }
-
-    .status-out-of-stock {
-        background: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
-    }
-
-    .catalog-add-btn {
-        background: #007bff;
+    .cart-remove-btn {
+        background: #dc3545;
         color: white;
         border: none;
-        border-radius: 6px;
-        padding: 0.375rem 0.75rem;
+        border-radius: 4px;
+        padding: 0.375rem 0.5rem;
         font-size: 0.8rem;
-        font-weight: 500;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 0.25rem;
+        justify-content: center;
     }
 
-    .catalog-add-btn:hover {
-        background: #0056b3;
+    .cart-remove-btn:hover {
+        background: #c82333;
     }
 
-    .catalog-add-btn:disabled {
-        background: #6c757d;
-        cursor: not-allowed;
+    .empty-cart-message {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6c757d;
     }
 
-    /* Mobile responsiveness for catalog */
+    .empty-cart-message i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    /* Mobile responsiveness for cart table */
     @media (max-width: 767px) {
-        .catalog-table-container {
-            max-height: 300px;
-        }
-        
-        .catalog-table thead {
+        .cart-table thead {
             display: none;
         }
         
-        .catalog-table tbody tr {
+        .cart-table tbody tr {
             display: block;
             background: white;
             border: 1px solid #dee2e6;
@@ -477,21 +416,26 @@
             padding: 0.75rem;
         }
         
-        .catalog-table tbody td {
+        .cart-table tbody td {
             display: block;
             padding: 0.25rem 0;
             border: none;
         }
         
-        .catalog-table tbody td:before {
+        .cart-table tbody td:before {
             content: attr(data-label) ": ";
             font-weight: 600;
             color: #495057;
             margin-right: 0.5rem;
         }
         
-        .catalog-table tbody td:first-child:before {
+        .cart-table tbody td:first-child:before {
             display: none;
+        }
+
+        .cart-qty-input {
+            width: 100%;
+            max-width: 100px;
         }
     }
 </style>
@@ -547,41 +491,27 @@
         <input type="hidden" id="inline-price">
     </div>
 
-    <!-- Product Catalog -->
-    <div class="catalog-section">
-        <div class="catalog-header">
-            <h6 class="mb-0"><i class="fas fa-th-large me-2"></i>Product Catalog</h6>
-            <div class="catalog-actions">
-                <button class="btn btn-sm btn-outline-primary" onclick="loadAllProducts()">
-                    <i class="fas fa-sync me-1"></i>Refresh
-                </button>
-            </div>
+    <!-- Cart Items -->
+    <div class="cart-section">
+        <div class="cart-header">
+            <h6 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Order Items</h6>
         </div>
-        <div class="catalog-table-container">
-            <table class="table table-sm catalog-table" id="catalog-table">
+        <div class="cart-table-container">
+            <table class="table table-sm cart-table" id="cart-table">
                 <thead>
                     <tr>
                         <th>Product Name</th>
                         <th>Quantity</th>
                         <th>Price</th>
-                        <th>Status</th>
+                        <th>Total</th>
                         <th></th>
                     </tr>
                 </thead>
-                <tbody id="catalog-body">
-                    <tr id="catalog-loading">
-                        <td colspan="5" class="text-center py-3">
-                            <i class="fas fa-spinner fa-spin me-2"></i>Loading products...
-                        </td>
-                    </tr>
+                <tbody id="cart-items">
+                    <!-- Items will be populated here -->
                 </tbody>
             </table>
         </div>
-    </div>
-
-    <!-- Cart Items -->
-    <div class="cart-items" id="cart-items">
-        <!-- Items will be populated here -->
     </div>
 
     <!-- Additional Notes (Collapsible) -->
@@ -610,26 +540,6 @@
     </button>
 </div>
 
-<!-- Cart Item Template -->
-<template id="cart-item-template">
-    <div class="cart-item">
-        <div class="item-info">
-            <div class="item-name"></div>
-            <div class="item-price"></div>
-        </div>
-        <div class="item-controls">
-            <input type="number" class="qty-input item-qty" value="1" min="1">
-            <div class="item-total">₹0.00</div>
-            <button class="remove-btn">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
-        <!-- Hidden data -->
-        <input type="hidden" class="item-id">
-        <input type="hidden" class="item-unit-price">
-        <input type="hidden" class="existing-item-id">
-    </div>
-</template>
 
 <!-- Hidden inputs for backend compatibility -->
 <input type="hidden" id="order-subtotal" value="{{ order.subtotal or '0' }}">
@@ -644,7 +554,6 @@
 let cart = [];
 let selectedCustomer = { id: {{ order.customer.id }}, name: "{{ order.customer.name }}" };
 let selectedProduct = null;
-let catalogProducts = [];
 
 // Toggle notes section
 function toggleNotes() {
@@ -693,7 +602,6 @@ function updateQuantity(productId, newQuantity) {
 
 function updateCartDisplay() {
     const cartContainer = document.getElementById('cart-items');
-    const template = document.getElementById('cart-item-template');
     
     // Clear the container
     cartContainer.innerHTML = '';
@@ -701,42 +609,47 @@ function updateCartDisplay() {
     if (cart.length === 0) {
         // Show empty cart message
         cartContainer.innerHTML = `
-            <div class="empty-cart">
-                <i class="fas fa-shopping-cart"></i>
-                <p>No items in order</p>
-            </div>
+            <tr>
+                <td colspan="5" class="empty-cart-message">
+                    <i class="fas fa-shopping-cart"></i>
+                    <p>No items in order</p>
+                </td>
+            </tr>
         `;
         return;
     }
     
-    // Add cart items
+    // Add cart items as table rows
     cart.forEach(item => {
-        const itemElement = template.content.cloneNode(true);
-        
-        itemElement.querySelector('.item-name').textContent = item.name;
-        itemElement.querySelector('.item-price').textContent = `₹${item.price.toFixed(2)} each`;
-        itemElement.querySelector('.qty-input').value = item.quantity;
-        itemElement.querySelector('.item-total').textContent = `₹${(item.price * item.quantity).toFixed(2)}`;
-        itemElement.querySelector('.item-id').value = item.id;
-        itemElement.querySelector('.item-unit-price').value = item.price;
-        itemElement.querySelector('.existing-item-id').value = item.existingItemId || '';
-        
-        // Quantity controls
-        const qtyInput = itemElement.querySelector('.qty-input');
-        const removeBtn = itemElement.querySelector('.remove-btn');
-        
-        qtyInput.addEventListener('change', (e) => {
-            const newQty = parseInt(e.target.value);
-            if (newQty > 0) {
-                updateQuantity(item.id, newQty);
-            }
-        });
-        
-        removeBtn.addEventListener('click', () => {
-            removeFromCart(item.id);
-        });
-        
-        cartContainer.appendChild(itemElement);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td data-label="Product">
+                <div class="cart-product-info">
+                    <div class="cart-product-icon">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <div class="cart-product-details">
+                        <p class="cart-product-name">${item.name}</p>
+                        <p class="cart-product-code">${item.sku || 'SKU-' + item.id}</p>
+                    </div>
+                </div>
+            </td>
+            <td data-label="Quantity">
+                <input type="number" class="cart-qty-input" value="${item.quantity}" min="1" onchange="updateQuantity(${item.id}, this.value)">
+            </td>
+            <td data-label="Price">
+                <div class="cart-price">₹${item.price.toFixed(2)}</div>
+            </td>
+            <td data-label="Total">
+                <div class="cart-total">₹${(item.price * item.quantity).toFixed(2)}</div>
+            </td>
+            <td data-label="Action">
+                <button class="cart-remove-btn" onclick="removeFromCart(${item.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        cartContainer.appendChild(row);
     });
 }
 
@@ -871,91 +784,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Load existing items
     loadExistingItems();
-
-    // Load products into catalog
-    loadAllProducts();
 });
-
-// Product Catalog Functions
-async function loadAllProducts() {
-    const catalogBody = document.getElementById('catalog-body');
-    catalogBody.innerHTML = '<tr id="catalog-loading"><td colspan="5" class="text-center py-3"><i class="fas fa-spinner fa-spin me-2"></i>Loading products...</td></tr>';
-    
-    try {
-        // Use the existing product search API with empty query to get all products
-        const response = await fetch('/order/api/search-products-v2?q=');
-        const products = await response.json();
-        
-        catalogProducts = products;
-        displayCatalogProducts(products);
-    } catch (error) {
-        catalogBody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Failed to load products</td></tr>';
-    }
-}
-
-function displayCatalogProducts(products) {
-    const catalogBody = document.getElementById('catalog-body');
-    
-    if (products.length === 0) {
-        catalogBody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">No products available</td></tr>';
-        return;
-    }
-    
-    catalogBody.innerHTML = '';
-    
-    products.forEach(product => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td data-label="Product">
-                <div class="product-info">
-                    <div class="product-icon">
-                        <i class="fas fa-box"></i>
-                    </div>
-                    <div class="product-details">
-                        <p class="product-name">${product.name}</p>
-                        <p class="product-code">${product.sku || 'SKU-' + product.id}</p>
-                    </div>
-                </div>
-            </td>
-            <td data-label="Quantity">
-                <div class="catalog-qty-control">
-                    <button class="catalog-qty-btn" onclick="updateCatalogQty(${product.id}, -1)">-</button>
-                    <input type="number" class="catalog-qty-input" id="catalog-qty-${product.id}" value="1" min="1" max="100">
-                    <button class="catalog-qty-btn" onclick="updateCatalogQty(${product.id}, 1)">+</button>
-                </div>
-            </td>
-            <td data-label="Price">
-                <div class="product-price">₹${parseFloat(product.price).toFixed(2)}</div>
-            </td>
-            <td data-label="Status">
-                <span class="product-status status-in-stock">In Stock</span>
-            </td>
-            <td data-label="Action">
-                <button class="catalog-add-btn" onclick="addFromCatalog(${product.id})">
-                    <i class="fas fa-plus"></i>Add
-                </button>
-            </td>
-        `;
-        catalogBody.appendChild(row);
-    });
-}
-
-function updateCatalogQty(productId, change) {
-    const qtyInput = document.getElementById(`catalog-qty-${productId}`);
-    const currentQty = parseInt(qtyInput.value);
-    const newQty = Math.max(1, Math.min(100, currentQty + change));
-    qtyInput.value = newQty;
-}
-
-function addFromCatalog(productId) {
-    const product = catalogProducts.find(p => p.id === productId);
-    const qtyInput = document.getElementById(`catalog-qty-${productId}`);
-    const quantity = parseInt(qtyInput.value);
-    
-    if (product && quantity > 0) {
-        addToCart(product, quantity);
-        qtyInput.value = 1; // Reset quantity to 1
-    }
-}
 </script>
 {% endblock %}
