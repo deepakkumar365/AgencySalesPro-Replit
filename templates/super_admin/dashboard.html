@@ -5,23 +5,6 @@
 {% block content %}
 <style>
 /* Mobile-First Super Admin Dashboard Styles */
-.admin-dashboard-header {
-    padding: 0.5rem 0;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.admin-dashboard-header h1 {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--primary-dark);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
 
 .stat-card {
     background: white;
@@ -96,15 +79,6 @@
 
 /* Mobile responsive adjustments */
 @media (max-width: 767.98px) {
-    .admin-dashboard-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-    
-    .admin-dashboard-header h1 {
-        font-size: 1.1rem;
-    }
     
     .stat-card .card-body {
         padding: 1rem;
@@ -120,9 +94,9 @@
 }
 </style>
 
-<div class="admin-dashboard-header">
+<div class="d-flex justify-content-between align-items-center mb-4">
     <h1>
-        <i class="fas fa-tachometer-alt"></i>Super Admin Dashboard
+        <i class="fas fa-tachometer-alt me-2"></i>Super Admin Dashboard
     </h1>
 </div>
 
