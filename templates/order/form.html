@@ -5,397 +5,605 @@
 {% block head %}
 {{ super() }}
 <style>
-    /* --- Mobile-First App Styles --- */
-    .main-content {
+    /* Mobile-First Cart Design */
+    .cart-container {
         max-width: 100%;
         padding: 1rem;
-        padding-bottom: 150px;
-        /* Space for the fixed summary bar */
+        padding-bottom: 120px; /* Space for fixed bottom bar */
     }
 
-    .form-control-sm {
-        font-size: 0.9rem;
-    }
-
-    .ts-control {
-        font-size: 0.9rem;
-    }
-
-    /* On mobile, transform table to a card list */
-    #order-items-table thead {
-        display: none;
-    }
-
-    #order-items-table tbody,
-    #order-items-table tr,
-    #order-items-table td {
-        display: block;
-    }
-
-    #order-items-table tr {
-        border: 1px solid var(--bs-border-color);
-        border-radius: 0.5rem;
+    /* Product Search Section */
+    .search-section {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
         margin-bottom: 1rem;
-        padding: 0.75rem;
-        background-color: var(--bs-tertiary-bg);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
-    #order-items-table td {
-        display: block;
-        /* Change from flex to block */
+    .search-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: end;
+    }
+
+    .search-product {
+        flex: 1;
+    }
+
+    .search-qty {
+        width: 80px;
+    }
+
+    .add-btn {
+        width: 60px;
+        height: 44px;
+        border-radius: 8px !important;
+    }
+
+    /* Quantity Controls - Attached Design */
+    .qty-control {
+        display: flex;
+        border: 1px solid var(--bs-border-color);
+        border-radius: 8px;
+        overflow: hidden;
+        background: white;
+    }
+
+    .qty-btn {
+        width: 44px;
+        height: 44px;
         border: none;
-        padding: 0.4rem 0.5rem;
-        border-bottom: 1px dashed var(--bs-border-color-translucent);
+        background: var(--primary-dark);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        cursor: pointer;
     }
 
-    #order-items-table td:last-child {
-        border-bottom: none;
+    .qty-btn:hover {
+        background: var(--primary-medium);
     }
 
-    /* Style the label to appear above the input */
-    #order-items-table td::before {
-        content: attr(data-label);
-        display: block;
-        font-weight: normal;
-        font-size: 0.75rem;
-        color: var(--bs-secondary-color);
+    .qty-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
     }
 
-    /* Specific adjustments for item cards */
-    #order-items-body .item-name-cell {
-        flex-direction: column;
-        align-items: flex-start;
+    .qty-input {
+        width: 60px;
+        border: none;
+        text-align: center;
+        font-weight: bold;
+        background: white;
+        outline: none;
     }
 
-    .order-item-row .item-name-cell::before {
-        display: none;
+    /* Cart Items Display */
+    .cart-items {
+        margin-bottom: 1rem;
     }
 
-    /* --- Mobile Cart-Like Item Row --- */
-    .order-item-row {
+    .cart-item {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         display: flex;
         align-items: center;
         gap: 1rem;
     }
-    .order-item-row .item-name-cell {
-        flex-grow: 1;
-        padding: 0;
-        min-width: 0; /* Allow flex item to shrink */
-    }
-    .order-item-row .item-controls {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex-shrink: 0; /* Prevent controls from shrinking */
-    }
-    .order-item-row .item-qty {
-        width: 70px;
-    }
-    .order-item-row .item-price { width: 90px; }
 
-    /* Quantity Stepper */
-    .qty-stepper {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem; /* Space between buttons and input */
-    }
-    .qty-stepper .btn-qty {
-        width: 2rem;
-        height: 2rem;
-        line-height: 1;
-    }
-    .qty-stepper .item-qty {
-        width: 50px;
-        text-align: center;
-        border: 1px solid var(--bs-border-color);
-        border-radius: 0.25rem;
+    .item-info {
+        flex: 1;
+        min-width: 0;
     }
 
-    .order-item-row .remove-item-btn {
-        margin-left: auto; /* Pushes remove button to the right */
+    .item-name {
+        font-weight: bold;
+        font-size: 0.95rem;
+        color: var(--primary-dark);
+        margin-bottom: 0.25rem;
     }
-    .order-item-row .remove-btn-cell {
+
+    .item-price {
+        color: var(--accent-green);
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+
+    .item-controls {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-shrink: 0;
+    }
+
+    .item-total {
+        font-weight: bold;
+        color: var(--primary-dark);
+        min-width: 60px;
+        text-align: right;
+    }
+
+    .remove-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #dc3545;
+        border: none;
+        color: white;
+        display: flex;
+        align-items: center;
         justify-content: center;
-        padding-top: 0.75rem;
     }
 
-    .order-item-row .remove-btn-cell::before {
-        display: none;
+    /* Empty Cart State */
+    .empty-cart {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--bs-secondary-color);
     }
 
-    .order-item-row .remove-item-btn {
-        width: 100%;
+    .empty-cart i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: var(--bs-border-color);
     }
 
-    #inline-entry-row {
-        background-color: var(--bs-body-bg);
-    }
-
-    /* Default Summary Bar (was mobile-only) */
-    #summary-bar {
+    /* Fixed Bottom Bar */
+    .cart-summary {
         position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
-        background-color: var(--bs-body-bg);
+        background: white;
         border-top: 1px solid var(--bs-border-color);
-        padding: 0.75rem 1rem;
+        padding: 1rem;
         z-index: 1030;
-        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
     }
 
-    /* Desktop styles */
-    @media (min-width: 768px) {
-        #order-items-table thead {
-            display: table-header-group;
-        }
+    .total-display {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
 
-        #order-items-table tbody,
-        #order-items-table tr,
-        #order-items-table td {
-            display: table-row;
-        }
+    .total-label {
+        font-size: 1.1rem;
+        color: var(--primary-dark);
+    }
 
-        #order-items-table td::before {
-            display: none;
-        }
-        /* Restore table layout for item rows on desktop */
-        .order-item-row {
-            display: table-row;
-        }
-        .order-item-row .item-name-cell,
-        .order-item-row .item-controls {
-            display: table-cell;
-            width: auto;
-        }
-        .order-item-row .item-controls .item-qty,
-        .order-item-row .item-controls .item-price,
-        .order-item-row .item-controls .item-discount,
-        .order-item-row .item-controls .item-line-total {
-            display: table-cell;
+    .total-amount {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--accent-green);
+    }
+
+    .place-order-btn {
+        width: 100%;
+        height: 50px;
+        border-radius: 12px;
+        background: var(--accent-green);
+        border: none;
+        color: white;
+        font-size: 1.1rem;
+        font-weight: bold;
+    }
+
+    .place-order-btn:hover {
+        background: #5ab082;
+    }
+
+    /* Customer Section */
+    .customer-section {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .ts-control {
+        border-radius: 8px !important;
+        font-size: 0.95rem !important;
+    }
+
+    /* Additional Notes (Collapsible) */
+    .notes-section {
+        background: white;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .notes-header {
+        padding: 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    .notes-content {
+        padding: 1rem;
+        display: none;
+    }
+
+    .notes-content.show {
+        display: block;
+    }
+
+    /* Hide unnecessary elements on mobile */
+    @media (max-width: 767px) {
+        .d-md-block {
+            display: none !important;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Create Order</h2>
-    <div class="d-none d-md-block">
-        <a href="{{ url_for('order.list_orders') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="fas fa-arrow-left me-2"></i>Back to Orders
-        </a>
-    </div>
-</div>
-
-<div class="row g-3">
-    <!-- Main Order Form -->
-    <div class="col-12">
-        <!-- Customer Section -->
-        <div class="card mb-3">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-user-tag me-2"></i>Customer Details</h6>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-12">
-                        <label for="customer-select" class="form-label">Select Customer</label>
-                        <select id="customer-select" placeholder="Search by name, phone, or city..."></select>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Delivery Date</label>
-                        <input type="date" id="delivery-date" class="form-control"
-                            value="{{ default_delivery_date.strftime('%Y-%m-%d') }}">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Order Items Section -->
-        <div class="card">
-            <div class="card-body p-0">
-                <table class="table table-sm" id="order-items-table">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Item</th>
-                            <th style="width: 90px;">Qty</th>
-                            <th style="width: 120px;">Unit Price</th>
-                            <th style="width: 80px;">Disc %</th>
-                            <th style="width: 130px;" class="text-end" colspan="2">Line Total</th>
-                        </tr>
-                    </thead>
-                    <!-- Inline entry row -->
-                    <tbody id="inline-entry-tbody">
-                        <tr id="inline-entry-row" class="shadow-sm">
-                            <td data-label="Item"><select id="product-select"
-                                    placeholder="Search for products..."></select>
-                            </td>
-                            <td data-label="Qty"><input type="number" id="inline-qty"
-                                    class="form-control form-control-sm text-end" value="1" min="1"></td>
-                            <td data-label="Price"><input type="number" id="inline-price"
-                                    class="form-control form-control-sm text-end" step="0.01"></td>
-                            <td data-label="Disc %"><input type="number" id="inline-discount"
-                                    class="form-control form-control-sm text-end" value="0" min="0" max="100"></td>
-                            <td data-label="Total" class="text-end"  colspan="2"><span id="inline-total"
-                                    class="fw-bold fs-6">₹0.00</span></td>
-                        </tr>
-                    </tbody>
-                    <!-- Added items -->
-                    <tbody id="order-items-body">
-                        <tr id="no-items-row">
-                            <td colspan="10" class="text-center text-muted py-5">
-                                <i class="fas fa-shopping-cart fa-2x mb-2"></i>
-                                <p>No items added yet. Use the search bar above to add products.</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Order Adjustments -->
-        <div class="accordion mt-3" id="adjustmentsAccordion">
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="headingOne">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-                        <i class="fas fa-calculator me-2"></i>Order Adjustments & Notes
-                    </button>
-                </h2>
-                <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne"
-                    data-bs-parent="#adjustmentsAccordion">
-                    <div class="accordion-body">
-                        <div class="mb-2">
-                            <label for="order-subtotal" class="form-label">Subtotal</label>
-                            <input type="text" id="order-subtotal" class="form-control" value="₹0.00" readonly>
-                        </div>
-                        <div class="mb-2">
-                            <label for="order-tax" class="form-label">Tax (Amount)</label>
-                            <input type="number" id="order-tax" class="form-control" value="0" min="0" step="0.01">
-                        </div>
-                        <label for="order-discount" class="form-label">Discount (Amount)</label>
-                        <input type="number" id="order-discount" class="form-control" value="0" min="0" step="0.01">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Notes -->
-        <div class="card mt-3">
-            <div class="card-body">
-                <label for="order-notes" class="form-label">Notes</label>
-                <textarea id="order-notes" class="form-control form-control-sm" rows="3"
-                    placeholder="Add any notes for this order..."></textarea>
-            </div>
+<div class="cart-container">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Create Order</h2>
+        <div class="d-none d-md-block">
+            <a href="{{ url_for('order.list_orders') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back
+            </a>
         </div>
     </div>
-</div>
 
-<!-- Summary Bar (fixed at bottom) -->
-<div id="summary-bar">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-        <div>
-            <small class="text-muted">Grand Total</small>
-            <h4 id="summary-grand-total" class="mb-0 text-success fw-bold">₹0.00</h4>
-        </div>
-        <div class="d-flex gap-2">
-            <button id="inline-add-btn" class="btn btn-primary btn-lg d-none d-md-inline-flex align-items-center">
+    <!-- Customer Selection -->
+    <div class="customer-section">
+        <label for="customer-select" class="form-label mb-2">
+            <i class="fas fa-user me-1"></i>Select Customer
+        </label>
+        <select id="customer-select" placeholder="Search by name, phone, or city..."></select>
+        
+        <!-- Hidden delivery date with default 10 days -->
+        <input type="date" id="delivery-date" class="d-none" value="{{ default_delivery_date.strftime('%Y-%m-%d') }}">
+    </div>
+
+    <!-- Product Search & Add -->
+    <div class="search-section">
+        <label class="form-label mb-2">
+            <i class="fas fa-search me-1"></i>Add Products
+        </label>
+        <div class="search-row">
+            <div class="search-product">
+                <select id="product-select" placeholder="Search for products..."></select>
+            </div>
+            <div class="search-qty">
+                <div class="qty-control">
+                    <button type="button" class="qty-btn" id="qty-decrease">-</button>
+                    <input type="number" id="inline-qty" class="qty-input" value="1" min="1">
+                    <button type="button" class="qty-btn" id="qty-increase">+</button>
+                </div>
+            </div>
+            <button id="inline-add-btn" class="btn btn-primary add-btn">
                 <i class="fas fa-plus"></i>
-                <span class="d-none d-sm-inline ms-1">Add</span>
             </button>
-            <button id="save-order-btn" class="btn btn-success btn-lg">
-                <i class="fas fa-save me-2"></i>Save Order
-            </button>
+        </div>
+        <!-- Hidden inputs for price -->
+        <input type="hidden" id="inline-price">
+    </div>
+
+    <!-- Cart Items -->
+    <div class="cart-items" id="cart-items">
+        <div class="empty-cart" id="empty-cart">
+            <i class="fas fa-shopping-cart"></i>
+            <p>Your cart is empty</p>
+            <small>Search and add products above</small>
+        </div>
+    </div>
+
+    <!-- Additional Notes (Collapsible) -->
+    <div class="notes-section">
+        <div class="notes-header" onclick="toggleNotes()">
+            <div class="d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-sticky-note me-2"></i>Add Notes</span>
+                <i class="fas fa-chevron-down" id="notes-chevron"></i>
+            </div>
+        </div>
+        <div class="notes-content" id="notes-content">
+            <textarea id="order-notes" class="form-control" rows="3" 
+                placeholder="Add any special instructions or notes for this order..."></textarea>
         </div>
     </div>
 </div>
 
-<!-- Item Row Template -->
-<template id="item-row-template">
-    <tr class="order-item-row">
-        <td class="item-name-cell">
-            <div class="fw-bold item-name text-truncate"></div>
-            <small class="text-muted item-sku"></small>
-        </td>
-        <td class="item-controls-cell" colspan="4">
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-sm btn-primary  btn-qty" data-action="decrement">-</button>
-                <input type="number" class="form-control form-control-sm item-qty" name="item_quantity" value="1" min="1.00" step="1.00">
-                    <button type="button" class="btn btn-sm btn-primary  btn-qty" data-action="increment">+</button>
-                </div>
-                <div class="text-end fw-bold item-line-total" style="width: 75px; flex-shrink: 0;">₹0.00</div>
-            </div>
-            <!-- Hidden inputs for calculation -->
-            <input type="hidden" class="item-price">
-            <input type="hidden" class="item-discount">
-        </td>
-        <td class="remove-btn-cell">
-            <button class="btn btn-sm btn-outline-danger  remove-item-btn"><i class="fas fa-trash-alt"></i></button>
-        </td>
-    </tr>
-</template>
+<!-- Fixed Bottom Summary -->
+<div class="cart-summary">
+    <div class="total-display">
+        <span class="total-label">Total</span>
+        <span class="total-amount" id="summary-grand-total">₹0.00</span>
+    </div>
+    <button id="save-order-btn" class="place-order-btn">
+        <i class="fas fa-check me-2"></i>Place Order
+    </button>
 </div>
+
+<!-- Cart Item Template -->
+<template id="cart-item-template">
+    <div class="cart-item">
+        <div class="item-info">
+            <div class="item-name"></div>
+            <div class="item-price"></div>
+        </div>
+        <div class="item-controls">
+            <div class="qty-control">
+                <button type="button" class="qty-btn item-decrease">-</button>
+                <input type="number" class="qty-input item-qty" value="1" min="1">
+                <button type="button" class="qty-btn item-increase">+</button>
+            </div>
+            <div class="item-total">₹0.00</div>
+            <button class="remove-btn">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+        <!-- Hidden data -->
+        <input type="hidden" class="item-id">
+        <input type="hidden" class="item-unit-price">
+    </div>
+</template>
+
+<!-- Hidden inputs for backend compatibility -->
+<input type="hidden" id="order-subtotal" value="0">
+<input type="hidden" id="order-tax" value="0">
+<input type="hidden" id="order-discount" value="0">
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
-<script src="{{ url_for('static', filename='js/order_form.js') }}"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Customer Search
-        const customerSelect = new TomSelect('#customer-select', {
-            valueField: 'id',
-            labelField: 'display_text',
-            searchField: ['name', 'phone', 'email', 'city'],
-            create: false,
-            load: function (query, callback) {
-                if (query.length < 2) return callback();
-                fetch(`/order/api/search-customers-v2?q=${encodeURIComponent(query)}`)
-                    .then(response => response.json())
-                    .then(data => callback(data))
-                    .catch(() => callback());
-            },
-            onChange: function (value) {
-                if (!value) return;
-                const customer = this.options[value];
-                OrderForm.setCustomer(customer);
-            },
-            onClear: function () {
-                // Also trigger our reset logic if the user clears the selection
-                OrderForm.resetCustomer();
+// Cart functionality
+let cart = [];
+let selectedCustomer = null;
+
+// Toggle notes section
+function toggleNotes() {
+    const content = document.getElementById('notes-content');
+    const chevron = document.getElementById('notes-chevron');
+    content.classList.toggle('show');
+    chevron.classList.toggle('fa-chevron-down');
+    chevron.classList.toggle('fa-chevron-up');
+}
+
+// Cart management
+function addToCart(product, quantity = 1) {
+    const existingItem = cart.find(item => item.id === product.id);
+    
+    if (existingItem) {
+        existingItem.quantity += quantity;
+    } else {
+        cart.push({
+            id: product.id,
+            name: product.name,
+            sku: product.sku,
+            price: product.price,
+            quantity: quantity
+        });
+    }
+    
+    updateCartDisplay();
+    updateTotal();
+}
+
+function removeFromCart(productId) {
+    cart = cart.filter(item => item.id !== productId);
+    updateCartDisplay();
+    updateTotal();
+}
+
+function updateQuantity(productId, newQuantity) {
+    const item = cart.find(item => item.id === productId);
+    if (item && newQuantity > 0) {
+        item.quantity = newQuantity;
+        updateCartDisplay();
+        updateTotal();
+    }
+}
+
+function updateCartDisplay() {
+    const cartContainer = document.getElementById('cart-items');
+    const emptyCart = document.getElementById('empty-cart');
+    
+    if (cart.length === 0) {
+        emptyCart.style.display = 'block';
+        cartContainer.innerHTML = '';
+        cartContainer.appendChild(emptyCart);
+        return;
+    }
+    
+    emptyCart.style.display = 'none';
+    const template = document.getElementById('cart-item-template');
+    cartContainer.innerHTML = '';
+    
+    cart.forEach(item => {
+        const itemElement = template.content.cloneNode(true);
+        
+        itemElement.querySelector('.item-name').textContent = item.name;
+        itemElement.querySelector('.item-price').textContent = `₹${item.price.toFixed(2)} each`;
+        itemElement.querySelector('.qty-input').value = item.quantity;
+        itemElement.querySelector('.item-total').textContent = `₹${(item.price * item.quantity).toFixed(2)}`;
+        itemElement.querySelector('.item-id').value = item.id;
+        itemElement.querySelector('.item-unit-price').value = item.price;
+        
+        // Quantity controls
+        const decreaseBtn = itemElement.querySelector('.item-decrease');
+        const increaseBtn = itemElement.querySelector('.item-increase');
+        const qtyInput = itemElement.querySelector('.qty-input');
+        const removeBtn = itemElement.querySelector('.remove-btn');
+        
+        decreaseBtn.addEventListener('click', () => {
+            if (item.quantity > 1) {
+                updateQuantity(item.id, item.quantity - 1);
             }
         });
-
-        // Product Search
-        const productSelect = new TomSelect('#product-select', {
-            valueField: 'id',
-            labelField: 'display_text',
-            searchField: ['name', 'sku'],
-            create: false,
-            render: {
-                option: (data, escape) => `<div>${escape(data.display_text)}</div>`,
-                item: (data, escape) => `<div>${escape(data.name)}</div>`,
-            },
-            load: function (query, callback) {
-                if (query.length < 2) return callback();
-                fetch(`/order/api/search-products-v2?q=${encodeURIComponent(query)}`)
-                    .then(response => response.json())
-                    .then(data => callback(data))
-                    .catch(() => callback());
-            },
-            onChange: function (value) {
-                if (!value) return;
-                const product = this.options[value];
-                OrderForm.selectProduct(product);
+        
+        increaseBtn.addEventListener('click', () => {
+            updateQuantity(item.id, item.quantity + 1);
+        });
+        
+        qtyInput.addEventListener('change', (e) => {
+            const newQty = parseInt(e.target.value);
+            if (newQty > 0) {
+                updateQuantity(item.id, newQty);
             }
         });
-
-        // Initialize the OrderForm module
-        OrderForm.init({
-            customerSelectInstance: customerSelect,
-            productSelectInstance: productSelect
+        
+        removeBtn.addEventListener('click', () => {
+            removeFromCart(item.id);
         });
+        
+        cartContainer.appendChild(itemElement);
     });
+}
+
+function updateTotal() {
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    document.getElementById('summary-grand-total').textContent = `₹${total.toFixed(2)}`;
+    document.getElementById('order-subtotal').value = total.toFixed(2);
+}
+
+// Save order function
+async function saveOrder() {
+    if (!selectedCustomer) {
+        alert('Please select a customer');
+        return;
+    }
+    
+    if (cart.length === 0) {
+        alert('Please add at least one item to the cart');
+        return;
+    }
+    
+    const orderData = {
+        customer_id: selectedCustomer.id,
+        delivery_date: document.getElementById('delivery-date').value,
+        notes: document.getElementById('order-notes').value,
+        tax: 0,
+        discount: 0,
+        items: cart.map(item => ({
+            id: item.id,
+            quantity: item.quantity,
+            price: item.price,
+            discount: 0
+        }))
+    };
+    
+    const btn = document.getElementById('save-order-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Order...';
+    
+    try {
+        const response = await fetch('/order/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            window.location.href = result.redirect_url;
+        } else {
+            alert(result.error || 'Failed to create order');
+        }
+    } catch (error) {
+        alert('An error occurred while creating the order');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check me-2"></i>Place Order';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Customer Search
+    const customerSelect = new TomSelect('#customer-select', {
+        valueField: 'id',
+        labelField: 'display_text',
+        searchField: ['name', 'phone', 'email', 'city'],
+        create: false,
+        load: function (query, callback) {
+            if (query.length < 2) return callback();
+            fetch(`/order/api/search-customers-v2?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => callback(data))
+                .catch(() => callback());
+        },
+        onChange: function (value) {
+            if (!value) return;
+            selectedCustomer = this.options[value];
+        }
+    });
+
+    // Product Search
+    const productSelect = new TomSelect('#product-select', {
+        valueField: 'id',
+        labelField: 'display_text',
+        searchField: ['name', 'sku'],
+        create: false,
+        render: {
+            option: (data, escape) => `<div>${escape(data.display_text)}</div>`,
+            item: (data, escape) => `<div>${escape(data.name)}</div>`,
+        },
+        load: function (query, callback) {
+            if (query.length < 2) return callback();
+            fetch(`/order/api/search-products-v2?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => callback(data))
+                .catch(() => callback());
+        },
+        onChange: function (value) {
+            if (!value) return;
+            const product = this.options[value];
+            document.getElementById('inline-price').value = product.price;
+            this.clear();
+        }
+    });
+
+    // Quantity controls for search
+    document.getElementById('qty-decrease').addEventListener('click', () => {
+        const input = document.getElementById('inline-qty');
+        if (input.value > 1) {
+            input.value = parseInt(input.value) - 1;
+        }
+    });
+    
+    document.getElementById('qty-increase').addEventListener('click', () => {
+        const input = document.getElementById('inline-qty');
+        input.value = parseInt(input.value) + 1;
+    });
+
+    // Add to cart button
+    document.getElementById('inline-add-btn').addEventListener('click', () => {
+        const productSelect = document.getElementById('product-select');
+        const qtyInput = document.getElementById('inline-qty');
+        const priceInput = document.getElementById('inline-price');
+        
+        if (!productSelect.value || !priceInput.value) {
+            alert('Please select a product first');
+            return;
+        }
+        
+        // Get the product data from TomSelect
+        const productData = productSelect.tomselect.options[productSelect.value];
+        if (productData) {
+            productData.price = parseFloat(priceInput.value);
+            addToCart(productData, parseInt(qtyInput.value));
+            qtyInput.value = 1;
+            priceInput.value = '';
+        }
+    });
+
+    // Save order button
+    document.getElementById('save-order-btn').addEventListener('click', saveOrder);
+});
 </script>
 {% endblock %}
