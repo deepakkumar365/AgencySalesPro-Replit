@@ -3,100 +3,227 @@
 {% block title %}Products - AgencySales Pro{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>
-                <i class="fas fa-box me-2"></i>Products
-            </h1>
-            <div class="btn-group">
-                <a href="{{ url_for('product.export_products') }}" class="btn btn-outline-info">
-                    <i class="fas fa-download me-2"></i>Export
-                </a>
-                <a href="{{ url_for('product.import_products') }}" class="btn btn-outline-warning">
-                    <i class="fas fa-upload me-2"></i>Import
-                </a>
-                <a href="{{ url_for('product.create_product') }}" class="btn btn-primary">
-                    <i class="fas fa-plus me-2"></i>Add Product
-                </a>
-            </div>
+<style>
+/* Mobile-First Product List Styles */
+.product-header {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.product-filters {
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.product-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-left: 4px solid var(--accent-blue);
+}
+
+.product-card .product-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+}
+
+.product-card .product-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.product-card .product-info-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+    color: var(--bs-secondary-color);
+}
+
+.product-card .product-info-item i {
+    width: 20px;
+    margin-right: 0.5rem;
+}
+
+.product-card .product-pricing {
+    background: var(--accent-light);
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.product-card .price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.product-card .price-row:last-child {
+    margin-bottom: 0;
+}
+
+.product-card .price-label {
+    font-size: 0.85rem;
+    color: var(--bs-secondary-color);
+}
+
+.product-card .price-value {
+    font-weight: 600;
+    color: var(--primary-dark);
+}
+
+.product-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.product-actions .btn {
+    padding: 0.5rem;
+    border-radius: 8px;
+    min-width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (min-width: 768px) {
+    .product-card {
+        display: none;
+    }
+    .table-responsive {
+        display: block !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .product-card {
+        display: block;
+    }
+    .table-responsive {
+        display: none !important;
+    }
+    .product-header h1 {
+        font-size: 1.5rem;
+    }
+    .filter-row > .col-md-3 {
+        margin-bottom: 1rem;
+    }
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    .btn-group .btn {
+        border-radius: 8px !important;
+        margin-bottom: 0.5rem;
+    }
+    .product-header .d-flex {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+</style>
+
+<div class="product-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1 class="mb-0">
+            <i class="fas fa-box me-2"></i>Products
+        </h1>
+        <div class="btn-group">
+            <a href="{{ url_for('product.export_products') }}" class="btn btn-outline-info">
+                <i class="fas fa-download me-2"></i><span class="d-none d-sm-inline">Export</span>
+            </a>
+            <a href="{{ url_for('product.import_products') }}" class="btn btn-outline-warning">
+                <i class="fas fa-upload me-2"></i><span class="d-none d-sm-inline">Import</span>
+            </a>
+            <a href="{{ url_for('product.create_product') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i><span class="d-none d-sm-inline">Add Product</span>
+            </a>
         </div>
     </div>
 </div>
 
 <!-- Filters -->
-<div class="row mb-4">
-    <div class="col-12">
-        {% set has_filters = filters.date_from or filters.date_to or filters.agency or filters.category or filters.status %}
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">
-                    <i class="fas fa-filter me-2"></i>Filters
-                </h6>
-                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#productFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}" aria-controls="productFilters">
-                    <i class="fas fa-sliders-h me-1"></i> Toggle
-                </button>
-            </div>
-            <div id="productFilters" class="collapse {{ 'show' if has_filters else '' }}">
-                <div class="card-body">
-                    <form method="GET" class="row g-3">
-                        <div class="col-md-3">
-                            <label for="date_from" class="form-label">Date From</label>
-                            <input type="date" class="form-control" id="date_from" name="date_from" value="{{ filters.date_from or '' }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label for="date_to" class="form-label">Date To</label>
-                            <input type="date" class="form-control" id="date_to" name="date_to" value="{{ filters.date_to or '' }}">
-                        </div>
-                        
-                        {% if session.role == 'super_admin' and agencies %}
-                        <div class="col-md-3">
-                            <label for="agency" class="form-label">Agency</label>
-                            <select class="form-select" id="agency" name="agency">
-                                <option value="">All Agencies</option>
-                                {% for agency in agencies %}
-                                <option value="{{ agency.id }}" {{ 'selected' if filters.agency == agency.id|string else '' }}>
-                                    {{ agency.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        {% endif %}
-                        
-                        <div class="col-md-3">
-                            <label for="category" class="form-label">Category</label>
-                            <select class="form-select" id="category" name="category">
-                                <option value="">All Categories</option>
-                                {% for category in categories %}
-                                <option value="{{ category.id }}" {{ 'selected' if filters.category == category.id|string else '' }}>
-                                    {{ category.name }}{% if category.short_name %} ({{ category.short_name }}){% endif %}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-3">
-                            <label for="status" class="form-label">Status</label>
-                            <select class="form-select" id="status" name="status">
-                                <option value="">All Status</option>
-                                <option value="active" {{ 'selected' if filters.status == 'active' else '' }}>Active</option>
-                                <option value="inactive" {{ 'selected' if filters.status == 'inactive' else '' }}>Inactive</option>
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-3 d-flex align-items-end">
-                            <div class="btn-group w-100">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-search me-1"></i>Filter
-                                </button>
-                                <a href="{{ url_for('product.list_products') }}" class="btn btn-outline-secondary">
-                                    <i class="fas fa-times me-1"></i>Clear
-                                </a>
-                            </div>
-                        </div>
-                    </form>
+<div class="product-filters">
+    {% set has_filters = filters.date_from or filters.date_to or filters.agency or filters.category or filters.status %}
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="fas fa-filter me-2"></i>Filters
+        </h6>
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#productFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}" aria-controls="productFilters">
+            <i class="fas fa-sliders-h me-1"></i><span class="d-none d-sm-inline"> Toggle</span>
+        </button>
+    </div>
+    <div id="productFilters" class="collapse {{ 'show' if has_filters else '' }}">
+        <div class="card-body">
+            <form method="GET" class="row g-3 filter-row">
+                <div class="col-md-3 col-12">
+                    <label for="date_from" class="form-label">Date From</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" value="{{ filters.date_from or '' }}">
                 </div>
-            </div>
+                <div class="col-md-3 col-12">
+                    <label for="date_to" class="form-label">Date To</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" value="{{ filters.date_to or '' }}">
+                </div>
+                
+                {% if session.role == 'super_admin' and agencies %}
+                <div class="col-md-3 col-12">
+                    <label for="agency" class="form-label">Agency</label>
+                    <select class="form-select" id="agency" name="agency">
+                        <option value="">All Agencies</option>
+                        {% for agency in agencies %}
+                        <option value="{{ agency.id }}" {{ 'selected' if filters.agency == agency.id|string else '' }}>
+                            {{ agency.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                
+                <div class="col-md-3 col-12">
+                    <label for="category" class="form-label">Category</label>
+                    <select class="form-select" id="category" name="category">
+                        <option value="">All Categories</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}" {{ 'selected' if filters.category == category.id|string else '' }}>
+                            {{ category.name }}{% if category.short_name %} ({{ category.short_name }}){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3 col-12">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">All Status</option>
+                        <option value="active" {{ 'selected' if filters.status == 'active' else '' }}>Active</option>
+                        <option value="inactive" {{ 'selected' if filters.status == 'inactive' else '' }}>Inactive</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3 col-12 d-flex align-items-end">
+                    <div class="btn-group w-100">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i><span class="d-none d-sm-inline">Filter</span>
+                        </button>
+                        <a href="{{ url_for('product.list_products') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i><span class="d-none d-sm-inline">Clear</span>
+                        </a>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -109,16 +236,118 @@
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="mb-0">{{ products|length }} product{{ 's' if products|length != 1 else '' }} found</h6>
                 </div>
-                <div class="table-responsive">
+
+                <!-- Mobile Card Layout -->
+                <div class="d-block d-md-none">
+                    {% for row in product_rows %}
+                    {% set product = row.product %}
+                    <div class="product-card">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="product-name">{{ row.mapping.display_name if row.mapping and row.mapping.display_name else product.name }}</div>
+                            <span class="badge bg-{{ 'success' if row.effective_active else 'secondary' }}">
+                                {{ 'Active' if row.effective_active else 'Inactive' }}
+                            </span>
+                        </div>
+                        
+                        <div class="product-info">
+                            <div class="product-info-item">
+                                <i class="fas fa-barcode"></i>
+                                <span><code>{{ product.sku }}</code></span>
+                            </div>
+                            {% if product.description %}
+                            <div class="product-info-item">
+                                <i class="fas fa-info-circle"></i>
+                                <span>{{ product.description[:60] }}{{ '...' if product.description|length > 60 else '' }}</span>
+                            </div>
+                            {% endif %}
+                            <div class="product-info-item">
+                                <i class="fas fa-tags"></i>
+                                <span>{{ row.effective_category.name if row.effective_category else (product.category_ref.name if product.category_ref else 'No Category') }}</span>
+                            </div>
+                            {% if row.mapping %}
+                            <div class="product-info-item">
+                                <i class="fas fa-building"></i>
+                                <span>{{ row.mapping.agency.name }}</span>
+                            </div>
+                            {% endif %}
+                            <div class="product-info-item">
+                                <i class="fas fa-boxes"></i>
+                                <span class="badge bg-secondary">Stock: N/A</span>
+                            </div>
+                        </div>
+
+                        <div class="product-pricing">
+                            <div class="price-row">
+                                <span class="price-label">Buy Price:</span>
+                                <span class="price-value">₹{{ "%.2f"|format(row.effective_buy_price or 0) }}</span>
+                            </div>
+                            <div class="price-row">
+                                <span class="price-label">Sell Price:</span>
+                                <span class="price-value">₹{{ "%.2f"|format(row.effective_sell_price or 0) }}</span>
+                            </div>
+                            <div class="price-row">
+                                <span class="price-label">MRP:</span>
+                                <span class="price-value">₹{{ "%.2f"|format(row.effective_mrp_price or 0) }}</span>
+                            </div>
+                        </div>
+
+                        <div class="product-actions">
+                            {% if session.role == 'super_admin' %}
+                            <a href="{{ url_for('product.edit_product', product_id=product.id) }}" 
+                               class="btn btn-outline-primary" title="Edit Master Product">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% endif %}
+
+                            {% if session.role != 'super_admin' %}
+                            <a href="{{ url_for('product_overrides.edit_override', product_id=product.id) }}" 
+                               class="btn btn-outline-secondary" title="Edit Agency Product">
+                                <i class="fas fa-cog"></i>
+                            </a>
+                            {% elif filters.agency %}
+                            <a href="{{ url_for('product_overrides.edit_override', product_id=product.id, agency=filters.agency) }}" 
+                               class="btn btn-outline-secondary" title="Edit Agency Product">
+                                <i class="fas fa-cog"></i>
+                            </a>
+                            {% endif %}
+                            
+                            <form method="POST" action="{{ url_for('product.toggle_product_status', product_id=product.id) }}" class="d-inline">
+                                {% if filters.agency %}
+                                <input type="hidden" name="agency_id" value="{{ filters.agency }}" />
+                                {% endif %}
+                                <button type="submit" 
+                                        class="btn btn-outline-{{ 'warning' if row.effective_active else 'success' }}"
+                                        title="{{ 'Deactivate' if row.effective_active else 'Activate' }} Product"
+                                        onclick="return confirm('Are you sure?')">
+                                    <i class="fas fa-{{ 'pause' if row.effective_active else 'play' }}"></i>
+                                </button>
+                            </form>
+                            
+                            <form method="POST" action="{{ url_for('product.delete_product', product_id=product.id) }}" class="d-inline">
+                                {% if filters.agency %}
+                                <input type="hidden" name="agency_id" value="{{ filters.agency }}" />
+                                {% endif %}
+                                <button type="submit" class="btn btn-outline-danger" title="Delete Product"
+                                        onclick="return confirm('Are you sure you want to delete this product mapping?')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Desktop Table Layout -->
+                <div class="table-responsive d-none d-md-block">
                     <table class="table table-hover">
                         <thead>
                             <tr>
                                 <th>Product</th>
-                                <th class="d-none-mobile">SKU</th>
-                                <th class="d-none-mobile">Prices (Buy / Sell / MRP)</th>
+                                <th>SKU</th>
+                                <th>Prices (Buy / Sell / MRP)</th>
                                 <th>Stock</th>
-                                <th class="d-none-mobile">Category</th>
-                                <th class="d-none-mobile">Agency</th>
+                                <th>Category</th>
+                                <th>Agency</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -133,21 +362,21 @@
                                     <br><small>{{ product.description[:50] }}{{ '...' if product.description|length > 50 else '' }}</small>
                                     {% endif %}
                                 </td>
-                                <td class="d-none-mobile"><code>{{ product.sku }}</code></td>
-                                <td class="d-none-mobile">
-                                        ₹{{ "%.2f"|format(row.effective_buy_price or 0) }}
-                                        /
-                                        ₹{{ "%.2f"|format(row.effective_sell_price or 0) }}
-                                        /
-                                        ₹{{ "%.2f"|format(row.effective_mrp_price or 0) }}
-                                    </td>
+                                <td><code>{{ product.sku }}</code></td>
+                                <td>
+                                    ₹{{ "%.2f"|format(row.effective_buy_price or 0) }}
+                                    /
+                                    ₹{{ "%.2f"|format(row.effective_sell_price or 0) }}
+                                    /
+                                    ₹{{ "%.2f"|format(row.effective_mrp_price or 0) }}
+                                </td>
                                 <td>
                                     <span class="badge bg-secondary">
                                         N/A
                                     </span>
                                 </td>
-                                <td class="d-none-mobile">{{ row.effective_category.name if row.effective_category else (product.category_ref.name if product.category_ref else '-') }}</td>
-                                <td class="d-none-mobile">{{ row.mapping.agency.name if row.mapping else '-' }}</td>
+                                <td>{{ row.effective_category.name if row.effective_category else (product.category_ref.name if product.category_ref else '-') }}</td>
+                                <td>{{ row.mapping.agency.name if row.mapping else '-' }}</td>
                                 <td>
                                     {% if row.effective_active %}
                                     <span class="badge bg-success">Active</span>
@@ -164,7 +393,6 @@
                                         </a>
                                         {% endif %}
 
-                                        {# Edit Agency Product button #}
                                         {% if session.role != 'super_admin' %}
                                         <a href="{{ url_for('product_overrides.edit_override', product_id=product.id) }}" 
                                            class="btn btn-outline-secondary" title="Edit Agency Product">
@@ -209,7 +437,7 @@
                 <div class="text-center py-5">
                     <i class="fas fa-box fa-3x text-muted mb-3"></i>
                     <h5>No products found</h5>
-                    <p>Start by adding your first product or importing from Excel.</p>
+                    <p class="text-muted">Start by adding your first product or importing from Excel.</p>
                     <div class="btn-group">
                         <a href="{{ url_for('product.create_product') }}" class="btn btn-primary">
                             <i class="fas fa-plus me-2"></i>Add Product
