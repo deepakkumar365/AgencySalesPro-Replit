@@ -6,18 +6,21 @@
 <style>
 /* Mobile-First Super Admin Dashboard Styles */
 .admin-dashboard-header {
-    padding: 1rem 0 2rem 0;
-    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-light) 100%);
-    color: white;
-    border-radius: 12px;
-    margin-bottom: 2rem;
-    text-align: center;
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 .admin-dashboard-header h1 {
     margin: 0;
-    font-size: 1.8rem;
+    font-size: 1.25rem;
     font-weight: 600;
+    color: var(--primary-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .stat-card {
@@ -93,8 +96,14 @@
 
 /* Mobile responsive adjustments */
 @media (max-width: 767.98px) {
+    .admin-dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
     .admin-dashboard-header h1 {
-        font-size: 1.5rem;
+        font-size: 1.1rem;
     }
     
     .stat-card .card-body {
@@ -109,24 +118,12 @@
         margin-bottom: 1rem;
     }
 }
-
-@media (min-width: 768px) {
-    .admin-dashboard-header {
-        padding: 1.5rem 0 2.5rem 0;
-    }
-    
-    .admin-dashboard-header h1 {
-        font-size: 2.2rem;
-    }
-}
 </style>
 
 <div class="admin-dashboard-header">
-    <div class="container">
-        <h1>
-            <i class="fas fa-tachometer-alt me-2"></i>Super Admin Dashboard
-        </h1>
-    </div>
+    <h1>
+        <i class="fas fa-tachometer-alt"></i>Super Admin Dashboard
+    </h1>
 </div>
 
 <!-- Statistics Cards -->
