@@ -460,14 +460,18 @@
 </div>
 
 <!-- Fixed Bottom Summary -->
-<div class="cart-summary">
-    <div class="total-display ">
-        <span class="total-label">Total:</span>
-        <span class="total-amount" id="summary-grand-total">₹0.00</span>
+<div class="cart-summary container-fluid">
+    <div class="total-display row">
+        <div class="col-sm">            
+            <span class="total-label">Total:</span>
+            <span class="total-amount" id="summary-grand-total">₹0.00</span>
+        </div>
+        <div class="col-sm">
+            <button id="save-order-btn" class="place-order-btn">
+                <i class="fas fa-check me-2"></i>Place Order
+            </button>
+        </div>
     </div>
-    <button id="save-order-btn" class="place-order-btn">
-        <i class="fas fa-check me-2"></i>Place Order
-    </button>
 </div>
 
 
