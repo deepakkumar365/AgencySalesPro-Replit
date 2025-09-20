@@ -265,17 +265,6 @@
         overflow: hidden;
     }
 
-    .cart-header {
-        background: #f8f9fa;
-        padding: 1rem;
-        border-bottom: 1px solid var(--bs-border-color);
-    }
-
-    .cart-header h6 {
-        color: #495057;
-        font-weight: 600;
-        margin: 0;
-    }
 
     .cart-table-container {
         min-height: 200px;
@@ -297,11 +286,11 @@
         padding: 0.75rem 0.5rem;
     }
 
-    .cart-table thead th:nth-child(1) { width: 45%; }
+    .cart-table thead th:nth-child(1) { width: 40%; }
     .cart-table thead th:nth-child(2) { width: 15%; }
     .cart-table thead th:nth-child(3) { width: 15%; }
     .cart-table thead th:nth-child(4) { width: 15%; }
-    .cart-table thead th:nth-child(5) { width: 10%; }
+    .cart-table thead th:nth-child(5) { width: 15%; }
 
     .cart-table tbody tr {
         border-bottom: 1px solid #e9ecef;
@@ -316,41 +305,12 @@
         vertical-align: middle;
     }
 
-    .cart-product-info {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .cart-product-icon {
-        width: 32px;
-        height: 32px;
-        background: #007bff;
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-    }
-
-    .cart-product-details {
-        flex: 1;
-        min-width: 0;
-    }
-
     .cart-product-name {
         font-weight: 500;
         color: #212529;
         margin: 0;
         line-height: 1.2;
-    }
-
-    .cart-product-code {
-        font-size: 0.75rem;
-        color: #6c757d;
-        margin: 0;
+        padding: 0.5rem 0;
     }
 
     .cart-qty-input {
@@ -485,9 +445,6 @@
 
     <!-- Cart Items -->
     <div class="cart-section">
-        <div class="cart-header">
-            <h6 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Order Items</h6>
-        </div>
         <div class="cart-table-container">
             <table class="table table-sm cart-table" id="cart-table">
                 <thead>
@@ -510,11 +467,11 @@
     <div class="notes-section">
         <div class="notes-header" onclick="toggleNotes()">
             <div class="d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-sticky-note me-2"></i>Edit Notes</span>
-                <i class="fas fa-chevron-down" id="notes-chevron"></i>
+                <span><i class="fas fa-sticky-note me-2"></i>Add Notes</span>
+                <i class="fas fa-chevron-right" id="notes-chevron"></i>
             </div>
         </div>
-        <div class="notes-content show" id="notes-content">
+        <div class="notes-content" id="notes-content" style="display: none;">
             <textarea id="order-notes" class="form-control" rows="3" 
                 placeholder="Add any special instructions or notes for this order...">{{ order.notes or '' }}</textarea>
         </div>
@@ -524,7 +481,6 @@
 <!-- Fixed Bottom Summary -->
 <div class="cart-summary">
     <div class="total-display">
-        <span class="total-label">Total</span>
         <span class="total-amount" id="summary-grand-total">₹{{ order.grand_total or '0.00' }}</span>
     </div>
     <button id="save-order-btn" class="save-order-btn">
@@ -551,9 +507,16 @@ let selectedProduct = null;
 function toggleNotes() {
     const content = document.getElementById('notes-content');
     const chevron = document.getElementById('notes-chevron');
-    content.classList.toggle('show');
-    chevron.classList.toggle('fa-chevron-down');
-    chevron.classList.toggle('fa-chevron-up');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        chevron.classList.remove('fa-chevron-right');
+        chevron.classList.add('fa-chevron-down');
+    } else {
+        content.style.display = 'none';
+        chevron.classList.remove('fa-chevron-down');
+        chevron.classList.add('fa-chevron-right');
+    }
 }
 
 // Cart management functions
@@ -616,15 +579,7 @@ function updateCartDisplay() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td data-label="Product">
-                <div class="cart-product-info">
-                    <div class="cart-product-icon">
-                        <i class="fas fa-box"></i>
-                    </div>
-                    <div class="cart-product-details">
-                        <p class="cart-product-name">${item.name}</p>
-                        <p class="cart-product-code">${item.sku || 'SKU-' + item.id}</p>
-                    </div>
-                </div>
+                <div class="cart-product-name">${item.name}</div>
             </td>
             <td data-label="Quantity">
                 <input type="number" class="cart-qty-input" value="${item.quantity}" min="1" onchange="updateQuantity(${item.id}, this.value)">
