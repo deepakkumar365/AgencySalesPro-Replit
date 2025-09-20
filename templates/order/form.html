@@ -291,11 +291,7 @@
 
     <!-- Cart Items -->
     <div class="cart-items" id="cart-items">
-        <div class="empty-cart" id="empty-cart">
-            <i class="fas fa-shopping-cart"></i>
-            <p>Your cart is empty</p>
-            <small>Search and add products above</small>
-        </div>
+        <!-- Items will be added here dynamically -->
     </div>
 
     <!-- Additional Notes (Collapsible) -->
@@ -404,19 +400,24 @@ function updateQuantity(productId, newQuantity) {
 
 function updateCartDisplay() {
     const cartContainer = document.getElementById('cart-items');
-    const emptyCart = document.getElementById('empty-cart');
+    const template = document.getElementById('cart-item-template');
+    
+    // Clear the container
+    cartContainer.innerHTML = '';
     
     if (cart.length === 0) {
-        emptyCart.style.display = 'block';
-        cartContainer.innerHTML = '';
-        cartContainer.appendChild(emptyCart);
+        // Show empty cart message
+        cartContainer.innerHTML = `
+            <div class="empty-cart">
+                <i class="fas fa-shopping-cart"></i>
+                <p>Your cart is empty</p>
+                <small>Search and add products above</small>
+            </div>
+        `;
         return;
     }
     
-    emptyCart.style.display = 'none';
-    const template = document.getElementById('cart-item-template');
-    cartContainer.innerHTML = '';
-    
+    // Add cart items
     cart.forEach(item => {
         const itemElement = template.content.cloneNode(true);
         

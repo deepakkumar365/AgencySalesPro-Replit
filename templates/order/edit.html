@@ -431,13 +431,22 @@ function updateQuantity(productId, newQuantity) {
 function updateCartDisplay() {
     const cartContainer = document.getElementById('cart-items');
     const template = document.getElementById('cart-item-template');
+    
+    // Clear the container
     cartContainer.innerHTML = '';
     
     if (cart.length === 0) {
-        cartContainer.innerHTML = '<div class="empty-cart"><i class="fas fa-shopping-cart"></i><p>No items in order</p></div>';
+        // Show empty cart message
+        cartContainer.innerHTML = `
+            <div class="empty-cart">
+                <i class="fas fa-shopping-cart"></i>
+                <p>No items in order</p>
+            </div>
+        `;
         return;
     }
     
+    // Add cart items
     cart.forEach(item => {
         const itemElement = template.content.cloneNode(true);
         
