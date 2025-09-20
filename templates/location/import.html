@@ -3,32 +3,147 @@
 {% block title %}Import Locations - AgencySales Pro{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h1 class="mb-4">
-            <i class="fas fa-upload me-2"></i>Import Locations
-        </h1>
-    </div>
+<style>
+/* Mobile-First Location Import Styles */
+.import-header {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-light) 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.import-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.import-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid var(--bs-border-color);
+}
+
+.import-header-card {
+    background: var(--accent-light);
+    color: var(--primary-dark);
+    border-radius: 12px 12px 0 0;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.import-body {
+    padding: 1.5rem;
+}
+
+.form-control {
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    min-height: 44px;
+}
+
+.form-label {
+    font-weight: 600;
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+}
+
+.btn {
+    min-height: 44px;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.alert {
+    border-radius: 8px;
+    border: none;
+}
+
+.format-table {
+    background: var(--bs-gray-100);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 767.98px) {
+    .import-header {
+        padding: 1rem;
+    }
+    
+    .import-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .import-body {
+        padding: 1rem;
+    }
+    
+    .form-control {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+    
+    .btn-group .btn {
+        width: 100%;
+    }
+    
+    .format-table .table {
+        font-size: 0.8rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .import-header h1 {
+        font-size: 2rem;
+    }
+    
+    .import-body {
+        padding: 2rem;
+    }
+}
+</style>
+
+<div class="import-header">
+    <h1>
+        <i class="fas fa-upload me-2"></i>Import Locations
+    </h1>
 </div>
 
 <div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
+    <div class="col-12 col-lg-8">
+        <div class="import-card">
+            <div class="import-header-card">
                 <h5 class="mb-0">Upload Location CSV File</h5>
             </div>
-            <div class="card-body">
+            <div class="import-body">
                 <div class="alert alert-info mb-4" role="alert">
                     <i class="fas fa-info-circle me-2"></i>
                     <strong>Import Instructions:</strong> Upload a CSV file with location data. The file must contain the following columns: name, address, city, state, zip_code, phone, agency_code.
                 </div>
                 
                 <div class="alert alert-info mb-4" role="alert">
-                    <i class="fas fa-download me-2"></i>
-                    <strong>Need a Template?</strong> 
-                    <a href="{{ url_for('location.download_location_template') }}" class="btn btn-sm btn-outline-info ms-2">
-                        <i class="fas fa-download me-1"></i>Download CSV Template
-                    </a>
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <i class="fas fa-download me-2"></i>
+                            <strong>Need a Template?</strong>
+                        </div>
+                        <a href="{{ url_for('location.download_location_template') }}" class="btn btn-outline-info">
+                            <i class="fas fa-download me-1"></i>Download Template
+                        </a>
+                    </div>
                 </div>
 
                 <form method="POST" enctype="multipart/form-data">
@@ -38,8 +153,8 @@
                         <div class="form-text">Select a CSV file containing location data to import.</div>
                     </div>
 
-                    <div class="mb-4">
-                        <h6>Required CSV Format:</h6>
+                    <div class="format-table">
+                        <h6><i class="fas fa-table me-2"></i>Required CSV Format:</h6>
                         <div class="table-responsive">
                             <table class="table table-sm table-bordered">
                                 <thead class="table-light">
@@ -68,7 +183,7 @@
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-between">
+                    <div class="btn-group d-flex justify-content-between">
                         <a href="{{ url_for('location.list_locations') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-2"></i>Back to Locations
                         </a>

@@ -3,126 +3,322 @@
 {% block title %}Locations - AgencySales Pro{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>
-                <i class="fas fa-map-marker-alt me-2"></i>Locations
-            </h1>
-            <div class="btn-group">
-                <a href="{{ url_for('location.create_location') }}" class="btn btn-primary">
-                    <i class="fas fa-plus me-2"></i>Add Location
-                </a>
-                <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
-                    <span class="visually-hidden">Toggle Dropdown</span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="{{ url_for('location.import_locations') }}">
-                        <i class="fas fa-upload me-2"></i>Import from CSV
-                    </a></li>
-                    <li><a class="dropdown-item" href="{{ url_for('location.export_locations') }}">
-                        <i class="fas fa-download me-2"></i>Export to CSV
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="{{ url_for('location.download_location_template') }}">
-                        <i class="fas fa-file-csv me-2"></i>Download Template
-                    </a></li>
-                </ul>
-            </div>
-        </div>
+<style>
+/* Mobile-First Location List Styles */
+.location-header {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-light) 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.location-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.location-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.location-actions .btn {
+    min-height: 44px;
+    border-radius: 8px;
+    font-weight: 600;
+    background: white;
+    color: var(--primary-dark);
+    border: none;
+}
+
+.location-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid var(--bs-border-color);
+    margin-bottom: 1rem;
+    padding: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.location-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.location-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.location-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary-dark);
+    flex-grow: 1;
+}
+
+.location-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.location-info-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.location-info-item i {
+    width: 16px;
+    text-align: center;
+    color: var(--bs-secondary);
+}
+
+.location-actions-mobile {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.location-actions-mobile .btn {
+    min-height: 40px;
+    min-width: 40px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.location-list-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid var(--bs-border-color);
+    padding: 1.5rem;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 767.98px) {
+    .location-header {
+        padding: 1rem;
+        text-align: center;
+    }
+    
+    .location-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .location-actions {
+        flex-direction: column;
+    }
+    
+    .location-list-container {
+        padding: 1rem;
+    }
+    
+    .location-actions-mobile {
+        justify-content: center;
+    }
+}
+
+@media (min-width: 768px) {
+    .location-header h1 {
+        font-size: 2rem;
+    }
+    
+    .location-actions {
+        flex-direction: row;
+        margin-top: 0;
+    }
+}
+</style>
+
+<div class="location-header">
+    <h1>
+        <i class="fas fa-map-marker-alt me-2"></i>Locations
+    </h1>
+    <div class="location-actions">
+        <a href="{{ url_for('location.create_location') }}" class="btn">
+            <i class="fas fa-plus me-2"></i><span class="d-none d-sm-inline">Add Location</span>
+        </a>
+        <a href="{{ url_for('location.import_locations') }}" class="btn">
+            <i class="fas fa-upload me-2"></i><span class="d-none d-sm-inline">Import CSV</span>
+        </a>
+        <a href="{{ url_for('location.export_locations') }}" class="btn">
+            <i class="fas fa-download me-2"></i><span class="d-none d-sm-inline">Export CSV</span>
+        </a>
+        <a href="{{ url_for('location.download_location_template') }}" class="btn">
+            <i class="fas fa-file-csv me-2"></i><span class="d-none d-sm-inline">Template</span>
+        </a>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                {% if locations %}
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Address</th>
-                                <th>Contact</th>
-                                <th>Agency</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for location in locations %}
-                            <tr>
-                                <td><strong>{{ location.name }}</strong></td>
-                                <td>
-                                    {% if location.address %}
-                                    {{ location.address }}
-                                    {% endif %}
-                                    {% if location.city or location.state %}
-                                    <br><small>
-                                        {{ location.city }}{{ ', ' + location.state if location.city and location.state else location.state }}
-                                        {{ ' ' + location.zip_code if location.zip_code else '' }}
-                                    </small>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if location.phone %}
-                                    <i class="fas fa-phone me-1"></i>{{ location.phone }}
-                                    {% else %}
-                                    <span>-</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ location.agency.name }}</td>
-                                <td>
-                                    {% if location.is_active %}
-                                    <span class="badge bg-success">Active</span>
-                                    {% else %}
-                                    <span class="badge bg-secondary">Inactive</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{{ url_for('location.edit_location', location_id=location.id) }}" 
-                                           class="btn btn-outline-primary" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        
-                                        {% if session.role in ['super_admin', 'agency_admin'] %}
-                                        <form method="POST" action="{{ url_for('location.toggle_location_status', location_id=location.id) }}" class="d-inline">
-                                            <button type="submit" 
-                                                    class="btn btn-outline-{{ 'warning' if location.is_active else 'success' }}"
-                                                    title="{{ 'Deactivate' if location.is_active else 'Activate' }}"
-                                                    onclick="return confirm('Are you sure?')">
-                                                <i class="fas fa-{{ 'pause' if location.is_active else 'play' }}"></i>
-                                            </button>
-                                        </form>
-                                        
-                                        <form method="POST" action="{{ url_for('location.delete_location', location_id=location.id) }}" class="d-inline">
-                                            <button type="submit" class="btn btn-outline-danger" title="Delete"
-                                                    onclick="return confirm('Are you sure you want to delete this location?')">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+<div class="location-list-container">
+    {% if locations %}
+    
+    <!-- Mobile Card Layout -->
+    <div class="d-block d-md-none">
+        {% for location in locations %}
+        <div class="location-card">
+            <div class="location-card-header">
+                <div class="location-name">{{ location.name }}</div>
+                <span class="badge bg-{{ 'success' if location.is_active else 'secondary' }}">
+                    {{ 'Active' if location.is_active else 'Inactive' }}
+                </span>
+            </div>
+            
+            <div class="location-info">
+                {% if location.address %}
+                <div class="location-info-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>{{ location.address[:50] }}{{ '...' if location.address|length > 50 else '' }}</span>
                 </div>
-                {% else %}
-                <div class="text-center py-5">
-                    <i class="fas fa-map-marker-alt fa-3x mb-3"></i>
-                    <h5>No locations found</h5>
-                    <p>Start by adding your first location.</p>
-                    <a href="{{ url_for('location.create_location') }}" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>Add Location
-                    </a>
+                {% endif %}
+                
+                {% if location.city or location.state %}
+                <div class="location-info-item">
+                    <i class="fas fa-city"></i>
+                    <span>{{ location.city }}{{ ', ' + location.state if location.city and location.state else location.state }}{{ ' ' + location.zip_code if location.zip_code else '' }}</span>
                 </div>
+                {% endif %}
+                
+                {% if location.phone %}
+                <div class="location-info-item">
+                    <i class="fas fa-phone"></i>
+                    <span>{{ location.phone }}</span>
+                </div>
+                {% endif %}
+                
+                <div class="location-info-item">
+                    <i class="fas fa-building"></i>
+                    <span>{{ location.agency.name }}</span>
+                </div>
+            </div>
+
+            <div class="location-actions-mobile">
+                <a href="{{ url_for('location.edit_location', location_id=location.id) }}" 
+                   class="btn btn-outline-primary" title="Edit Location">
+                    <i class="fas fa-edit"></i>
+                </a>
+                
+                {% if session.role in ['super_admin', 'agency_admin'] %}
+                <form method="POST" action="{{ url_for('location.toggle_location_status', location_id=location.id) }}" class="d-inline">
+                    <button type="submit" 
+                            class="btn btn-outline-{{ 'warning' if location.is_active else 'success' }}"
+                            title="{{ 'Deactivate' if location.is_active else 'Activate' }} Location"
+                            onclick="return confirm('Are you sure?')">
+                        <i class="fas fa-{{ 'pause' if location.is_active else 'play' }}"></i>
+                    </button>
+                </form>
+                
+                <form method="POST" action="{{ url_for('location.delete_location', location_id=location.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-outline-danger" title="Delete Location"
+                            onclick="return confirm('Are you sure you want to delete this location?')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </form>
                 {% endif %}
             </div>
         </div>
+        {% endfor %}
     </div>
+
+    <!-- Desktop Table Layout -->
+    <div class="table-responsive d-none d-md-block">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Address</th>
+                    <th>Contact</th>
+                    <th>Agency</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for location in locations %}
+                <tr>
+                    <td><strong>{{ location.name }}</strong></td>
+                    <td>
+                        {% if location.address %}
+                        {{ location.address }}
+                        {% endif %}
+                        {% if location.city or location.state %}
+                        <br><small>
+                            {{ location.city }}{{ ', ' + location.state if location.city and location.state else location.state }}
+                            {{ ' ' + location.zip_code if location.zip_code else '' }}
+                        </small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if location.phone %}
+                        <i class="fas fa-phone me-1"></i>{{ location.phone }}
+                        {% else %}
+                        <span>-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ location.agency.name }}</td>
+                    <td>
+                        {% if location.is_active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('location.edit_location', location_id=location.id) }}" 
+                               class="btn btn-outline-primary" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            
+                            {% if session.role in ['super_admin', 'agency_admin'] %}
+                            <form method="POST" action="{{ url_for('location.toggle_location_status', location_id=location.id) }}" class="d-inline">
+                                <button type="submit" 
+                                        class="btn btn-outline-{{ 'warning' if location.is_active else 'success' }}"
+                                        title="{{ 'Deactivate' if location.is_active else 'Activate' }}"
+                                        onclick="return confirm('Are you sure?')">
+                                    <i class="fas fa-{{ 'pause' if location.is_active else 'play' }}"></i>
+                                </button>
+                            </form>
+                            
+                            <form method="POST" action="{{ url_for('location.delete_location', location_id=location.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-outline-danger" title="Delete"
+                                        onclick="return confirm('Are you sure you want to delete this location?')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-map-marker-alt fa-3x text-muted mb-3"></i>
+        <h5>No locations found</h5>
+        <p class="text-muted">Start by adding your first location.</p>
+        <a href="{{ url_for('location.create_location') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add Location
+        </a>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
