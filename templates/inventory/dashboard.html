@@ -7,14 +7,14 @@
     <h2><i class="fas fa-boxes me-2"></i>Inventory Dashboard</h2>
     <div class="btn-group">
         <a href="{{ url_for('inventory.stock_levels') }}" class="btn btn-outline-primary">
-            <i class="fas fa-list me-2"></i>Stock Levels
+            <i class="fas fa-list me-2"></i><span class="d-none d-sm-inline">Stock Levels</span>
         </a>
         <a href="{{ url_for('inventory.adjust_stock', product_id=1) }}" class="btn btn-outline-warning" 
            onclick="return false;" title="Select a product from stock levels to adjust">
-            <i class="fas fa-edit me-2"></i>Adjust Stock
+            <i class="fas fa-edit me-2"></i><span class="d-none d-sm-inline">Adjust Stock</span>
         </a>
         <a href="{{ url_for('inventory.reports') }}" class="btn btn-outline-info">
-            <i class="fas fa-chart-bar me-2"></i>Reports
+            <i class="fas fa-chart-bar me-2"></i><span class="d-none d-sm-inline">Reports</span>
         </a>
     </div>
 </div>
