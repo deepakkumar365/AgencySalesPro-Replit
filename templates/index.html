@@ -54,21 +54,6 @@
     font-size: 2.5rem;
 }
 
-.dashboard-header {
-    padding: 1rem 0 2rem 0;
-    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-light) 100%);
-    color: white;
-    border-radius: 12px;
-    margin-bottom: 2rem;
-    text-align: center;
-}
-
-.dashboard-header h1 {
-    margin: 0;
-    font-size: 1.8rem;
-    font-weight: 600;
-}
-
 .quick-actions-card {
     background: var(--accent-light);
     border-radius: 12px;
@@ -92,9 +77,6 @@
 
 /* Mobile responsive adjustments */
 @media (max-width: 767.98px) {
-    .dashboard-header h1 {
-        font-size: 1.5rem;
-    }
     
     .dashboard-card .card-body {
         padding: 1rem;
@@ -110,25 +92,14 @@
 }
 
 @media (min-width: 768px) {
-    .dashboard-header {
-        padding: 1.5rem 0 2.5rem 0;
-    }
     
-    .dashboard-header h1 {
-        font-size: 2.2rem;
-    }
 }
 </style>
 
-<div class="dashboard-header">
-    <div class="container">
-        <h1>
-            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-        </h1>
-    </div>
-</div>
-
 <div class="row">
+    <h1>
+        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+    </h1>
     {% if session.role == 'super_admin' %}
     <!-- Super Admin Dashboard -->
     <div class="col-6 col-md-3 mb-4">
