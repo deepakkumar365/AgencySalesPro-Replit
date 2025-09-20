@@ -3,9 +3,126 @@
 {% block title %}Dashboard - AgencySales Pro{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h1 class="mb-4">
+<style>
+/* Mobile-First Dashboard Styles */
+.dashboard-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid var(--bs-border-color);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.dashboard-card .card-body {
+    padding: 1.5rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: center;
+}
+
+.dashboard-card .card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--primary-dark);
+}
+
+.dashboard-card .card-text {
+    color: var(--bs-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.dashboard-card .btn {
+    min-height: 44px;
+    border-radius: 8px;
+    font-weight: 600;
+    margin-top: auto;
+}
+
+.dashboard-card i.fa-2x {
+    font-size: 2.5rem;
+}
+
+.dashboard-header {
+    padding: 1rem 0 2rem 0;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-light) 100%);
+    color: white;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.dashboard-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.quick-actions-card {
+    background: var(--accent-light);
+    border-radius: 12px;
+    border: 1px solid var(--bs-border-color);
+    margin-top: 2rem;
+}
+
+.quick-actions-card .card-header {
+    background: var(--primary-dark);
+    color: white;
+    border-radius: 12px 12px 0 0;
+    border-bottom: none;
+}
+
+.quick-action-btn {
+    min-height: 44px;
+    border-radius: 8px;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 767.98px) {
+    .dashboard-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .dashboard-card .card-body {
+        padding: 1rem;
+    }
+    
+    .dashboard-card i.fa-2x {
+        font-size: 2rem;
+    }
+    
+    .dashboard-card .card-title {
+        font-size: 1rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .dashboard-header {
+        padding: 1.5rem 0 2.5rem 0;
+    }
+    
+    .dashboard-header h1 {
+        font-size: 2.2rem;
+    }
+}
+</style>
+
+<div class="dashboard-header">
+    <div class="container">
+        <h1>
             <i class="fas fa-tachometer-alt me-2"></i>Dashboard
         </h1>
     </div>
@@ -15,9 +132,9 @@
     {% if session.role == 'super_admin' %}
     <!-- Super Admin Dashboard -->
     <div class="col-6 col-md-3 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-building fa-2x text-primary mb-2"></i>
+                <i class="fas fa-building fa-2x text-primary mb-3"></i>
                 <h5 class="card-title">Agencies</h5>
                 <p class="card-text">Manage all agencies</p>
                 <a href="{{ url_for('agency.list_agencies') }}" class="btn btn-primary">View</a>
@@ -26,9 +143,9 @@
     </div>
     
     <div class="col-6 col-md-3 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-users fa-2x text-success mb-2"></i>
+                <i class="fas fa-users fa-2x text-success mb-3"></i>
                 <h5 class="card-title">Users</h5>
                 <p class="card-text">Manage all users</p>
                 <a href="{{ url_for('super_admin.manage_users') }}" class="btn btn-success">View</a>
@@ -37,9 +154,9 @@
     </div>
     
     <div class="col-6 col-md-3 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-chart-bar fa-2x text-info mb-2"></i>
+                <i class="fas fa-chart-bar fa-2x text-info mb-3"></i>
                 <h5 class="card-title">Reports</h5>
                 <p class="card-text">System reports</p>
                 <a href="{{ url_for('super_admin.reports') }}" class="btn btn-info">View</a>
@@ -48,9 +165,9 @@
     </div>
     
     <div class="col-6 col-md-3 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-cog fa-2x text-warning mb-2"></i>
+                <i class="fas fa-cog fa-2x text-warning mb-3"></i>
                 <h5 class="card-title">Settings</h5>
                 <p class="card-text">System configuration</p>
                 <a href="{{ url_for('super_admin.system_config') }}" class="btn btn-warning">View</a>
@@ -61,40 +178,44 @@
     {% elif session.role == 'agency_admin' %}
     <!-- Agency Admin Dashboard -->
     <div class="col-6 col-md-3 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-users-cog fa-2x text-primary mb-2"></i>
+                <i class="fas fa-users-cog fa-2x text-primary mb-3"></i>
                 <h5 class="card-title">My Team</h5>
+                <p class="card-text">Manage agency users</p>
                 <a href="{{ url_for('agency.agency_users', agency_id=session.agency_id) }}" class="btn btn-primary">View</a>
             </div>
         </div>
     </div>
 
     <div class="col-6 col-md-3 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-user-friends fa-2x text-success mb-2"></i>
+                <i class="fas fa-user-friends fa-2x text-success mb-3"></i>
                 <h5 class="card-title">My Customers</h5>
+                <p class="card-text">Customer management</p>
                 <a href="{{ url_for('customer.list_customers') }}" class="btn btn-success">View</a>
             </div>
         </div>
     </div>
 
     <div class="col-6 col-md-3 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-box fa-2x text-info mb-2"></i>
+                <i class="fas fa-box fa-2x text-info mb-3"></i>
                 <h5 class="card-title">My Products</h5>
+                <p class="card-text">Product catalog</p>
                 <a href="{{ url_for('product.list_products') }}" class="btn btn-info">View</a>
             </div>
         </div>
     </div>
 
     <div class="col-6 col-md-3 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-shopping-cart fa-2x text-warning mb-2"></i>
+                <i class="fas fa-shopping-cart fa-2x text-warning mb-3"></i>
                 <h5 class="card-title">My Orders</h5>
+                <p class="card-text">Order management</p>
                 <a href="{{ url_for('order.list_orders') }}" class="btn btn-warning">View</a>
             </div>
         </div>
@@ -103,9 +224,9 @@
     {% elif session.role == 'salesperson' %}
     <!-- Salesperson Dashboard -->
     <div class="col-6 col-md-6 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-plus-circle fa-2x text-primary mb-2"></i>
+                <i class="fas fa-plus-circle fa-2x text-primary mb-3"></i>
                 <h5 class="card-title">New Order</h5>
                 <p class="card-text">Create a new order</p>
                 <a href="{{ url_for('order.create_order') }}" class="btn btn-primary">Create</a>
@@ -114,9 +235,9 @@
     </div>
     
     <div class="col-6 col-md-6 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-list fa-2x text-success mb-2"></i>
+                <i class="fas fa-list fa-2x text-success mb-3"></i>
                 <h5 class="card-title">My Orders</h5>
                 <p class="card-text">View your orders</p>
                 <a href="{{ url_for('order.list_orders') }}" class="btn btn-success">View</a>
@@ -127,9 +248,9 @@
     {% else %}
     <!-- Staff Dashboard -->
     <div class="col-6 col-md-3 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-map-marker-alt fa-2x text-primary mb-2"></i>
+                <i class="fas fa-map-marker-alt fa-2x text-primary mb-3"></i>
                 <h5 class="card-title">Locations</h5>
                 <p class="card-text">Manage locations</p>
                 <a href="{{ url_for('location.list_locations') }}" class="btn btn-primary">View</a>
@@ -138,9 +259,9 @@
     </div>
     
     <div class="col-6 col-md-3 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-user-friends fa-2x text-success mb-2"></i>
+                <i class="fas fa-user-friends fa-2x text-success mb-3"></i>
                 <h5 class="card-title">Customers</h5>
                 <p class="card-text">Manage customers</p>
                 <a href="{{ url_for('customer.list_customers') }}" class="btn btn-success">View</a>
@@ -149,9 +270,9 @@
     </div>
     
     <div class="col-6 col-md-3 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-box fa-2x text-info mb-2"></i>
+                <i class="fas fa-box fa-2x text-info mb-3"></i>
                 <h5 class="card-title">Products</h5>
                 <p class="card-text">Manage products</p>
                 <a href="{{ url_for('product.list_products') }}" class="btn btn-info">View</a>
@@ -160,9 +281,9 @@
     </div>
     
     <div class="col-6 col-md-3 mb-4">
-        <div class="card text-center">
+        <div class="dashboard-card">
             <div class="card-body">
-                <i class="fas fa-shopping-cart fa-2x text-warning mb-2"></i>
+                <i class="fas fa-shopping-cart fa-2x text-warning mb-3"></i>
                 <h5 class="card-title">Orders</h5>
                 <p class="card-text">View orders</p>
                 <a href="{{ url_for('order.list_orders') }}" class="btn btn-warning">View</a>
@@ -173,9 +294,9 @@
 </div>
 
 <!-- Quick Actions -->
-<div class="row mt-4">
+<div class="row">
     <div class="col-12">
-        <div class="card">
+        <div class="quick-actions-card">
             <div class="card-header">
                 <h5 class="mb-0">
                     <i class="fas fa-bolt me-2"></i>Quick Actions
@@ -184,23 +305,23 @@
             <div class="card-body">
                 <div class="row">
                     {% if session.role in ['super_admin', 'agency_admin'] %}
-                    <div class="col-12 col-md-4 mb-2">
-                        <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary w-100">
+                    <div class="col-12 col-md-4 mb-3">
+                        <a href="{{ url_for('auth.register') }}" class="quick-action-btn btn btn-outline-primary w-100">
                             <i class="fas fa-user-plus me-2"></i>Add New User
                         </a>
                     </div>
                     {% endif %}
                     
                     {% if session.role != 'salesperson' %}
-                    <div class="col-12 col-md-4 mb-2">
-                        <a href="{{ url_for('product.create_product') }}" class="btn btn-outline-success w-100">
+                    <div class="col-12 col-md-4 mb-3">
+                        <a href="{{ url_for('product.create_product') }}" class="quick-action-btn btn btn-outline-success w-100">
                             <i class="fas fa-plus me-2"></i>Add Product
                         </a>
                     </div>
                     {% endif %}
                     
-                    <div class="col-12 col-md-4 mb-2">
-                        <a href="{{ url_for('order.create_order') }}" class="btn btn-outline-info w-100">
+                    <div class="col-12 col-md-4 mb-3">
+                        <a href="{{ url_for('order.create_order') }}" class="quick-action-btn btn btn-outline-info w-100">
                             <i class="fas fa-shopping-cart me-2"></i>Create Order
                         </a>
                     </div>
