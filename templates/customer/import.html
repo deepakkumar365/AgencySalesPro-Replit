@@ -3,70 +3,305 @@
 {% block title %}Import Customers - AgencySales Pro{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h1 class="mb-4">
-            <i class="fas fa-upload me-2"></i>Import Customers
-        </h1>
-    </div>
+<style>
+/* Mobile-First Customer Import Styles */
+.import-header {
+    padding: 1rem;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-light) 100%);
+    color: white;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.import-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.import-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid var(--bs-border-color);
+}
+
+.import-card .card-header {
+    background: var(--accent-light);
+    border-radius: 12px 12px 0 0;
+    border-bottom: 1px solid var(--bs-border-color);
+    font-weight: 600;
+    padding: 1.25rem;
+}
+
+.import-card .card-body {
+    padding: 1.5rem;
+}
+
+.import-instructions {
+    background: var(--accent-light);
+    border: 1px solid var(--primary-light);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    color: var(--primary-dark);
+}
+
+.template-section {
+    background: var(--bs-gray-50);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--bs-border-color);
+    text-align: center;
+}
+
+.template-btn {
+    min-height: 44px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.file-upload-section {
+    background: var(--bs-gray-50);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 2px dashed var(--bs-border-color);
+    text-align: center;
+    transition: border-color 0.3s ease;
+}
+
+.file-upload-section:hover {
+    border-color: var(--primary-dark);
+}
+
+.form-control {
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    min-height: 48px;
+    border: 2px solid var(--bs-border-color);
+}
+
+.form-control:focus {
+    border-color: var(--primary-dark);
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-dark-rgb), 0.25);
+}
+
+.format-section {
+    background: var(--bs-gray-50);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.format-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.format-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid var(--bs-border-color);
+}
+
+.format-label {
+    font-weight: 600;
+    color: var(--primary-dark);
+}
+
+.format-example {
+    color: var(--bs-secondary);
+    font-family: monospace;
+    font-size: 0.8rem;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.btn {
+    min-height: 48px;
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+}
+
+/* Desktop view */
+@media (min-width: 768px) {
+    .import-header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .format-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    
+    .action-buttons {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    .template-section {
+        text-align: left;
+    }
+    
+    .file-upload-section {
+        text-align: left;
+    }
+    
+    .desktop-table {
+        display: block;
+    }
+    
+    .mobile-format {
+        display: none;
+    }
+}
+
+/* Mobile view */
+@media (max-width: 767.98px) {
+    .import-header {
+        padding: 1rem 0.5rem;
+    }
+    
+    .import-card .card-body {
+        padding: 1rem;
+    }
+    
+    .form-control {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .desktop-table {
+        display: none;
+    }
+    
+    .mobile-format {
+        display: block;
+    }
+}
+</style>
+
+<div class="import-header">
+    <h1>
+        <i class="fas fa-upload me-2"></i>Import Customers
+    </h1>
+    <p class="mb-0 opacity-75">Upload customer data from CSV file</p>
 </div>
 
 <div class="row justify-content-center">
-    <div class="col-md-10">
-        <div class="card">
+    <div class="col-12 col-lg-10">
+        <div class="import-card">
             <div class="card-header">
-                <h5 class="mb-0">Upload Customer CSV File</h5>
+                <h5 class="mb-0"><i class="fas fa-file-csv me-2"></i>Upload Customer CSV File</h5>
             </div>
             <div class="card-body">
-                <div class="alert alert-info mb-4" role="alert">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Import Instructions:</strong> Upload a CSV file with customer data. The file must contain the following columns: name, email, phone, address, location_name, agency_code.
+                <div class="import-instructions">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Import Instructions</strong>
+                    </div>
+                    <p class="mb-0">Upload a CSV file with customer data. The file must contain the following columns: name, email, phone, address, location_name, agency_code.</p>
                 </div>
                 
-                <div class="alert alert-info mb-4" role="alert">
-                    <i class="fas fa-download me-2"></i>
-                    <strong>Need a Template?</strong> 
-                    <a href="{{ url_for('customer.download_customer_template') }}" class="btn btn-sm btn-outline-info ms-2">
-                        <i class="fas fa-download me-1"></i>Download CSV Template
+                <div class="template-section">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fas fa-download me-2 text-primary"></i>
+                        <strong>Need a Template?</strong>
+                    </div>
+                    <p class="mb-3">Download our CSV template with sample data and proper formatting.</p>
+                    <a href="{{ url_for('customer.download_customer_template') }}" class="template-btn btn btn-outline-primary">
+                        <i class="fas fa-download me-2"></i>Download CSV Template
                     </a>
                 </div>
 
                 <form method="POST" enctype="multipart/form-data">
-                    <div class="mb-4">
-                        <label for="file" class="form-label">CSV File</label>
+                    <div class="file-upload-section">
+                        <div class="mb-3">
+                            <i class="fas fa-file-csv fa-3x text-primary mb-3"></i>
+                            <label for="file" class="form-label d-block">
+                                <strong>Select CSV File</strong>
+                            </label>
+                        </div>
                         <input type="file" class="form-control" id="file" name="file" accept=".csv" required>
-                        <div class="form-text">Select a CSV file containing customer data to import.</div>
+                        <div class="form-text mt-2">Choose a CSV file containing customer data to import.</div>
                     </div>
 
-                    <div class="mb-4">
-                        <h6>Required CSV Format:</h6>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-bordered">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>name</th>
-                                        <th>email</th>
-                                        <th>phone</th>
-                                        <th>address</th>
-                                        <th>location_name</th>
-                                        <th>agency_code</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td><small>John Doe</small></td>
-                                        <td><small>john@example.com</small></td>
-                                        <td><small>555-0123</small></td>
-                                        <td><small>123 Main St</small></td>
-                                        <td><small>Main Office</small></td>
-                                        <td><small>AGENCY001</small></td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <div class="format-section">
+                        <h6 class="mb-3"><i class="fas fa-list me-2"></i>Required CSV Format:</h6>
+                        
+                        <!-- Mobile Format Display -->
+                        <div class="mobile-format">
+                            <div class="format-grid">
+                                <div class="format-item">
+                                    <span class="format-label">name</span>
+                                    <span class="format-example">John Doe</span>
+                                </div>
+                                <div class="format-item">
+                                    <span class="format-label">email</span>
+                                    <span class="format-example">john@example.com</span>
+                                </div>
+                                <div class="format-item">
+                                    <span class="format-label">phone</span>
+                                    <span class="format-example">555-0123</span>
+                                </div>
+                                <div class="format-item">
+                                    <span class="format-label">address</span>
+                                    <span class="format-example">123 Main St</span>
+                                </div>
+                                <div class="format-item">
+                                    <span class="format-label">location_name</span>
+                                    <span class="format-example">Main Office</span>
+                                </div>
+                                <div class="format-item">
+                                    <span class="format-label">agency_code</span>
+                                    <span class="format-example">AGENCY001</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Desktop Table Display -->
+                        <div class="desktop-table">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>name</th>
+                                            <th>email</th>
+                                            <th>phone</th>
+                                            <th>address</th>
+                                            <th>location_name</th>
+                                            <th>agency_code</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><small>John Doe</small></td>
+                                            <td><small>john@example.com</small></td>
+                                            <td><small>555-0123</small></td>
+                                            <td><small>123 Main St</small></td>
+                                            <td><small>Main Office</small></td>
+                                            <td><small>AGENCY001</small></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-between">
+                    <div class="action-buttons">
                         <a href="{{ url_for('customer.list_customers') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-2"></i>Back to Customers
                         </a>

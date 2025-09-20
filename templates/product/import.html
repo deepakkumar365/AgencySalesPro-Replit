@@ -3,46 +3,231 @@
 {% block title %}Import Products - AgencySales Pro{% endblock %}
 
 {% block content %}
+<style>
+/* Mobile-First Product Import Styles */
+.import-header {
+    padding: 1rem;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-light) 100%);
+    color: white;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.import-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.import-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid var(--bs-border-color);
+}
+
+.import-card .card-header {
+    background: var(--accent-light);
+    border-radius: 12px 12px 0 0;
+    border-bottom: 1px solid var(--bs-border-color);
+    font-weight: 600;
+    padding: 1.25rem;
+}
+
+.import-card .card-body {
+    padding: 1.5rem;
+}
+
+.guidelines-section {
+    background: var(--accent-light);
+    border: 1px solid var(--primary-light);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    color: var(--primary-dark);
+}
+
+.guideline-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.guideline-item:last-child {
+    margin-bottom: 0;
+}
+
+.guideline-icon {
+    color: var(--primary-dark);
+    margin-right: 0.75rem;
+}
+
+.file-upload-section {
+    background: var(--bs-gray-50);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 2px dashed var(--bs-border-color);
+    text-align: center;
+    transition: border-color 0.3s ease;
+}
+
+.file-upload-section:hover {
+    border-color: var(--primary-dark);
+}
+
+.form-control {
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    min-height: 48px;
+    border: 2px solid var(--bs-border-color);
+}
+
+.form-control:focus {
+    border-color: var(--primary-dark);
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-dark-rgb), 0.25);
+}
+
+.sample-format {
+    background: var(--bs-gray-50);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.sample-code {
+    background: var(--primary-dark);
+    color: white;
+    padding: 1rem;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.btn {
+    min-height: 48px;
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+}
+
+/* Desktop view */
+@media (min-width: 768px) {
+    .import-header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .action-buttons {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    
+    .file-upload-section {
+        text-align: left;
+    }
+}
+
+/* Mobile view */
+@media (max-width: 767.98px) {
+    .import-header {
+        padding: 1rem 0.5rem;
+    }
+    
+    .import-card .card-body {
+        padding: 1rem;
+    }
+    
+    .form-control {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .sample-code {
+        font-size: 0.75rem;
+    }
+}
+</style>
+
+<div class="import-header">
+    <h1>
+        <i class="fas fa-upload me-2"></i>Import Products
+    </h1>
+    <p class="mb-0 opacity-75">Upload product data from Excel or CSV file</p>
+</div>
+
 <div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card">
+    <div class="col-12 col-lg-8">
+        <div class="import-card">
             <div class="card-header">
-                <h4 class="mb-0">
-                    <i class="fas fa-upload me-2"></i>Import Products
-                </h4>
+                <h5 class="mb-0"><i class="fas fa-box me-2"></i>Upload Product File</h5>
             </div>
             <div class="card-body">
-                <div class="alert alert-info">
-                    <h6 class="alert-heading">Import Guidelines:</h6>
-                    <ul class="mb-0">
-                        <li>Supported formats: Excel (.xlsx, .xls) and CSV (.csv)</li>
-                        <li>Required columns: Name, SKU, Price</li>
-                        <li>Optional columns: Description, Cost, Stock Quantity, Category</li>
-                        <li>Duplicate SKUs will be skipped</li>
-                    </ul>
+                <div class="guidelines-section">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Import Guidelines</strong>
+                    </div>
+                    <div class="guideline-item">
+                        <i class="fas fa-file-excel guideline-icon"></i>
+                        <span>Supported formats: Excel (.xlsx, .xls) and CSV (.csv)</span>
+                    </div>
+                    <div class="guideline-item">
+                        <i class="fas fa-star guideline-icon"></i>
+                        <span>Required columns: Name, SKU, Price</span>
+                    </div>
+                    <div class="guideline-item">
+                        <i class="fas fa-plus-circle guideline-icon"></i>
+                        <span>Optional columns: Description, Cost, Stock Quantity, Category</span>
+                    </div>
+                    <div class="guideline-item">
+                        <i class="fas fa-shield-alt guideline-icon"></i>
+                        <span>Duplicate SKUs will be skipped</span>
+                    </div>
                 </div>
                 
                 <form method="POST" enctype="multipart/form-data">
-                    <div class="mb-4">
-                        <label for="file" class="form-label">Select File</label>
+                    <div class="file-upload-section">
+                        <div class="mb-3">
+                            <i class="fas fa-file-upload fa-3x text-primary mb-3"></i>
+                            <label for="file" class="form-label d-block">
+                                <strong>Select File</strong>
+                            </label>
+                        </div>
                         <input type="file" class="form-control" id="file" name="file" 
                                accept=".xlsx,.xls,.csv" required>
-                        <div class="form-text">Choose an Excel or CSV file containing product data.</div>
+                        <div class="form-text mt-2">Choose an Excel or CSV file containing product data.</div>
                     </div>
                     
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{{ url_for('product.list_products') }}" class="btn btn-secondary">Cancel</a>
+                    <div class="sample-format">
+                        <h6 class="mb-3"><i class="fas fa-code me-2"></i>Sample CSV Format:</h6>
+                        <div class="sample-code">Name,SKU,Price,Description,Cost,Stock Quantity,Category
+Widget A,WGT-001,29.99,Premium widget,15.50,100,Electronics
+Widget B,WGT-002,19.99,Standard widget,10.00,50,Electronics</div>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <a href="{{ url_for('product.list_products') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-upload me-2"></i>Import Products
                         </button>
                     </div>
                 </form>
-            </div>
-            <div class="card-footer">
-                <h6>Sample CSV Format:</h6>
-                <pre class="mb-0"><code>Name,SKU,Price,Description,Cost,Stock Quantity,Category
-Widget A,WGT-001,29.99,Premium widget,15.50,100,Electronics
-Widget B,WGT-002,19.99,Standard widget,10.00,50,Electronics</code></pre>
             </div>
         </div>
     </div>
