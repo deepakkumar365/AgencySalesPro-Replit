@@ -317,6 +317,38 @@
         <input type="hidden" id="inline-price">
     </div>
 
+    <!-- Product Catalog -->
+    <div class="catalog-section">
+        <div class="catalog-header">
+            <h6 class="mb-0"><i class="fas fa-th-large me-2"></i>Product Catalog</h6>
+            <div class="catalog-actions">
+                <button class="btn btn-sm btn-outline-primary" onclick="loadAllProducts()">
+                    <i class="fas fa-sync me-1"></i>Refresh
+                </button>
+            </div>
+        </div>
+        <div class="catalog-table-container">
+            <table class="table table-sm catalog-table" id="catalog-table">
+                <thead>
+                    <tr>
+                        <th>Product Name</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="catalog-body">
+                    <tr id="catalog-loading">
+                        <td colspan="5" class="text-center py-3">
+                            <i class="fas fa-spinner fa-spin me-2"></i>Loading products...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- Cart Items -->
     <div class="cart-items" id="cart-items">
         <!-- Items will be populated here -->
