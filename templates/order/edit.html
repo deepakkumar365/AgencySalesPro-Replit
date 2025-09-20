@@ -177,13 +177,15 @@
         padding: 1rem;
         z-index: 1030;
         box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
     }
 
     .total-display {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        margin-bottom: 0.75rem;
+        gap: 0.5rem;
     }
 
     .total-label {
@@ -197,8 +199,14 @@
         color: var(--accent-green);
     }
 
+    .total-label {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--primary-dark);
+    }
+
     .save-order-btn {
-        width: 100%;
+        min-width: 160px;
         height: 50px;
         border-radius: 12px;
         background: var(--accent-green);
@@ -206,6 +214,7 @@
         color: white;
         font-size: 1.1rem;
         font-weight: bold;
+        padding: 0 1.5rem;
     }
 
     .save-order-btn:hover {
@@ -481,6 +490,7 @@
 <!-- Fixed Bottom Summary -->
 <div class="cart-summary mb-2">
     <div class="total-display">
+        <span class="total-label">Total:</span>
         <span class="total-amount" id="summary-grand-total">₹{{ order.grand_total or '0.00' }}</span>
     </div>
     <button id="save-order-btn" class="save-order-btn">
