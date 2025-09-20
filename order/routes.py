@@ -114,6 +114,13 @@ def list_orders(current_agency_id=None):
                              'status': status_filter
                          })
 
+@order_bp.route('/cart')
+@login_required
+def view_cart():
+    """Renders the e-commerce style cart page."""
+    # This is a static example page for now.
+    return render_template('ecommerce/cart.html')
+
 @order_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @log_activity('create_order')
@@ -378,25 +385,75 @@ def edit_order(order_id):
         flash('You can only edit orders from your agency', 'error')
         return redirect(url_for('order.list_orders'))
     
-    # Can't edit shipped or delivered orders
-    if order.status in ['shipped', 'delivered']:
-        flash('Cannot edit shipped or delivered orders', 'error')
+    # Can only edit pending orders
+    if order.status != 'pending':
+        flash('Only pending orders can be edited.', 'error')
         return redirect(url_for('order.view_order', order_id=order_id))
     
     if request.method == 'POST':
-        order.discount = float(request.form.get('discount', 0))
-        order.tax = float(request.form.get('tax', 0))
-        order.notes = request.form.get('notes')
-        delivery_date = request.form.get('delivery_date')
-        
-        if delivery_date:
-            order.delivery_date = datetime.strptime(delivery_date, '%Y-%m-%d')
-        
-        db.session.commit()
-        flash('Order updated successfully!', 'success')
-        return redirect(url_for('order.view_order', order_id=order_id))
+        data = request.get_json()
+        try:
+            # Update order fields
+            order.notes = data.get('notes')
+            order.tax = float(data.get('tax', 0))
+            order.discount = float(data.get('discount', 0))
+            if data.get('delivery_date'):
+                order.delivery_date = datetime.strptime(data['delivery_date'], '%Y-%m-%d')
+            
+            # Delete existing items
+            OrderItem.query.filter_by(order_id=order.id).delete()
+            
+            subtotal = 0
+            items = data.get('items', [])
+            
+            for item_data in items:
+                product = Product.query.get(item_data['id'])
+                if not product:
+                    db.session.rollback()
+                    return jsonify({'error': f"Product with ID {item_data['id']} not found."}), 400
+
+                quantity = float(item_data['quantity'])
+                unit_price = float(item_data['price'])
+                discount_pct = float(item_data.get('discount', 0))
+
+                discounted_price = unit_price * (1 - (discount_pct / 100))
+                line_total = discounted_price * quantity
+
+                order_item = OrderItem(
+                    order_id=order.id,
+                    product_id=product.id,
+                    quantity=quantity,
+                    uom=product.uom_ref.short_name if product.uom_ref else 'pcs',
+                    unit_price=unit_price,
+                    mrp_price=product.mrp_price or unit_price,
+                    discount_percentage=discount_pct,
+                    discounted_price=discounted_price,
+                    tax_code='N/A',
+                    tax_rate=0,
+                    tax_amount=0,
+                    line_total=line_total,
+                    total_price=line_total
+                )
+                db.session.add(order_item)
+                subtotal += line_total
+
+            order.subtotal_amount = subtotal
+            order.total_tax_amount = order.tax
+            order.total_amount = subtotal + order.tax - order.discount
+            order.total_items_count = len(items)
+
+            db.session.commit()
+            flash('Order updated successfully!', 'success')
+            return jsonify({'success': True, 'redirect_url': url_for('order.view_order', order_id=order.id)})
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': f'An unexpected error occurred: {str(e)}'}), 500
     
-    return render_template('order/edit.html', order=order)
+    # For GET request, render the dynamic form with existing order data
+    from datetime import date, timedelta
+    default_delivery_date = order.delivery_date or (date.today() + timedelta(days=10))
+    return render_template('order/edit.html', order=order, default_delivery_date=default_delivery_date)
 
 @order_bp.route('/<int:order_id>/update_status', methods=['POST'])
 @login_required
