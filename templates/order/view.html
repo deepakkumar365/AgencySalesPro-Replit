@@ -6,18 +6,23 @@
 <style>
 /* Mobile-First Order View Styles */
 .order-view-header {
-    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-light) 100%);
-    color: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    text-align: center;
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
 .order-view-header h1 {
-    margin: 0 0 1rem 0;
-    font-size: 1.8rem;
+    margin: 0;
+    font-size: 1.25rem;
     font-weight: 600;
+    color: var(--primary-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .order-view-header .btn-group {
@@ -103,11 +108,13 @@
 /* Mobile responsive adjustments */
 @media (max-width: 767.98px) {
     .order-view-header {
-        padding: 1rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
     }
     
     .order-view-header h1 {
-        font-size: 1.5rem;
+        font-size: 1.1rem;
     }
     
     .order-detail-body {
