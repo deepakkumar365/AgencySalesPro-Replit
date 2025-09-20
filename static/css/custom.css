@@ -778,6 +778,26 @@ a:hover {
   .btn-group-sm .btn span {
     display: none;
   }
+  
+  /* Enhanced mobile button behavior for consistent horizontal icons */
+  .btn-group .btn i {
+    margin-right: 0 !important;
+  }
+  
+  /* Ensure header button groups display horizontally with icons only on mobile */
+  .d-flex .btn-group {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+  
+  .d-flex .btn-group .btn {
+    padding: 0.5rem;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 /* Touch device improvements */
