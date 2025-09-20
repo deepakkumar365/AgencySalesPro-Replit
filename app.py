@@ -21,8 +21,8 @@ def create_app():
     
     # Configuration
     app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
-    # Use local SQLite database to avoid connection issues
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///agency_sales.db"
+    # Use DATABASE_URL from the environment. This is required for the app to run.
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "pool_recycle": 300,
         "pool_pre_ping": True,

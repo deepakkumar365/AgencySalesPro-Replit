@@ -37,8 +37,8 @@ def dashboard():
     monthly_orders = db.session.query(
         func.date_trunc('month', Order.created_at).label('month'),
         func.count(Order.id).label('count')
-    ).filter(Order.created_at >= six_months_ago).group_by(func.date_trunc('month', Order.created_at)).all()
-    
+    ).filter(Order.created_at >= six_months_ago).group_by(func.date_trunc('month', Order.created_at)).order_by(func.date_trunc('month', Order.created_at)).all()
+
     # Get top agencies by orders
     top_agencies = db.session.query(
         Agency.name,

@@ -52,7 +52,7 @@ class User(db.Model):
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))
     role = db.Column(db.String(20), nullable=False)  # super_admin, agency_admin, staff, salesperson, pos_user
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'))
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
@@ -79,7 +79,7 @@ class Location(db.Model):
     state = db.Column(db.String(50))
     zip_code = db.Column(db.String(10))
     phone = db.Column(db.String(20))
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -99,7 +99,7 @@ class Customer(db.Model):
     gst_number = db.Column(db.String(20))  # GST registration number
     credit_limit = db.Column(db.Numeric(10, 2), default=0)  # Credit limit
     credit_period = db.Column(db.Integer, default=30)  # Credit days
-    location_id = db.Column(db.Integer, db.ForeignKey('ASP_locations.id'), nullable=False)
+    location_id = db.Column(db.Integer, db.ForeignKey('ASP_locations.id'), nullable=False, index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -120,9 +120,9 @@ class Product(db.Model):
     margin = db.Column(db.Numeric(5, 2))  # Margin percentage
     
     # Foreign key relationships to master tables (global defaults)
-    category_id = db.Column(db.Integer, db.ForeignKey('ASP_categories.id'))
-    uom_id = db.Column(db.Integer, db.ForeignKey('ASP_uoms.id'))
-    tax_master_id = db.Column(db.Integer, db.ForeignKey('ASP_tax_masters.id'))
+    category_id = db.Column(db.Integer, db.ForeignKey('ASP_categories.id'), index=True)
+    uom_id = db.Column(db.Integer, db.ForeignKey('ASP_uoms.id'), index=True)
+    tax_master_id = db.Column(db.Integer, db.ForeignKey('ASP_tax_masters.id'), index=True)
     
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -147,17 +147,17 @@ class Product(db.Model):
 class ProductAgency(db.Model):
     __tablename__ = 'ASP_product_agencies'
     id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False)
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
     
     # Per-agency overrides (optional; fall back to Product defaults)
     display_name = db.Column(db.String(150))
     buy_price = db.Column(db.Numeric(10, 2))   # New: agency-specific buy price
     sell_price = db.Column(db.Numeric(10, 2))  # Agency-specific sell price
     mrp_price = db.Column(db.Numeric(10, 2))   # New: agency-specific MRP
-    category_id = db.Column(db.Integer, db.ForeignKey('ASP_categories.id'))
-    uom_id = db.Column(db.Integer, db.ForeignKey('ASP_uoms.id'))
-    tax_master_id = db.Column(db.Integer, db.ForeignKey('ASP_tax_masters.id'))
+    category_id = db.Column(db.Integer, db.ForeignKey('ASP_categories.id'), index=True)
+    uom_id = db.Column(db.Integer, db.ForeignKey('ASP_uoms.id'), index=True)
+    tax_master_id = db.Column(db.Integer, db.ForeignKey('ASP_tax_masters.id'), index=True)
     
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -174,11 +174,11 @@ class ProductAgency(db.Model):
 class Order(db.Model):
     __tablename__ = 'ASP_orders'
     id = db.Column(db.Integer, primary_key=True)
-    order_number = db.Column(db.String(50), unique=True, nullable=False)
-    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False)
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
-    salesperson_id = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
-    status = db.Column(db.String(20), default='pending')  # pending, confirmed, shipped, delivered, cancelled
+    order_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    salesperson_id = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    status = db.Column(db.String(20), default='pending', index=True)  # pending, confirmed, shipped, delivered, cancelled
     payment_status = db.Column(db.String(20), default='pending')  # pending, partial, paid, overdue
     total_amount = db.Column(db.Numeric(10, 2), default=0)
     subtotal_amount = db.Column(db.Numeric(10, 2), default=0)  # Total before tax
@@ -197,8 +197,8 @@ class Order(db.Model):
 class OrderItem(db.Model):
     __tablename__ = 'ASP_order_items'
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
     quantity = db.Column(db.Integer, nullable=False)
     uom = db.Column(db.String(20), default='pcs')  # Unit of Measure: pcs, kg, ltr, etc.
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)  # Original selling price
@@ -227,7 +227,7 @@ class OrderItem(db.Model):
 class ActivityLog(db.Model):
     __tablename__ = 'ASP_activity_logs'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
     action = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     ip_address = db.Column(db.String(45))
@@ -241,15 +241,15 @@ class ActivityLog(db.Model):
 class Invoice(db.Model):
     __tablename__ = 'ASP_invoices'
     id = db.Column(db.Integer, primary_key=True)
-    invoice_number = db.Column(db.String(50), unique=True, nullable=False)
-    order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), nullable=False)
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
-    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False)
+    invoice_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False, index=True)
     subtotal = db.Column(db.Numeric(10, 2), nullable=False)
     tax_amount = db.Column(db.Numeric(10, 2), default=0)
     discount_amount = db.Column(db.Numeric(10, 2), default=0)
     total_amount = db.Column(db.Numeric(10, 2), nullable=False)
-    status = db.Column(db.String(20), default='pending')  # pending, paid, overdue, cancelled
+    status = db.Column(db.String(20), default='pending', index=True)  # pending, paid, overdue, cancelled
     issue_date = db.Column(db.DateTime, default=datetime.utcnow)
     due_date = db.Column(db.DateTime)
     payment_terms = db.Column(db.String(100))
@@ -264,15 +264,15 @@ class Invoice(db.Model):
 class Payment(db.Model):
     __tablename__ = 'ASP_payments'
     id = db.Column(db.Integer, primary_key=True)
-    payment_number = db.Column(db.String(50), unique=True, nullable=False)
-    invoice_id = db.Column(db.Integer, db.ForeignKey('ASP_invoices.id'), nullable=False)
-    payment_method_id = db.Column(db.Integer, db.ForeignKey('ASP_payment_methods.id'), nullable=False)
+    payment_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('ASP_invoices.id'), nullable=False, index=True)
+    payment_method_id = db.Column(db.Integer, db.ForeignKey('ASP_payment_methods.id'), nullable=False, index=True)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     payment_date = db.Column(db.DateTime, default=datetime.utcnow)
     transaction_id = db.Column(db.String(100))  # External payment gateway transaction ID
     status = db.Column(db.String(20), default='completed')  # completed, pending, failed, refunded
     notes = db.Column(db.Text)
-    processed_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
+    processed_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -285,7 +285,7 @@ class PaymentMethod(db.Model):
     name = db.Column(db.String(50), nullable=False)  # Cash, Credit Card, Debit Card, Digital Wallet, etc.
     code = db.Column(db.String(50), unique=True, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -296,7 +296,7 @@ class TaxRule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     rate = db.Column(db.Numeric(5, 4), nullable=False)  # Tax rate as decimal (e.g., 0.0825 for 8.25%)
-    location_id = db.Column(db.Integer, db.ForeignKey('ASP_locations.id'), nullable=False)
+    location_id = db.Column(db.Integer, db.ForeignKey('ASP_locations.id'), nullable=False, index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -322,7 +322,7 @@ class Supplier(db.Model):
     email = db.Column(db.String(120))
     phone = db.Column(db.String(20))
     address = db.Column(db.Text)
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -332,16 +332,16 @@ class Supplier(db.Model):
 class PurchaseOrder(db.Model):
     __tablename__ = 'ASP_purchase_orders'
     id = db.Column(db.Integer, primary_key=True)
-    po_number = db.Column(db.String(50), unique=True, nullable=False)
-    supplier_id = db.Column(db.Integer, db.ForeignKey('ASP_suppliers.id'), nullable=False)
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    po_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('ASP_suppliers.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
     total_amount = db.Column(db.Numeric(10, 2), default=0)
-    status = db.Column(db.String(20), default='pending')  # pending, sent, received, cancelled
+    status = db.Column(db.String(20), default='pending', index=True)  # pending, sent, received, cancelled
     order_date = db.Column(db.DateTime, default=datetime.utcnow)
     expected_delivery = db.Column(db.DateTime)
     received_date = db.Column(db.DateTime)
     notes = db.Column(db.Text)
-    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -352,8 +352,8 @@ class PurchaseOrder(db.Model):
 class PurchaseOrderItem(db.Model):
     __tablename__ = 'ASP_purchase_order_items'
     id = db.Column(db.Integer, primary_key=True)
-    po_id = db.Column(db.Integer, db.ForeignKey('ASP_purchase_orders.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False)
+    po_id = db.Column(db.Integer, db.ForeignKey('ASP_purchase_orders.id'), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
     quantity_ordered = db.Column(db.Integer, nullable=False)
     quantity_received = db.Column(db.Integer, default=0)
     unit_cost = db.Column(db.Numeric(10, 2), nullable=False)
@@ -365,14 +365,14 @@ class PurchaseOrderItem(db.Model):
 class InventoryTransaction(db.Model):
     __tablename__ = 'ASP_inventory_transactions'
     id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
     transaction_type = db.Column(db.String(20), nullable=False)  # sale, purchase, adjustment, return
     quantity_change = db.Column(db.Integer, nullable=False)  # Positive for increase, negative for decrease
     quantity_before = db.Column(db.Integer, nullable=False)
     quantity_after = db.Column(db.Integer, nullable=False)
     unit_cost = db.Column(db.Numeric(10, 2))
-    reference_id = db.Column(db.Integer)  # Order ID, PO ID, or Adjustment ID
-    reference_type = db.Column(db.String(20))  # order, purchase_order, adjustment
+    reference_id = db.Column(db.Integer, index=True)  # Order ID, PO ID, or Adjustment ID
+    reference_type = db.Column(db.String(20), index=True)  # order, purchase_order, adjustment
     notes = db.Column(db.Text)
     created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -384,12 +384,12 @@ class InventoryTransaction(db.Model):
 class StockAdjustment(db.Model):
     __tablename__ = 'ASP_stock_adjustments'
     id = db.Column(db.Integer, primary_key=True)
-    adjustment_number = db.Column(db.String(50), unique=True, nullable=False)
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False)
+    adjustment_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
     reason = db.Column(db.String(100), nullable=False)  # damage, theft, count_correction, etc.
     notes = db.Column(db.Text)
-    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
-    approved_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    approved_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), index=True)
     status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     approved_at = db.Column(db.DateTime)
@@ -403,8 +403,8 @@ class StockAdjustment(db.Model):
 class StockAdjustmentItem(db.Model):
     __tablename__ = 'ASP_stock_adjustment_items'
     id = db.Column(db.Integer, primary_key=True)
-    adjustment_id = db.Column(db.Integer, db.ForeignKey('ASP_stock_adjustments.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False)
+    adjustment_id = db.Column(db.Integer, db.ForeignKey('ASP_stock_adjustments.id'), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
     quantity_before = db.Column(db.Integer, nullable=False)
     quantity_change = db.Column(db.Integer, nullable=False)  # Can be positive or negative
     quantity_after = db.Column(db.Integer, nullable=False)
@@ -416,13 +416,13 @@ class StockAdjustmentItem(db.Model):
 class LowStockAlert(db.Model):
     __tablename__ = 'ASP_low_stock_alerts'
     id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
     threshold_quantity = db.Column(db.Integer, nullable=False)
     current_quantity = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.String(20), default='active')  # active, resolved, ignored
+    status = db.Column(db.String(20), default='active', index=True)  # active, resolved, ignored
     alerted_at = db.Column(db.DateTime, default=datetime.utcnow)
     resolved_at = db.Column(db.DateTime)
-    resolved_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'))
+    resolved_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), index=True)
     
     # Relationships
     product = db.relationship('Product', backref='stock_alerts', lazy=True)
