@@ -166,12 +166,12 @@
         {% if order.status in ['pending', 'confirmed'] %}
         {% if session.role == 'salesperson' and order.salesperson_id == session.user_id or session.role != 'salesperson' %}
         <a href="{{ url_for('order.edit_order', order_id=order.id) }}" class="btn" title="Edit Order">
-            <i class="fas fa-edit me-2"></i>Edit Order
+            <i class="fas fa-edit me-2"></i><span class="d-none d-sm-inline">Edit Order</span>
         </a>
         {% endif %}
         {% endif %}
         <a href="{{ url_for('order.list_orders') }}" class="btn" title="Back to Orders">
-            <i class="fas fa-arrow-left me-2"></i>Back to Orders
+            <i class="fas fa-arrow-left me-2"></i><span class="d-none d-sm-inline">Back to Orders</span>
         </a>
     </div>
 </div>
