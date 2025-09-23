@@ -45,16 +45,24 @@
                         <div class="col-md-6 mb-3">
                             <label for="role" class="form-label">Role</label>
                             <select class="form-select" id="role" name="role" required>
+                                {% if session.role == 'super_admin' or user.role == 'super_admin' %}
                                 <option value="super_admin" {{ 'selected' if user.role == 'super_admin' else '' }}>Super Admin</option>
-                                <option value="agency_admin" {{ 'selected' if user.role == 'agency_admin' else '' }}>Agency Admin</option>
+                                {% endif %}
+                                {% if session.role == 'super_admin' or user.role in ['agency_admin', 'agency_manager'] %}
+                                <option value="agency_admin" {{ 'selected' if user.role == 'agency_admin' else '' }}>Agency Admin</option>                                
+                                {% if session.role == 'super_admin' %}
+                                <option value="agency_manager" {{ 'selected' if user.role == 'agency_manager' else '' }}>Agency Manager</option>
+                                {% endif %}
+                                {% endif %}
                                 <option value="staff" {{ 'selected' if user.role == 'staff' else '' }}>Staff</option>
                                 <option value="salesperson" {{ 'selected' if user.role == 'salesperson' else '' }}>Salesperson</option>
+                                <option value="pos_user" {{ 'selected' if user.role == 'pos_user' else '' }}>POS User</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="agency_id" class="form-label">Agency</label>
                             <select class="form-select" id="agency_id" name="agency_id">
-                                <option value="">No Agency (Super Admin only)</option>
+                                <option value="" {% if not user.agency_id %}selected{% endif %}>-- No Agency --</option>
                                 {% for agency in agencies %}
                                 <option value="{{ agency.id }}" {{ 'selected' if user.agency_id == agency.id else '' }}>
                                     {{ agency.name }} ({{ agency.code }})
@@ -88,4 +96,26 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const roleSelect = document.getElementById('role');
+        const agencySelect = document.getElementById('agency_id');
+        // This list should match the server-side validation
+        const rolesRequiringAgency = ['agency_admin', 'staff', 'salesperson', 'pos_user'];
+
+        function toggleAgencyRequirement() {
+            if (agencySelect && rolesRequiringAgency.includes(roleSelect.value)) {
+                agencySelect.required = true;
+            } else if (agencySelect) {
+                agencySelect.required = false;
+            }
+        }
+
+        roleSelect.addEventListener('change', toggleAgencyRequirement);
+        toggleAgencyRequirement(); // Set initial state on page load
+    });
+</script>
 {% endblock %}

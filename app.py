@@ -1,6 +1,7 @@
 import os
 import logging
 from flask import Flask
+from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from sqlalchemy.orm import DeclarativeBase
@@ -17,12 +18,24 @@ db = SQLAlchemy(model_class=Base)
 jwt = JWTManager()
 
 def create_app():
+    # Load environment variables from .env file
+    load_dotenv()
+
     app = Flask(__name__)
     
     # Configuration
     app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
+
     # Use DATABASE_URL from the environment. This is required for the app to run.
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        raise ValueError("DATABASE_URL environment variable not set. Please create a .env file with the database connection string.")
+
+    # SQLAlchemy 2.0+ prefers 'postgresql://' over 'postgres://'
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "pool_recycle": 300,
         "pool_pre_ping": True,
@@ -50,6 +63,7 @@ def create_app():
     from billing import billing_bp
     from inventory import inventory_bp
     from reports import reports_bp
+    from agency_manager import agency_manager_bp
     from api import api_bp
     from masters.routes import masters_bp
     
@@ -65,6 +79,7 @@ def create_app():
     app.register_blueprint(billing_bp, url_prefix='/billing')
     app.register_blueprint(inventory_bp, url_prefix='/inventory')
     app.register_blueprint(reports_bp, url_prefix='/reports')
+    app.register_blueprint(agency_manager_bp, url_prefix='/agency_manager')
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     app.register_blueprint(masters_bp, url_prefix='/masters')
 

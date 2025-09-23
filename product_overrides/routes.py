@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash, session
 from app import db
-from auth.utils import login_required, agency_access_required
+from auth.utils import login_required, permission_required
 from utils.decorators import log_activity
 from product_overrides import overrides_bp
 from models import Product, ProductAgency, Agency, Category, UOM, TaxMaster
@@ -8,7 +8,7 @@ from sqlalchemy import func, or_, and_
 
 @overrides_bp.route('/')
 @login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def list_overrides(current_agency_id=None):
     user_role = session.get('role')
     # Build filters (super_admin can choose agency; others are fixed)
@@ -77,7 +77,7 @@ def list_overrides(current_agency_id=None):
 
 @overrides_bp.route('/add', methods=['GET', 'POST'])
 @login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('add_product_override')
 def add_override(current_agency_id=None):
     """Add a product mapping to an agency, then redirect to edit overrides"""
@@ -139,7 +139,7 @@ def add_override(current_agency_id=None):
 
 @overrides_bp.route('/<int:product_id>/edit', methods=['GET', 'POST'])
 @login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('edit_product_override')
 def edit_override(product_id, current_agency_id=None):
     user_role = session.get('role')

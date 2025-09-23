@@ -55,26 +55,30 @@
                         </div>
                     </div>
                     
-                    {% if session.role == 'super_admin' %}
+                    {% if session.role == 'super_admin' or session.role == 'agency_manager' %}
                     <div class="mb-3">
                         <label for="agency_id" class="form-label">Agency</label>
-                        <select class="form-select" id="agency_id" name="agency_id" required>
-                            <option value="">Select Agency</option>
+                        <select class="form-select" id="agency_id" name="agency_id">
+                            <option value="">-- No Agency (Optional) --</option>
                             {% for agency in agencies %}
                             <option value="{{ agency.id }}">{{ agency.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    {% endif %}
+                    {% else %}
+                    <!-- For agency_admin, agency is implicit -->
+                    {% endif %}                    
                     
                     <div class="mb-3">
                         <label for="role" class="form-label">Role</label>
                         <select class="form-select" id="role" name="role" required>
                             {% if session.role == 'super_admin' %}
                             <option value="agency_admin">Agency Admin</option>
+                            <option value="agency_manager">Agency Manager</option>
                             <option value="staff">Staff</option>
                             <option value="salesperson">Salesperson</option>
-                            {% else %}
+                            {% elif session.role == 'agency_manager' %}
+                            <option value="agency_admin">Agency Admin</option>
                             <option value="staff">Staff</option>
                             <option value="salesperson">Salesperson</option>
                             {% endif %}
@@ -92,4 +96,26 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const roleSelect = document.getElementById('role');
+        const agencySelect = document.getElementById('agency_id');
+        // This list should match the server-side validation
+        const rolesRequiringAgency = ['agency_admin', 'agency_manager', 'staff', 'salesperson', 'pos_user'];
+
+        function toggleAgencyRequirement() {
+            if (agencySelect && rolesRequiringAgency.includes(roleSelect.value)) {
+                agencySelect.required = true;
+            } else if (agencySelect) {
+                agencySelect.required = false;
+            }
+        }
+
+        roleSelect.addEventListener('change', toggleAgencyRequirement);
+        toggleAgencyRequirement(); // Set initial state on page load
+    });
+</script>
 {% endblock %}

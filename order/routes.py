@@ -5,7 +5,7 @@ from sqlalchemy import or_, and_
 from app import db
 from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode, ProductAgency
 from order import order_bp
-from auth.utils import login_required, agency_access_required
+from auth.utils import login_required, permission_required, order_owner_required
 from utils.decorators import log_activity
 from utils.excel_utils import export_orders_to_excel
 
@@ -24,8 +24,7 @@ def get_tax_codes():
     })
 
 @order_bp.route('/')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson'])
 def list_orders(current_agency_id=None):
     user_role = session.get('role')
     user_id = session.get('user_id')
@@ -241,7 +240,6 @@ def create_order():
 
 @order_bp.route('/api/search-customers-v2')
 @login_required
-@agency_access_required
 def search_customers_v2(current_agency_id=None):
     """Return customer suggestions for Tom Select
     Response: [ { id, name, phone, email, address, location_name, credit_period, display_text } ]
@@ -291,7 +289,6 @@ def search_customers_v2(current_agency_id=None):
 
 @order_bp.route('/api/search-products-v2')
 @login_required
-@agency_access_required
 def search_products_v2(current_agency_id=None):
     """Return product suggestions for Tom Select with agency validation
     Response: [ { id, name, sku, price, mrp_price, uom, tax_code, tax_rate, display_text } ]
@@ -670,7 +667,8 @@ def search_products():
             Product.name.ilike(f'%{query}%'),
             Product.sku.ilike(f'%{query}%'),
             Product.description.ilike(f'%{query}%'),
-            ProductAgency.display_name.ilike(f'%{query}%')
+            ProductAgency.display_name.ilike(f'%{query}%'),
+            Product.category_ref.has(Category.name.ilike(f'%{query}%'))
         ))
 
     results = products_query.limit(50).all()

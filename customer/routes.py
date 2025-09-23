@@ -3,12 +3,11 @@ import csv, io
 from app import db
 from models import Customer, Location, Agency
 from customer import customer_bp
-from auth.utils import login_required, agency_access_required, role_required
+from auth.utils import login_required, permission_required, role_required
 from utils.decorators import log_activity
 
 @customer_bp.route('/')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson'])
 def list_customers(current_agency_id=None):
     user_role = session.get('role')
     

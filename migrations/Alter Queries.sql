@@ -16,3 +16,20 @@ SELECT column_name
 FROM information_schema.columns
 WHERE table_name = 'ASP_products'
 ORDER BY column_name;
+
+-- 1. Add the new integer column to the agency table.
+ALTER TABLE "ASP_agencies" ADD COLUMN agency_manager_id INTEGER;
+
+-- 2. Add a foreign key constraint to link it to the users table.
+-- This ensures data integrity. ON DELETE SET NULL will set the manager to NULL
+-- if the manager's user account is ever deleted.
+ALTER TABLE "ASP_agencies"
+ADD CONSTRAINT fk_agency_manager_user
+FOREIGN KEY (agency_manager_id)
+REFERENCES "ASP_users" (id)
+ON DELETE SET NULL;
+
+-- 3. Create an index on the new column for faster lookups when
+-- searching for an agency by its manager.
+CREATE INDEX ix_asp_agencies_agency_manager_id ON "ASP_agencies" (agency_manager_id);
+
