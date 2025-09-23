@@ -438,6 +438,15 @@ wheels = [
 ]
 
 [[package]]
+name = "python-dotenv"
+version = "1.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/57/8b/5b547f3164b63e03a15231e338b7e22b82f910e2f2382345510b1c00208f/python_dotenv-1.0.1.tar.gz", hash = "sha256:4a83c1b2f2f25f2b58163b11f8c1b3af2c95191ce422116aa01e2378772f263d", size = 33005 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/92/f6/0a0e5a4f7c603c6e0a05a08889aa1603510c9c3a3c2f21005e1191a7c4de/python_dotenv-1.0.1-py3-none-any.whl", hash = "sha256:429c9d76377b51815326b37ae01b034a60581c634d60c07767c0449dc0426b0b", size = 19842 },
+]
+
+[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 source = { registry = "https://pypi.org/simple" }
@@ -471,6 +480,7 @@ dependencies = [
     { name = "openpyxl" },
     { name = "pandas" },
     { name = "psycopg2-binary" },
+    { name = "python-dotenv" },
     { name = "sqlalchemy" },
     { name = "werkzeug" },
 ]
@@ -485,6 +495,7 @@ requires-dist = [
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=2.3.2" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
+    { name = "python-dotenv" },
     { name = "sqlalchemy", specifier = ">=2.0.43" },
     { name = "werkzeug", specifier = ">=3.1.3" },
 ]
