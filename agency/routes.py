@@ -1,30 +1,39 @@
 from flask import render_template, request, redirect, url_for, flash, session
 from app import db
 from models import Agency, User
-from agency import agency_bp
+from . import agency_bp
 from auth.utils import login_required, role_required
 from utils.decorators import log_activity
 
 @agency_bp.route('/')
-@login_required
-@role_required('super_admin', 'agency_admin')
+@role_required('super_admin', 'agency_admin', 'agency_manager')
 def list_agencies():
     user_role = session.get('role')
+    user_id = session.get('user_id')
     
     if user_role == 'super_admin':
         agencies = Agency.query.all()
+    elif user_role == 'agency_manager':
+        agencies = Agency.query.filter_by(agency_manager_id=user_id).all()
     else:
-        # Agency admin can only see their own agency
+        # agency_admin can only see their own agency
         agency_id = session.get('agency_id')
         agencies = Agency.query.filter_by(id=agency_id).all()
     
-    return render_template('agency/list.html', agencies=agencies)
+    # For super_admin, get potential managers to show in the list view
+    managers = []
+    if user_role == 'super_admin':
+        managers = User.query.filter(User.role.in_(['agency_manager', 'super_admin'])).all()
+
+    return render_template('agency/list.html', agencies=agencies, managers=managers)
 
 @agency_bp.route('/create', methods=['GET', 'POST'])
-@login_required
-@role_required('super_admin')
+@role_required('super_admin', 'agency_manager')
 @log_activity('create_agency')
 def create_agency():
+    user_role = session.get('role')
+    user_id = session.get('user_id')
+
     if request.method == 'POST':
         name = request.form.get('name')
         code = request.form.get('code')
@@ -34,20 +43,27 @@ def create_agency():
         
         if not name or not code:
             flash('Name and code are required', 'error')
-            return render_template('agency/form.html')
+            return redirect(url_for('agency.create_agency'))
         
         # Check if code already exists
         if Agency.query.filter_by(code=code).first():
             flash('Agency code already exists', 'error')
-            return render_template('agency/form.html')
+            return redirect(url_for('agency.create_agency'))
         
+        # Determine manager_id based on role
+        if user_role == 'agency_manager':
+            manager_id = user_id
+        else: # super_admin
+            manager_id = request.form.get('agency_manager_id')
+
         agency = Agency(
             name=name,
             code=code,
             address=address,
             phone=phone,
             email=email,
-            is_active=True
+            is_active=True,
+            agency_manager_id=int(manager_id) if manager_id else None
         )
         
         db.session.add(agency)
@@ -56,21 +72,18 @@ def create_agency():
         flash('Agency created successfully!', 'success')
         return redirect(url_for('agency.list_agencies'))
     
-    return render_template('agency/form.html')
+    # Get potential managers for the dropdown
+    managers = []
+    if user_role == 'super_admin':
+        managers = User.query.filter(User.role.in_(['agency_manager', 'super_admin'])).all()
+
+    return render_template('agency/form.html', managers=managers, user_role=user_role)
 
 @agency_bp.route('/<int:agency_id>/edit', methods=['GET', 'POST'])
-@login_required
-@role_required('super_admin', 'agency_admin')
+@role_required('super_admin', 'agency_admin', 'agency_manager')
 @log_activity('edit_agency')
 def edit_agency(agency_id):
     user_role = session.get('role')
-    current_agency_id = session.get('agency_id')
-    
-    # Check permissions
-    if user_role == 'agency_admin' and current_agency_id != agency_id:
-        flash('You can only edit your own agency', 'error')
-        return redirect(url_for('agency.list_agencies'))
-    
     agency = Agency.query.get_or_404(agency_id)
     
     if request.method == 'POST':
@@ -79,25 +92,29 @@ def edit_agency(agency_id):
         agency.address = request.form.get('address')
         agency.phone = request.form.get('phone')
         agency.email = request.form.get('email')
+        manager_id = request.form.get('agency_manager_id')
         
         if not agency.name or not agency.code:
             flash('Name and code are required', 'error')
-            return render_template('agency/form.html', agency=agency)
+            return redirect(url_for('agency.edit_agency', agency_id=agency_id))
         
         # Check if code already exists (excluding current agency)
         existing = Agency.query.filter_by(code=agency.code).first()
         if existing and existing.id != agency.id:
             flash('Agency code already exists', 'error')
-            return render_template('agency/form.html', agency=agency)
-        
+            return redirect(url_for('agency.edit_agency', agency_id=agency_id))
+
+        if user_role == 'super_admin':
+            agency.agency_manager_id = int(manager_id) if manager_id else None
         db.session.commit()
         flash('Agency updated successfully!', 'success')
         return redirect(url_for('agency.list_agencies'))
     
-    return render_template('agency/form.html', agency=agency)
+    # Get potential managers for the dropdown
+    managers = User.query.filter(User.role.in_(['agency_manager', 'super_admin'])).all() if user_role == 'super_admin' else []
+    return render_template('agency/form.html', agency=agency, managers=managers)
 
 @agency_bp.route('/<int:agency_id>/toggle_status', methods=['POST'])
-@login_required
 @role_required('super_admin')
 @log_activity('toggle_agency_status')
 def toggle_agency_status(agency_id):
@@ -110,35 +127,17 @@ def toggle_agency_status(agency_id):
     return redirect(url_for('agency.list_agencies'))
 
 @agency_bp.route('/<int:agency_id>/users')
-@login_required
-@role_required('super_admin', 'agency_admin')
+@role_required('super_admin', 'agency_admin', 'agency_manager')
 def agency_users(agency_id):
-    user_role = session.get('role')
-    current_agency_id = session.get('agency_id')
-    
-    # Check permissions
-    if user_role == 'agency_admin' and current_agency_id != agency_id:
-        flash('You can only view users from your own agency', 'error')
-        return redirect(url_for('agency.list_agencies'))
-    
     agency = Agency.query.get_or_404(agency_id)
     users = User.query.filter_by(agency_id=agency_id).all()
     
     return render_template('agency/users.html', agency=agency, users=users)
 
 @agency_bp.route('/<int:agency_id>/create_user', methods=['GET', 'POST'])
-@login_required
-@role_required('agency_admin')
+@role_required('super_admin', 'agency_admin', 'agency_manager')
 @log_activity('create_user')
 def create_user(agency_id):
-    user_role = session.get('role')
-    current_agency_id = session.get('agency_id')
-    
-    # Check permissions
-    if current_agency_id != agency_id:
-        flash('You can only create users for your own agency', 'error')
-        return redirect(url_for('agency.list_agencies'))
-    
     agency = Agency.query.get_or_404(agency_id)
     
     if request.method == 'POST':
@@ -184,17 +183,9 @@ def create_user(agency_id):
     return render_template('agency/create_user.html', agency=agency)
 
 @agency_bp.route('/<int:agency_id>/users/<int:user_id>/edit', methods=['GET', 'POST'])
-@login_required
-@role_required('agency_admin')
+@role_required('super_admin', 'agency_admin', 'agency_manager')
 @log_activity('edit_user')
 def edit_user(agency_id, user_id):
-    current_agency_id = session.get('agency_id')
-    
-    # Check permissions
-    if current_agency_id != agency_id:
-        flash('You can only edit users from your own agency', 'error')
-        return redirect(url_for('agency.list_agencies'))
-    
     agency = Agency.query.get_or_404(agency_id)
     user = User.query.filter_by(id=user_id, agency_id=agency_id).first_or_404()
     
@@ -234,17 +225,9 @@ def edit_user(agency_id, user_id):
     return render_template('agency/edit_user.html', agency=agency, user=user)
 
 @agency_bp.route('/<int:agency_id>/users/<int:user_id>/toggle_status', methods=['POST'])
-@login_required
-@role_required('agency_admin')
+@role_required('super_admin', 'agency_admin', 'agency_manager')
 @log_activity('toggle_user_status')
 def toggle_user_status(agency_id, user_id):
-    current_agency_id = session.get('agency_id')
-    
-    # Check permissions
-    if current_agency_id != agency_id:
-        flash('You can only manage users from your own agency', 'error')
-        return redirect(url_for('agency.list_agencies'))
-    
     user = User.query.filter_by(id=user_id, agency_id=agency_id).first_or_404()
     
     # Agency admin cannot deactivate other agency admins
@@ -260,7 +243,6 @@ def toggle_user_status(agency_id, user_id):
     return redirect(url_for('agency.agency_users', agency_id=agency_id))
 
 @agency_bp.route('/<int:agency_id>/delete', methods=['POST'])
-@login_required
 @role_required('super_admin')
 @log_activity('delete_agency')
 def delete_agency(agency_id):

@@ -2,13 +2,11 @@ from flask import render_template, request, redirect, url_for, flash, session
 from app import db
 from models import User, Agency
 from salesperson import salesperson_bp
-from auth.utils import login_required, role_required, agency_access_required
+from auth.utils import login_required, role_required, permission_required
 from utils.decorators import log_activity
 
 @salesperson_bp.route('/')
-@login_required
-@role_required('super_admin', 'agency_admin', 'staff')
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def list_salespersons(current_agency_id=None):
     user_role = session.get('role')
     

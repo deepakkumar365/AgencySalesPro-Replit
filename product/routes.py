@@ -6,14 +6,13 @@ import os
 from app import db
 from models import Product, Agency, ProductAgency
 from product import product_bp
-from auth.utils import login_required, agency_access_required
+from auth.utils import login_required, permission_required
 from utils.decorators import log_activity
 from utils.excel_utils import export_products_to_excel, import_products_from_excel
 from utils.sku import generate_sku
 
 @product_bp.route('/')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson', 'pos_user'])
 def list_products(current_agency_id=None):
     user_role = session.get('role')
     
@@ -380,7 +379,7 @@ def api_generate_sku():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @product_bp.route('/<int:product_id>/toggle_status', methods=['POST'])
-@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('toggle_product_status')
 def toggle_product_status(product_id):
     product = Product.query.get_or_404(product_id)
@@ -408,7 +407,7 @@ def toggle_product_status(product_id):
     return redirect(url_for('product.list_products'))
 
 @product_bp.route('/<int:product_id>/delete', methods=['POST'])
-@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('delete_product')
 def delete_product(product_id):
     product = Product.query.get_or_404(product_id)
@@ -447,7 +446,7 @@ def delete_product(product_id):
     return redirect(url_for('product.list_products'))
 
 @product_bp.route('/export')
-@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('export_products')
 def export_products():
     user_role = session.get('role')
@@ -470,7 +469,7 @@ def export_products():
     )
 
 @product_bp.route('/import', methods=['GET', 'POST'])
-@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('import_products')
 def import_products():
     if request.method == 'POST':

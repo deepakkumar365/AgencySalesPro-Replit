@@ -7,13 +7,12 @@ from models import (
     Invoice, Payment, PaymentMethod, TaxRule
 )
 from billing import billing_bp
-from auth.utils import login_required, agency_access_required, get_role_permissions
+from auth.utils import login_required, permission_required, get_role_permissions
 from utils.decorators import log_activity
 import uuid
 
 @billing_bp.route('/dashboard')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def dashboard(current_agency_id=None):
     """Billing Dashboard with key metrics"""
     user_role = session.get('role')
@@ -68,8 +67,7 @@ def dashboard(current_agency_id=None):
                          payment_methods=payment_methods)
 
 @billing_bp.route('/invoices')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def list_invoices(current_agency_id=None):
     """List all invoices with filtering"""
     user_role = session.get('role')
@@ -134,8 +132,7 @@ def list_invoices(current_agency_id=None):
                          })
 
 @billing_bp.route('/invoice/<int:invoice_id>')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def view_invoice(invoice_id, current_agency_id=None):
     """View individual invoice details"""
     user_role = session.get('role')
@@ -148,8 +145,7 @@ def view_invoice(invoice_id, current_agency_id=None):
     return render_template('billing/invoice_detail.html', invoice=invoice)
 
 @billing_bp.route('/create_invoice/<int:order_id>')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('invoice_created')
 def create_invoice_from_order(order_id, current_agency_id=None):
     """Create invoice from existing order"""
@@ -202,8 +198,7 @@ def create_invoice_from_order(order_id, current_agency_id=None):
         return redirect(url_for('order.view_order', order_id=order_id))
 
 @billing_bp.route('/record_payment/<int:invoice_id>', methods=['GET', 'POST'])
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('payment_recorded')
 def record_payment(invoice_id, current_agency_id=None):
     """Record payment for an invoice"""
@@ -278,8 +273,7 @@ def record_payment(invoice_id, current_agency_id=None):
                          payment_methods=payment_methods)
 
 @billing_bp.route('/payment_methods')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def list_payment_methods(current_agency_id=None):
     """List payment methods for agency"""
     user_role = session.get('role')
@@ -292,8 +286,7 @@ def list_payment_methods(current_agency_id=None):
     return render_template('billing/payment_methods.html', payment_methods=payment_methods)
 
 @billing_bp.route('/add_payment_method', methods=['GET', 'POST'])
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('payment_method_added')
 def add_payment_method(current_agency_id=None):
     """Add new payment method"""
@@ -353,8 +346,7 @@ def add_payment_method(current_agency_id=None):
     return render_template('billing/add_payment_method.html')
 
 @billing_bp.route('/reports')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def reports(current_agency_id=None):
     """Billing reports and analytics"""
     user_role = session.get('role')

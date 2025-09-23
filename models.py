@@ -34,14 +34,16 @@ class Agency(db.Model):
     email = db.Column(db.String(120))
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    agency_manager_id = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=True, index=True)
     
     # Relationships
-    users = db.relationship('User', backref='agency', lazy=True)
+    users = db.relationship('User', backref='agency', lazy=True, foreign_keys='User.agency_id')
     locations = db.relationship('Location', backref='agency', lazy=True)
     product_mappings = db.relationship('ProductAgency', backref='agency', lazy=True)
     orders = db.relationship('Order', backref='agency', lazy=True)
     invoices = db.relationship('Invoice', backref='agency', lazy=True)
     suppliers = db.relationship('Supplier', backref='agency', lazy=True)
+    manager = db.relationship('User', foreign_keys=[agency_manager_id])
 
 class User(db.Model):
     __tablename__ = 'ASP_users'
@@ -51,7 +53,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))
-    role = db.Column(db.String(20), nullable=False)  # super_admin, agency_admin, staff, salesperson, pos_user
+    role = db.Column(db.String(20), nullable=False)  # super_admin, agency_admin, agency_manager, staff, salesperson, pos_user
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

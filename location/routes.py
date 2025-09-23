@@ -4,14 +4,13 @@ import csv, io, os
 from app import db
 from models import Location, Agency
 from location import location_bp
-from auth.utils import login_required, role_required, agency_access_required
+from auth.utils import login_required, role_required, permission_required
 from utils.decorators import log_activity
 import pandas as pd
 from datetime import datetime
 
 @location_bp.route('/')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson'])
 def list_locations(current_agency_id=None):
     user_role = session.get('role')
     

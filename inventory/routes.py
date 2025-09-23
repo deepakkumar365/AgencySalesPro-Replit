@@ -7,13 +7,12 @@ from models import (
     InventoryTransaction, Supplier, PurchaseOrder
 )
 from inventory import inventory_bp
-from auth.utils import login_required, agency_access_required, get_role_permissions
+from auth.utils import login_required, permission_required, get_role_permissions
 from utils.decorators import log_activity
 import uuid
 
 @inventory_bp.route('/dashboard')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def dashboard(current_agency_id=None):
     """Inventory Dashboard with stock levels and alerts"""
     user_role = session.get('role')
@@ -77,8 +76,7 @@ def dashboard(current_agency_id=None):
                          recent_transactions=recent_transactions)
 
 @inventory_bp.route('/stock_levels')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def stock_levels(current_agency_id=None):
     """View and manage stock levels"""
     user_role = session.get('role')
@@ -137,8 +135,7 @@ def stock_levels(current_agency_id=None):
                          })
 
 @inventory_bp.route('/adjust_stock/<int:product_id>', methods=['GET', 'POST'])
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('stock_adjusted')
 def adjust_stock(product_id, current_agency_id=None):
     """Adjust stock levels for a product"""
@@ -196,8 +193,7 @@ def adjust_stock(product_id, current_agency_id=None):
     return render_template('inventory/adjust_stock.html', product=product)
 
 @inventory_bp.route('/transactions')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def transaction_history(current_agency_id=None):
     """View inventory transaction history"""
     user_role = session.get('role')
@@ -264,8 +260,7 @@ def transaction_history(current_agency_id=None):
                          })
 
 @inventory_bp.route('/suppliers')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def list_suppliers(current_agency_id=None):
     """List suppliers for inventory management"""
     user_role = session.get('role')
@@ -293,8 +288,7 @@ def list_suppliers(current_agency_id=None):
     return render_template('inventory/suppliers.html', suppliers=suppliers)
 
 @inventory_bp.route('/add_supplier', methods=['GET', 'POST'])
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('supplier_added')
 def add_supplier(current_agency_id=None):
     """Add new supplier"""
@@ -352,8 +346,7 @@ def add_supplier(current_agency_id=None):
     return render_template('inventory/add_supplier.html')
 
 @inventory_bp.route('/reports')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def reports(current_agency_id=None):
     """Inventory reports and analytics"""
     user_role = session.get('role')

@@ -7,12 +7,11 @@ from models import (
     User, Agency, Location
 )
 from reports import reports_bp
-from auth.utils import login_required, agency_access_required
+from auth.utils import login_required, permission_required
 from sqlalchemy import func, and_, or_
 
 @reports_bp.route('/dashboard')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def unified_dashboard(current_agency_id=None):
     """Unified reporting dashboard showing KPIs across all modules"""
     user_role = session.get('role')
@@ -128,8 +127,7 @@ def unified_dashboard(current_agency_id=None):
                          period_end=end_date.strftime('%Y-%m-%d'))
 
 @reports_bp.route('/sales_analytics')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def sales_analytics(current_agency_id=None):
     """Detailed sales analytics and trends"""
     user_role = session.get('role')
@@ -209,8 +207,7 @@ def sales_analytics(current_agency_id=None):
                          end_date=end_date.strftime('%Y-%m-%d'))
 
 @reports_bp.route('/api/dashboard_data')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def dashboard_api(current_agency_id=None):
     """API endpoint for dashboard charts"""
     user_role = session.get('role')
@@ -278,8 +275,7 @@ def dashboard_api(current_agency_id=None):
     return jsonify({'error': 'Unknown chart type'})
 
 @reports_bp.route('/export/<report_type>')
-@login_required
-@agency_access_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def export_report(report_type, current_agency_id=None):
     """Export reports to CSV format"""
     user_role = session.get('role')

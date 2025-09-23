@@ -5,12 +5,11 @@ import csv, io
 from app import db
 from models import Agency, User, Order, Product, Customer, ActivityLog, Location
 from super_admin import super_admin_bp
-from auth.utils import login_required, role_required
+from auth.utils import login_required, role_required, get_role_permissions
 from utils.decorators import log_activity
 
 @super_admin_bp.route('/dashboard')
-@login_required
-@role_required('super_admin')
+@role_required('super_admin', 'agency_manager')
 def dashboard():
     # Get statistics
     stats = {
@@ -52,14 +51,38 @@ def dashboard():
                          top_agencies=top_agencies)
 
 @super_admin_bp.route('/users')
-@login_required
-@role_required('super_admin')
+@role_required('super_admin', 'agency_manager')
 def manage_users():
-    users = User.query.all()
-    return render_template('super_admin/users.html', users=users)
+    user_role = session.get('role')
+    user_id = session.get('user_id')
+    agency_filter = request.args.get('agency_filter', type=int)
+
+    agencies_for_filter = []
+    if user_role == 'super_admin':
+        agencies_for_filter = Agency.query.order_by(Agency.name).all()
+        query = User.query
+        if agency_filter:
+            query = query.filter(User.agency_id == agency_filter)
+        users = query.all()
+    elif user_role == 'agency_manager':
+        # Get agencies managed by this manager
+        managed_agencies = Agency.query.filter_by(agency_manager_id=user_id).all()
+        agencies_for_filter = managed_agencies
+        managed_agency_ids = [agency.id for agency in managed_agencies]
+        
+        # Get users from those agencies
+        query = User.query.filter(User.agency_id.in_(managed_agency_ids))
+        
+        # If a specific agency is filtered, ensure it's one they manage
+        if agency_filter and agency_filter in managed_agency_ids:
+            query = query.filter(User.agency_id == agency_filter)
+        
+        users = query.all()
+    else:
+        users = []
+    return render_template('super_admin/users.html', users=users, agencies_for_filter=agencies_for_filter, current_agency_filter=agency_filter)
 
 @super_admin_bp.route('/users/<int:user_id>/toggle_status', methods=['POST'])
-@login_required
 @role_required('super_admin')
 def toggle_user_status(user_id):
     user = User.query.get_or_404(user_id)
@@ -79,8 +102,7 @@ def toggle_user_status(user_id):
     return redirect(url_for('super_admin.manage_users'))
 
 @super_admin_bp.route('/activities')
-@login_required
-@role_required('super_admin')
+@role_required('super_admin', 'agency_manager')
 def view_activities():
     page = request.args.get('page', 1, type=int)
     activities = ActivityLog.query.order_by(ActivityLog.created_at.desc()).paginate(
@@ -89,8 +111,7 @@ def view_activities():
     return render_template('super_admin/activities.html', activities=activities)
 
 @super_admin_bp.route('/system_config', methods=['GET', 'POST'])
-@login_required
-@role_required('super_admin')
+@role_required('super_admin', 'agency_manager')
 def system_config():
     if request.method == 'POST':
         # Handle system configuration updates
@@ -101,8 +122,7 @@ def system_config():
     return render_template('super_admin/config.html')
 
 @super_admin_bp.route('/reports')
-@login_required
-@role_required('super_admin')
+@role_required('super_admin', 'agency_manager')
 def reports():
     # Generate various reports
     
@@ -129,51 +149,8 @@ def reports():
                          agency_performance=agency_performance,
                          user_activity=user_activity)
 
-@super_admin_bp.route('/create_agency_admin', methods=['GET', 'POST'])
-@login_required
-@role_required('super_admin')
-def create_agency_admin():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        first_name = request.form.get('first_name')
-        last_name = request.form.get('last_name')
-        agency_id = request.form.get('agency_id')
-        
-        # Validation
-        if User.query.filter_by(username=username).first():
-            flash('Username already exists', 'error')
-            return redirect(url_for('super_admin.create_agency_admin'))
-        
-        if User.query.filter_by(email=email).first():
-            flash('Email already exists', 'error')
-            return redirect(url_for('super_admin.create_agency_admin'))
-        
-        # Create agency admin
-        new_admin = User(
-            username=username,
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            role='agency_admin',
-            agency_id=agency_id,
-            is_active=True
-        )
-        new_admin.set_password(password)
-        
-        db.session.add(new_admin)
-        db.session.commit()
-        
-        flash(f'Agency admin {username} created successfully!', 'success')
-        return redirect(url_for('super_admin.manage_users'))
-    
-    agencies = Agency.query.filter_by(is_active=True).all()
-    return render_template('super_admin/create_agency_admin.html', agencies=agencies)
-
 @super_admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
-@login_required
-@role_required('super_admin')
+@role_required('super_admin', 'agency_manager')
 def edit_user(user_id):
     user = User.query.get_or_404(user_id)
     
@@ -191,6 +168,22 @@ def edit_user(user_id):
             agencies = Agency.query.filter_by(is_active=True).all()
             return render_template('super_admin/edit_user.html', user=user, agencies=agencies)
         
+        # Prevent role change if user is an active agency manager
+        if user.role == 'agency_manager' and user.role != role:
+            managed_agency = Agency.query.filter_by(agency_manager_id=user.id).first()
+            if managed_agency:
+                flash(f"Cannot change role for user '{user.username}' because they are the manager of the '{managed_agency.name}' agency. Please reassign the manager first.", 'error')
+                agencies = Agency.query.filter_by(is_active=True).all()
+                return render_template('super_admin/edit_user.html', user=user, agencies=agencies)
+
+        # Ensure agency-specific roles are assigned to an agency
+        roles_requiring_agency = ['agency_admin', 'staff', 'salesperson', 'pos_user']
+        if role in roles_requiring_agency and not agency_id:
+            flash(f"The role '{role.replace('_', ' ').title()}' requires an agency assignment. Please select an agency.", 'error')
+            agencies = Agency.query.filter_by(is_active=True).all()
+            # Pass back the attempted form data
+            return render_template('super_admin/edit_user.html', user=user, agencies=agencies)
+
         user.role = role
         user.agency_id = agency_id if agency_id else None
         
@@ -206,9 +199,32 @@ def edit_user(user_id):
     agencies = Agency.query.filter_by(is_active=True).all()
     return render_template('super_admin/edit_user.html', user=user, agencies=agencies)
 
+@super_admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
+@role_required('super_admin', 'agency_manager')
+@log_activity('delete_user')
+def delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+
+    # Prevent deleting super admins
+    if user.role == 'super_admin':
+        flash('Super admin accounts cannot be deleted.', 'error')
+        return redirect(url_for('super_admin.manage_users'))
+
+    # Check if the user is an active agency manager
+    managed_agency = Agency.query.filter_by(agency_manager_id=user.id).first()
+    if managed_agency:
+        flash(f"Cannot delete user '{user.username}' because they are the manager of the '{managed_agency.name}' agency. Please reassign the manager first.", 'error')
+        return redirect(url_for('super_admin.manage_users'))
+
+    # Add other checks here if needed (e.g., if user has orders)
+
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'User {user.username} has been deleted successfully.', 'success')
+    return redirect(url_for('super_admin.manage_users'))
+
 @super_admin_bp.route('/users/<int:user_id>/reset_password', methods=['GET', 'POST'])
-@login_required
-@role_required('super_admin')
+@role_required('super_admin', 'agency_manager')
 def reset_password(user_id):
     user = User.query.get_or_404(user_id)
     
@@ -235,8 +251,7 @@ def reset_password(user_id):
 # User Import/Export Routes
 
 @super_admin_bp.route('/users/download_template')
-@login_required
-@role_required('super_admin')
+@role_required('super_admin', 'agency_manager')
 def download_user_template():
     """Download CSV template for user import"""
     output = io.StringIO()
@@ -257,8 +272,7 @@ def download_user_template():
     return response
 
 @super_admin_bp.route('/users/export')
-@login_required
-@role_required('super_admin')
+@role_required('super_admin', 'agency_manager')
 def export_users():
     """Export existing users to CSV"""
     users = User.query.join(Agency).all()
@@ -290,8 +304,7 @@ def export_users():
     return response
 
 @super_admin_bp.route('/users/import', methods=['GET', 'POST'])
-@login_required
-@role_required('super_admin')
+@role_required('super_admin', 'agency_manager')
 @log_activity('import_users')
 def import_users():
     """Import users from CSV file"""
@@ -318,7 +331,8 @@ def import_users():
             error_count = 0
             errors = []
             
-            valid_roles = ['super_admin', 'agency_admin', 'staff', 'salesperson']
+            # Get all defined roles dynamically
+            valid_roles = list(get_role_permissions(None).keys())
             
             for row_num, row in enumerate(csv_input, start=2):  # Start from 2 to account for header
                 try:
@@ -408,8 +422,7 @@ def import_users():
     return render_template('super_admin/import_users.html')
 
 @super_admin_bp.route('/export_data')
-@login_required
-@role_required('super_admin')
+@role_required('super_admin', 'agency_manager')
 def export_data():
     # Export comprehensive system data
     # This would be implemented with pandas/Excel export functionality
