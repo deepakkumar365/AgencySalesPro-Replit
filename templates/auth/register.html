@@ -100,22 +100,7 @@
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const roleSelect = document.getElementById('role');
-        const agencySelect = document.getElementById('agency_id');
-        // This list should match the server-side validation
-        const rolesRequiringAgency = ['agency_admin', 'agency_manager', 'staff', 'salesperson', 'pos_user'];
-
-        function toggleAgencyRequirement() {
-            if (agencySelect && rolesRequiringAgency.includes(roleSelect.value)) {
-                agencySelect.required = true;
-            } else if (agencySelect) {
-                agencySelect.required = false;
-            }
-        }
-
-        roleSelect.addEventListener('change', toggleAgencyRequirement);
-        toggleAgencyRequirement(); // Set initial state on page load
-    });
+    // No client-side requirement for agency selection.
+    // The backend will handle the optional agency_id.
 </script>
 {% endblock %}
