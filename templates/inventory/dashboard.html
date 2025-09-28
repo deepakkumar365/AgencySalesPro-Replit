@@ -2,17 +2,21 @@
 
 {% block title %}Inventory Dashboard - AgencySales Pro{% endblock %}
 
+{% block head %}
+{{ super() }}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-boxes me-2"></i>Inventory Dashboard</h2>
     <div class="btn-group">
-        <a href="{{ url_for('inventory.stock_levels') }}" class="btn btn-outline-primary">
-            <i class="fas fa-list me-2"></i>Stock Levels
+        <a href="{{ url_for('inventory.stock_levels') }}" class="btn btn-outline-primary" title="View All Stock Levels">
+            <i class="fas fa-list me-2"></i>Stock List
         </a>
-        <a href="{{ url_for('inventory.adjust_stock', product_id=1) }}" class="btn btn-outline-warning" 
-           onclick="return false;" title="Select a product from stock levels to adjust">
+        <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#adjustStockModal" title="Adjust Stock for a Product">
             <i class="fas fa-edit me-2"></i>Adjust Stock
-        </a>
+        </button>
         <a href="{{ url_for('inventory.reports') }}" class="btn btn-outline-info">
             <i class="fas fa-chart-bar me-2"></i>Reports
         </a>
@@ -270,12 +274,83 @@
     </div>
 </div>
 {% endblock %}
-
-{% block extra_js %}
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 <script>
-// Auto-refresh dashboard every 5 minutes
-setTimeout(() => {
-    location.reload();
-}, 300000);
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-refresh dashboard every 5 minutes
+    setTimeout(() => {
+        location.reload();
+    }, 300000);
+
+    // --- Adjust Stock Modal Logic ---
+    const adjustStockModal = document.getElementById('adjustStockModal');
+    if (adjustStockModal) {
+        const productSearchInput = document.getElementById('modalProductSearch');
+        const goToAdjustBtn = document.getElementById('goToAdjustBtn');
+        let selectedProductId = null;
+
+        const tomSelect = new TomSelect(productSearchInput, {
+            valueField: 'id',
+            labelField: 'display_text',
+            searchField: ['name', 'sku', 'display_text'],
+            maxOptions: 50,
+            create: false,
+            placeholder: 'Type name or SKU to search...',
+            load: function(query, callback) {
+                if (!query || query.length < 2) return callback();
+                // Using the order search API as it's versatile
+                fetch(`{{ url_for('order.search_products_v2') }}?q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(items => callback(items))
+                    .catch(() => callback());
+            },
+            render: {
+                option: function(item, escape) { return `<div>${escape(item.display_text)}</div>`; },
+                item: function(item, escape) { return `<div>${escape(item.display_text)}</div>`; }
+            },
+            onChange: function(value) {
+                selectedProductId = value;
+                goToAdjustBtn.disabled = !value;
+            }
+        });
+
+        goToAdjustBtn.addEventListener('click', function() {
+            if (selectedProductId) {
+                window.location.href = `/inventory/adjust_stock/${selectedProductId}`;
+            }
+        });
+
+        // Clear selection when modal is hidden
+        adjustStockModal.addEventListener('hidden.bs.modal', function () {
+            tomSelect.clear();
+            selectedProductId = null;
+            goToAdjustBtn.disabled = true;
+        });
+    }
+});
 </script>
+{% endblock %}
+
+{% block modals %}
+<!-- Adjust Stock Modal -->
+<div class="modal fade" id="adjustStockModal" tabindex="-1" aria-labelledby="adjustStockModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="adjustStockModalLabel"><i class="fas fa-edit me-2"></i>Adjust Stock</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Search for the product you want to adjust.</p>
+        <select id="modalProductSearch" class="form-control"></select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="goToAdjustBtn" disabled>Go to Adjust Page</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

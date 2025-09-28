@@ -220,30 +220,40 @@ def adjust_stock(product_id, current_agency_id=None):
     user_role = session.get('role')
     user_id = session.get('user_id')
 
-    # Get product with permission check
-    if user_role == 'super_admin':
-        product = Product.query.get_or_404(product_id)
-        # For super_admin, we need to know which agency's stock to adjust.
-        # This needs to be passed in the form or as a query parameter.
-        # For now, let's assume it's passed in the form.
-        agency_id_from_form = request.form.get('agency_id', type=int)
-        if not agency_id_from_form:
-            flash('Please select an agency for stock adjustment.', 'error')
-            return render_template('inventory/adjust_stock.html', product=product)
-        product_agency = ProductAgency.query.filter_by(product_id=product_id, agency_id=agency_id_from_form).first_or_404()
-    else:
-        from models import ProductAgency
-        product_agency = ProductAgency.query.filter_by(product_id=product_id, agency_id=current_agency_id).first_or_404()
-        product = product_agency.product # Get the actual product object
-
     # Calculate current stock for the product
+    from sqlalchemy import func
     current_stock_result = db.session.query(func.sum(InventoryTransaction.quantity_change)).filter(
         InventoryTransaction.product_id == product_id
     ).scalar()
     current_stock = current_stock_result or 0
 
+    # Get product with permission check
+    if user_role == 'super_admin':
+        product = Product.query.get_or_404(product_id)
+        # For super_admin, agency is determined from form (POST) or query param (GET)
+        agency_id_from_request = None
+        if request.method == 'POST':
+            agency_id_from_request = request.form.get('agency_id', type=int)
+        else: # GET request
+            agency_id_from_request = request.args.get('agency_id', type=int)
+
+        if request.method == 'POST' and not agency_id_from_request:
+            flash('Please select an agency for stock adjustment.', 'error')
+            return render_template('inventory/adjust_stock.html', product=product, agencies=Agency.query.filter_by(is_active=True).all(), current_stock=current_stock)
+        
+        product_agency = None
+        if agency_id_from_request:
+            product_agency = ProductAgency.query.filter_by(product_id=product_id, agency_id=agency_id_from_request).first()
+    else:
+        product_agency = ProductAgency.query.filter_by(product_id=product_id, agency_id=current_agency_id).first_or_404()
+        product = product_agency.product # Get the actual product object
+
 
     if request.method == 'POST':
+        if not product_agency:
+            flash('This product is not mapped to the selected agency. Cannot adjust stock.', 'error')
+            return redirect(url_for('inventory.adjust_stock', product_id=product_id))
+
         try:
             # Get form data
             adjustment_type = request.form.get('adjustment_type')  # 'increase' or 'decrease'
@@ -254,7 +264,7 @@ def adjust_stock(product_id, current_agency_id=None):
             # Validate
             if quantity <= 0:
                 flash('Quantity must be greater than 0', 'error')
-                return render_template('inventory/adjust_stock.html', product=product, product_agency=product_agency)
+                return render_template('inventory/adjust_stock.html', product=product, product_agency=product_agency, current_stock=current_stock)
             
             quantity_change = 0
 
@@ -278,7 +288,7 @@ def adjust_stock(product_id, current_agency_id=None):
                 transaction_type='adjustment',
                 quantity_change=quantity_change,
                 quantity_before=quantity_before,
-                quantity_after=quantity_after,
+                quantity_after=quantity_after, # Corrected from previous state
                 unit_cost=product_agency.buy_price, # Use agency-specific buy price
                 reference_type='manual_adjustment',
                 notes=f'{reason}: {notes}' if notes else reason,
