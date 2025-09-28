@@ -149,7 +149,7 @@ def get_role_permissions(role):
             'can_manage_all_users': False,
             'can_view_all_data': False,
             'can_access_pos': False,
-            'can_manage_inventory': False,
+            'can_manage_inventory': True,
             'can_manage_billing': False,
             'can_view_reports': False,
             'can_manage_orders': True

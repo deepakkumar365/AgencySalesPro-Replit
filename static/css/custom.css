@@ -535,10 +535,12 @@ a:hover {
   
   /* Buttons */
   .btn {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.85rem;
-    width: 100%;
+    padding: 0.375rem 0.75rem; /* Reduced vertical padding */
+    font-size: 0.8rem;
+    width: auto; /* Let button size to content */
+    min-width: 100px; /* Ensure a minimum reasonable width */
     margin-bottom: 0.5rem;
+    text-align: center;
   }
   
   .btn-group .btn {
@@ -746,8 +748,6 @@ a:hover {
   /* Action buttons - make them smaller and stack */
   .btn-group {
     display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
   }
   
   .btn-group .btn {
@@ -758,8 +758,6 @@ a:hover {
   /* Or keep horizontal but smaller */
   .btn-group-sm {
     display: flex;
-    flex-direction: row;
-    gap: 0.25rem;
   }
   
   .btn-group-sm .btn {

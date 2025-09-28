@@ -8,7 +8,7 @@ from sqlalchemy import func, or_, and_
 
 @overrides_bp.route('/')
 @login_required
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson'])
 def list_overrides(current_agency_id=None):
     user_role = session.get('role')
     # Build filters (super_admin can choose agency; others are fixed)

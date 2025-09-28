@@ -300,14 +300,20 @@ def search_products_v2(current_agency_id=None):
     user_role = session.get('role')
     agency_id = current_agency_id or session.get('agency_id')
 
-    # Join Product with ProductAgency to pull overrides when available
-    # Only include active mappings for non-super-admin users
-    base = db.session.query(Product).outerjoin(
-        ProductAgency,
-        and_(ProductAgency.product_id == Product.id,
-             ProductAgency.agency_id == agency_id)
-    )
-    base = base.add_entity(ProductAgency)
+    if user_role != 'super_admin':
+        # For non-super-admins, only show products actively mapped to their agency
+        base = db.session.query(Product).join(
+            ProductAgency,
+            and_(ProductAgency.product_id == Product.id,
+                 ProductAgency.agency_id == agency_id,
+                 ProductAgency.is_active == True) # Explicitly filter for active mappings
+        )
+    else:
+        # Super admin can see all master products, with overrides if they exist for the agency_id
+        base = db.session.query(Product).outerjoin(
+            ProductAgency,
+            and_(ProductAgency.product_id == Product.id, ProductAgency.agency_id == agency_id))
+    base = base.add_entity(ProductAgency) # Add ProductAgency as an entity to the query for selection
 
     # Active products only
     base = base.filter(Product.is_active == True)

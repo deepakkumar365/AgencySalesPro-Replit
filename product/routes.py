@@ -4,7 +4,8 @@ import pandas as pd
 import io
 import os
 from app import db
-from models import Product, Agency, ProductAgency
+from sqlalchemy import func, or_, and_, literal_column
+from models import Product, Agency, ProductAgency, Category, UOM, TaxMaster
 from product import product_bp
 from auth.utils import login_required, permission_required
 from utils.decorators import log_activity
@@ -14,14 +15,46 @@ from utils.sku import generate_sku
 @product_bp.route('/')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson', 'pos_user'])
 def list_products(current_agency_id=None):
+    print(session.get('role'), session.get('agency_id'))
     user_role = session.get('role')
-    
-    # Start with base query
-    # Base query uses mapping for visibility
+    agency_filter = request.args.get('agency', type=int)
+
+    # Determine the target agency_id for querying overrides
+    target_agency_id = None
     if user_role == 'super_admin':
-        query = db.session.query(Product).outerjoin(ProductAgency, ProductAgency.product_id == Product.id)
+        target_agency_id = agency_filter
     else:
-        query = db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id).filter(ProductAgency.agency_id == current_agency_id)
+        target_agency_id = current_agency_id
+    
+    # Optimized query to fetch products and their effective properties
+    query = db.session.query(
+        Product,
+        ProductAgency,
+        func.coalesce(ProductAgency.buy_price, Product.buy_price).label('effective_buy_price'),
+        func.coalesce(ProductAgency.sell_price, Product.sell_price).label('effective_sell_price'),
+        func.coalesce(ProductAgency.mrp_price, Product.mrp_price).label('effective_mrp_price'),
+        func.coalesce(ProductAgency.is_active, literal_column("1")).label('effective_active')
+    )
+
+    # Join logic based on role and filters
+    if user_role == 'super_admin' and not target_agency_id:
+        # Super admin, no agency filter: show all master products
+        query = query.outerjoin(ProductAgency, and_(
+            ProductAgency.product_id == Product.id,
+            ProductAgency.agency_id == (current_agency_id or -1) # Join on session agency or a non-existent one
+        ))
+    else:
+        # All other roles, or super admin with a filter: join on the target agency
+        join_condition = and_(ProductAgency.product_id == Product.id, ProductAgency.agency_id == target_agency_id)
+        if user_role == 'super_admin':
+            query = query.outerjoin(ProductAgency, join_condition)
+        else: # Non-super-admins must have a mapping to see the product
+            # Ensure the mapping is active for non-super-admins
+            active_join_condition = and_(
+                ProductAgency.product_id == Product.id, 
+                ProductAgency.agency_id == target_agency_id,
+                ProductAgency.is_active == True)
+            query = query.join(ProductAgency, active_join_condition)
 
     # Apply filters
     date_from = request.args.get('date_from')
@@ -46,10 +79,7 @@ def list_products(current_agency_id=None):
         except ValueError:
             pass
 
-    if agency_filter and user_role == 'super_admin':
-        query = query.filter(ProductAgency.agency_id == agency_filter)
-
-    if category_filter:
+    if category_filter: # This filter might need adjustment based on new query structure
         # Match either mapping override or global default
         query = query.filter((ProductAgency.category_id == category_filter) | (Product.category_id == category_filter))
 
@@ -58,64 +88,30 @@ def list_products(current_agency_id=None):
     elif status_filter == 'inactive':
         query = query.filter(ProductAgency.is_active == False)
 
-    # Show unique products by default for super_admin unless an agency filter is applied
-    if user_role == 'super_admin' and not agency_filter:
-        # Use PostgreSQL-specific DISTINCT ON for performance
-        query = query.order_by(Product.id, Product.created_at.desc()).distinct(Product.id)
-
-    else:
-        query = query.order_by(Product.created_at.desc())
-    products = query.all()
+    query = query.order_by(Product.name)
+    results = query.all()
     
     # Get filter options
     agencies = []
     if user_role == 'super_admin':
         agencies = Agency.query.filter_by(is_active=True).all()
     
-    # Get unique categories from Category table (global masters)
-    from models import Category
-    categories = Category.query.filter_by(is_active=True).all()
-
-    # Build view-model rows including mapping-derived properties
-    rows = []
-    for product in products:
-        # Find mapping for current or selected agency if applicable
-        mapping = None
-        if user_role == 'super_admin' and agency_filter:
-            mapping = ProductAgency.query.filter_by(product_id=product.id, agency_id=int(agency_filter)).first()
-        elif user_role != 'super_admin':
-            mapping = ProductAgency.query.filter_by(product_id=product.id, agency_id=current_agency_id).first()
-        # Compose effective fields
-        effective_buy = mapping.buy_price if mapping and mapping.buy_price is not None else product.buy_price
-        effective_sell = mapping.sell_price if mapping and mapping.sell_price is not None else product.sell_price
-        effective_mrp = mapping.mrp_price if mapping and mapping.mrp_price is not None else product.mrp_price
-        effective_category = mapping.category_ref if mapping and mapping.category_id else product.category_ref
-        effective_active = mapping.is_active if mapping else True
-        rows.append({
-            'product': product,
-            'mapping': mapping,
-            'effective_buy_price': effective_buy,
-            'effective_sell_price': effective_sell,
-            'effective_mrp_price': effective_mrp,
-            'effective_category': effective_category,
-            'effective_active': effective_active
-        })
+    categories = Category.query.filter_by(is_active=True).order_by(Category.name).all()
 
     return render_template('product/list.html', 
-                         products=products,
-                         product_rows=rows,
+                         product_rows=results,
                          agencies=agencies,
                          categories=categories,
                          filters={
                              'date_from': date_from,
                              'date_to': date_to,
-                             'agency': agency_filter,
+                             'agency': target_agency_id,
                              'category': category_filter,
                              'status': status_filter
                          })
 
 @product_bp.route('/create', methods=['GET', 'POST'])
-@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('create_product')
 def create_product():
     if request.method == 'POST':
@@ -285,7 +281,7 @@ def create_product():
                          tax_masters=tax_masters)
 
 @product_bp.route('/<int:product_id>/edit', methods=['GET', 'POST'])
-@login_required
+@permission_required(roles=['super_admin'])
 @log_activity('edit_product')
 def edit_product(product_id):
     product = Product.query.get_or_404(product_id)
@@ -409,16 +405,15 @@ def toggle_product_status(product_id):
 @product_bp.route('/<int:product_id>/delete', methods=['POST'])
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('delete_product')
-def delete_product(product_id):
+def delete_product(product_id, current_agency_id=None):
     product = Product.query.get_or_404(product_id)
     
     user_role = session.get('role')
-    current_agency_id = session.get('agency_id')
     
     # Delete mapping (agency-specific). Do not delete master unless no mappings remain.
     target_agency_id = None
     if user_role == 'super_admin':
-        target_agency_id = request.form.get('agency_id') or session.get('agency_id')
+        target_agency_id = request.form.get('agency_id', type=int) or session.get('agency_id')
     else:
         target_agency_id = current_agency_id
     
