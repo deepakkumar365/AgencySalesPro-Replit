@@ -11,6 +11,35 @@ from auth.utils import login_required, permission_required, get_role_permissions
 from utils.decorators import log_activity
 import uuid
 
+
+def _get_agency_context(user_role, current_agency_id, form):
+    """Determine agency context for supplier operations."""
+    if user_role == 'super_admin':
+        selected_agency_id = form.get('agency_id', '').strip()
+        if not selected_agency_id:
+            return None, 'Please select an agency for this supplier.'
+        try:
+            agency_id = int(selected_agency_id)
+        except ValueError:
+            return None, 'Invalid agency selection.'
+        return agency_id, None
+
+    return current_agency_id, None if current_agency_id else 'Unable to determine agency context for supplier.'
+
+
+def _build_supplier_form_data(supplier):
+    """Prepare supplier data for form rendering."""
+    return {
+        'agency_id': str(supplier.agency_id) if supplier.agency_id else '',
+        'name': supplier.name or '',
+        'contact_person': supplier.contact_person or '',
+        'email': supplier.email or '',
+        'phone': supplier.phone or '',
+        'address': supplier.address or '',
+        'notes': supplier.notes or '',
+        'is_active': 'on' if supplier.is_active else ''
+    }
+
 @inventory_bp.route('/dashboard')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def dashboard(current_agency_id=None):
@@ -288,10 +317,17 @@ def list_suppliers(current_agency_id=None):
     return render_template('inventory/suppliers.html', suppliers=suppliers)
 
 @inventory_bp.route('/add_supplier', methods=['GET', 'POST'])
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('supplier_added')
 def add_supplier(current_agency_id=None):
     """Add new supplier"""
+    user_role = session.get('role')
+    agencies = []
+    form_data = request.form if request.method == 'POST' else {}
+
+    if user_role == 'super_admin':
+        agencies = Agency.query.filter_by(is_active=True).order_by(Agency.name).all()
+
     if request.method == 'POST':
         try:
             # Get form data
@@ -302,25 +338,39 @@ def add_supplier(current_agency_id=None):
             address = request.form.get('address', '').strip()
             notes = request.form.get('notes', '').strip()
             is_active = request.form.get('is_active') == 'on'
-            
+
+            agency_id, agency_error = _get_agency_context(user_role, current_agency_id, request.form)
+            if agency_error:
+                flash(agency_error, 'error')
+                return render_template(
+                    'inventory/add_supplier.html',
+                    agencies=agencies,
+                    form_data=form_data
+                )
+
             # Validation
             if not name:
                 flash('Supplier name is required', 'error')
-                return render_template('inventory/add_supplier.html')
-            
+                return render_template(
+                    'inventory/add_supplier.html',
+                    agencies=agencies,
+                    form_data=form_data
+                )
+
             # Check for duplicate name within agency
-            user_role = session.get('role')
-            if user_role == 'super_admin':
-                existing = Supplier.query.filter_by(name=name).first()
-            else:
-                existing = Supplier.query.filter_by(
-                    name=name, agency_id=current_agency_id
-                ).first()
-            
+            existing = Supplier.query.filter_by(
+                name=name,
+                agency_id=agency_id
+            ).first()
+
             if existing:
-                flash('Supplier with this name already exists', 'error')
-                return render_template('inventory/add_supplier.html')
-            
+                flash('Supplier with this name already exists for the selected agency.', 'error')
+                return render_template(
+                    'inventory/add_supplier.html',
+                    agencies=agencies,
+                    form_data=form_data
+                )
+
             # Create supplier
             supplier = Supplier(
                 name=name,
@@ -329,21 +379,141 @@ def add_supplier(current_agency_id=None):
                 phone=phone,
                 address=address,
                 notes=notes,
-                agency_id=current_agency_id,
+                agency_id=agency_id,
                 is_active=is_active
             )
-            
+
             db.session.add(supplier)
             db.session.commit()
-            
+
             flash('Supplier added successfully', 'success')
             return redirect(url_for('inventory.list_suppliers'))
-            
+
         except Exception as e:
             db.session.rollback()
             flash(f'Error adding supplier: {str(e)}', 'error')
-    
-    return render_template('inventory/add_supplier.html')
+
+    return render_template('inventory/add_supplier.html', agencies=agencies, form_data=form_data)
+
+
+@inventory_bp.route('/edit_supplier/<int:supplier_id>', methods=['GET', 'POST'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@log_activity('supplier_updated')
+def edit_supplier(supplier_id, current_agency_id=None):
+    """Edit existing supplier."""
+    user_role = session.get('role')
+
+    # Fetch supplier with access control
+    if user_role == 'super_admin':
+        supplier = Supplier.query.get_or_404(supplier_id)
+    else:
+        supplier = Supplier.query.filter_by(id=supplier_id, agency_id=current_agency_id).first_or_404()
+
+    agencies = []
+    if user_role == 'super_admin':
+        agencies = Agency.query.filter_by(is_active=True).order_by(Agency.name).all()
+
+    if request.method == 'POST':
+        form_data = request.form
+        try:
+            name = request.form.get('name', '').strip()
+            contact_person = request.form.get('contact_person', '').strip()
+            email = request.form.get('email', '').strip()
+            phone = request.form.get('phone', '').strip()
+            address = request.form.get('address', '').strip()
+            notes = request.form.get('notes', '').strip()
+            is_active = request.form.get('is_active') == 'on'
+
+            agency_id, agency_error = _get_agency_context(user_role, supplier.agency_id, request.form)
+            if agency_error:
+                flash(agency_error, 'error')
+                return render_template(
+                    'inventory/add_supplier.html',
+                    agencies=agencies,
+                    form_data=form_data,
+                    page_title='Edit Supplier',
+                    submit_label='Update Supplier',
+                    back_url=url_for('inventory.list_suppliers')
+                )
+
+            if not name:
+                flash('Supplier name is required', 'error')
+                return render_template(
+                    'inventory/add_supplier.html',
+                    agencies=agencies,
+                    form_data=form_data,
+                    page_title='Edit Supplier',
+                    submit_label='Update Supplier',
+                    back_url=url_for('inventory.list_suppliers')
+                )
+
+            # Check for duplicates within agency, excluding current supplier
+            existing = Supplier.query.filter(
+                Supplier.name == name,
+                Supplier.agency_id == agency_id,
+                Supplier.id != supplier.id
+            ).first()
+
+            if existing:
+                flash('Supplier with this name already exists for the selected agency.', 'error')
+                return render_template(
+                    'inventory/add_supplier.html',
+                    agencies=agencies,
+                    form_data=form_data,
+                    page_title='Edit Supplier',
+                    submit_label='Update Supplier',
+                    back_url=url_for('inventory.list_suppliers')
+                )
+
+            # Update supplier
+            supplier.name = name
+            supplier.contact_person = contact_person
+            supplier.email = email
+            supplier.phone = phone
+            supplier.address = address
+            supplier.notes = notes
+            supplier.agency_id = agency_id
+            supplier.is_active = is_active
+
+            db.session.commit()
+
+            flash('Supplier updated successfully', 'success')
+            return redirect(url_for('inventory.list_suppliers'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating supplier: {str(e)}', 'error')
+
+    form_data = _build_supplier_form_data(supplier)
+    return render_template(
+        'inventory/add_supplier.html',
+        agencies=agencies,
+        form_data=form_data,
+        page_title='Edit Supplier',
+        submit_label='Update Supplier',
+        back_url=url_for('inventory.list_suppliers')
+    )
+
+
+@inventory_bp.route('/toggle_supplier_status/<int:supplier_id>', methods=['POST'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@log_activity('supplier_status_toggled')
+def toggle_supplier_status(supplier_id, current_agency_id=None):
+    """Toggle supplier active/inactive status."""
+    user_role = session.get('role')
+
+    if user_role == 'super_admin':
+        supplier = Supplier.query.get_or_404(supplier_id)
+    else:
+        supplier = Supplier.query.filter_by(id=supplier_id, agency_id=current_agency_id).first_or_404()
+
+    supplier.is_active = not supplier.is_active
+    db.session.commit()
+
+    status_label = 'activated' if supplier.is_active else 'deactivated'
+    flash(f'Supplier {status_label} successfully', 'success')
+    return redirect(url_for('inventory.list_suppliers'))
+
 
 @inventory_bp.route('/reports')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])

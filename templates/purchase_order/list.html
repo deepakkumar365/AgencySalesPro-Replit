@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Purchase Orders - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-file-invoice me-2"></i>Purchase Orders
+            </h1>
+            <a href="{{ url_for('purchase_order.create_purchase_order') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Create Purchase Order
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        {% set has_filters = filters.agency or filters.supplier or filters.status %}
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-filter me-2"></i>Filters
+                </h6>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#purchaseOrderFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}" aria-controls="purchaseOrderFilters">
+                    <i class="fas fa-sliders-h me-1"></i> Toggle
+                </button>
+            </div>
+            <div id="purchaseOrderFilters" class="collapse {{ 'show' if has_filters else '' }}">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        {% if session.role == 'super_admin' and agencies %}
+                        <div class="col-md-3">
+                            <label for="agency" class="form-label">Agency</label>
+                            <select class="form-select" id="agency" name="agency">
+                                <option value="">All Agencies</option>
+                                {% for agency in agencies %}
+                                <option value="{{ agency.id }}" {{ 'selected' if filters.agency == agency.id|string else '' }}>
+                                    {{ agency.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+
+                        <div class="col-md-3">
+                            <label for="supplier" class="form-label">Supplier</label>
+                            <select class="form-select" id="supplier" name="supplier">
+                                <option value="">All Suppliers</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.id }}" {{ 'selected' if filters.supplier == supplier.id|string else '' }}>
+                                    {{ supplier.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">All Status</option>
+                                <option value="draft" {{ 'selected' if filters.status == 'draft' else '' }}>Draft</option>
+                                <option value="pending" {{ 'selected' if filters.status == 'pending' else '' }}>Pending</option>
+                                <option value="approved" {{ 'selected' if filters.status == 'approved' else '' }}>Approved</option>
+                                <option value="received" {{ 'selected' if filters.status == 'received' else '' }}>Received</option>
+                                <option value="cancelled" {{ 'selected' if filters.status == 'cancelled' else '' }}>Cancelled</option>
+                            </select>
+                        </div>
+
+
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="btn-group w-100">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search me-1"></i>Filter
+                                </button>
+                                <a href="{{ url_for('purchase_order.list_purchase_orders') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-1"></i>Clear
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if purchase_orders %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>PO #</th>
+                                <th>Supplier</th>
+
+                                <th>Status</th>
+                                <th class="d-none-mobile">Total</th>
+                                <th class="d-none-mobile">Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for purchase_order in purchase_orders %}
+                            <tr>
+                                <td>
+                                    <strong>{{ purchase_order.po_number or ('PO-' ~ purchase_order.id) }}</strong>
+                                </td>
+                                <td>
+                                    {{ purchase_order.supplier.name if purchase_order.supplier else 'N/A' }}
+                                </td>
+
+                                <td>
+                                    {% set status_class = {
+                                        'draft': 'secondary',
+                                        'pending': 'warning',
+                                        'approved': 'info',
+                                        'received': 'success',
+                                        'cancelled': 'danger'
+                                    } %}
+                                    <span class="badge bg-{{ status_class.get(purchase_order.status, 'secondary') }}">
+                                        {{ purchase_order.status.title() if purchase_order.status else 'Draft' }}
+                                    </span>
+                                </td>
+                                <td class="d-none-mobile">
+                                    ₹{{ '%.2f'|format(purchase_order.total_amount or 0) }}
+                                </td>
+                                <td class="d-none-mobile">
+                                    {{ purchase_order.created_at.strftime('%Y-%m-%d') if purchase_order.created_at else '' }}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('purchase_order.view_purchase_order', purchase_order_id=purchase_order.id) }}" class="btn btn-outline-info" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('purchase_order.create_purchase_order') }}?copy={{ purchase_order.id }}" class="btn btn-outline-primary" title="Duplicate">
+                                            <i class="fas fa-copy"></i>
+                                        </a>
+                                        {% if purchase_order.status in ['draft', 'pending'] %}
+                                        <a href="{{ url_for('purchase_order.edit_purchase_order', purchase_order_id=purchase_order.id) }}" class="btn btn-outline-warning" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                    <h5>No purchase orders found</h5>
+                    <p>Start by creating your first purchase order.</p>
+                    <a href="{{ url_for('purchase_order.create_purchase_order') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Create Purchase Order
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

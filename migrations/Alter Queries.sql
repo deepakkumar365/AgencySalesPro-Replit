@@ -33,3 +33,12 @@ ON DELETE SET NULL;
 -- searching for an agency by its manager.
 CREATE INDEX ix_asp_agencies_agency_manager_id ON "ASP_agencies" (agency_manager_id);
 
+
+ALTER TABLE "ASP_suppliers" ADD COLUMN notes TEXT;
+
+ALTER TABLE "ASP_purchase_orders" ADD COLUMN IF NOT EXISTS location_id INTEGER;
+ALTER TABLE "ASP_purchase_orders"
+    ADD CONSTRAINT IF NOT EXISTS fk_po_location FOREIGN KEY (location_id)
+        REFERENCES "ASP_locations" (id) ON DELETE SET NULL;
+
+

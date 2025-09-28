@@ -58,6 +58,7 @@ def create_app():
     from customer import customer_bp
     from product import product_bp
     from order import order_bp
+    from purchase_order import purchase_order_bp
     from super_admin import super_admin_bp
     from pos import pos_bp
     from billing import billing_bp
@@ -74,6 +75,7 @@ def create_app():
     app.register_blueprint(customer_bp, url_prefix='/customer')
     app.register_blueprint(product_bp, url_prefix='/product')
     app.register_blueprint(order_bp, url_prefix='/order')
+    app.register_blueprint(purchase_order_bp, url_prefix='/purchase-order')
     app.register_blueprint(super_admin_bp, url_prefix='/super_admin')
     app.register_blueprint(pos_bp, url_prefix='/pos')
     app.register_blueprint(billing_bp, url_prefix='/billing')

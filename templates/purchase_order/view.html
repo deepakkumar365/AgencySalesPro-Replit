@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Purchase Order {{ purchase_order.po_number or ('PO-' ~ purchase_order.id) }} - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-1">
+                    <i class="fas fa-file-invoice me-2"></i>Purchase Order
+                    <span class="text-muted">{{ purchase_order.po_number or ('PO-' ~ purchase_order.id) }}</span>
+                </h1>
+                <p class="text-muted mb-0">
+                    Created {{ purchase_order.created_at.strftime('%Y-%m-%d') if purchase_order.created_at else '' }} 
+                    by {{ purchase_order.creator.full_name if purchase_order.creator else 'System' }}
+                </p>
+            </div>
+            <div class="text-end">
+                {% set status_class = {
+                    'draft': 'secondary',
+                    'pending': 'warning',
+                    'approved': 'info',
+                    'received': 'success',
+                    'cancelled': 'danger'
+                } %}
+                <span class="badge bg-{{ status_class.get(purchase_order.status, 'secondary') }} fs-6">
+                    {{ purchase_order.status.title() if purchase_order.status else 'Draft' }}
+                </span>
+                <div class="mt-3">
+                    <a href="{{ url_for('purchase_order.list_purchase_orders') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-user-tie me-2"></i>Supplier Details
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if purchase_order.supplier %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <h5 class="mb-1">{{ purchase_order.supplier.name }}</h5>
+                        <p class="mb-0">
+                            <i class="fas fa-map-marker-alt me-2 text-muted"></i>
+                            {{ purchase_order.supplier.address or 'Address not provided' }}
+                        </p>
+                        <p class="mb-0">
+                            <i class="fas fa-phone me-2 text-muted"></i>
+                            {{ purchase_order.supplier.phone or 'N/A' }}
+                        </p>
+                        <p class="mb-0">
+                            <i class="fas fa-envelope me-2 text-muted"></i>
+                            {{ purchase_order.supplier.email or 'N/A' }}
+                        </p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <p class="mb-1"><strong>Agency:</strong> {{ purchase_order.agency.name if purchase_order.agency else 'N/A' }}</p>
+                        <p class="mb-1"><strong>Status:</strong> {{ purchase_order.status.title() if purchase_order.status else 'Draft' }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted">Supplier information not available.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-box-open me-2"></i>Items
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if purchase_order.po_items %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-end">Quantity</th>
+                                <th class="text-end">Unit Price</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in purchase_order.po_items %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.product.name if item.product else 'Unknown Product' }}</strong>
+                                    {% if item.product and item.product.sku %}
+                                    <br><small class="text-muted">SKU: {{ item.product.sku }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">{{ item.quantity_ordered }}</td>
+                                <td class="text-end">₹{{ '%.2f'|format(item.unit_cost or 0) }}</td>
+                                <td class="text-end">₹{{ '%.2f'|format(item.total_cost or 0) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No items recorded for this purchase order.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-receipt me-2"></i>Summary
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Subtotal</span>
+                    <span>₹{{ '%.2f'|format(purchase_order.subtotal_amount or 0) }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Tax</span>
+                    <span>₹{{ '%.2f'|format(purchase_order.total_tax_amount or 0) }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Discount</span>
+                    <span>₹{{ '%.2f'|format(purchase_order.total_discount_amount or 0) }}</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between mb-2">
+                    <strong>Grand Total</strong>
+                    <strong>₹{{ '%.2f'|format(purchase_order.total_amount or 0) }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-sticky-note me-2"></i>Internal Notes
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if purchase_order.notes %}
+                <p class="mb-0">{{ purchase_order.notes }}</p>
+                {% else %}
+                <p class="text-muted mb-0">No notes recorded.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
