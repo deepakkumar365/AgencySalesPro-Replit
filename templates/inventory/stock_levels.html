@@ -31,13 +31,12 @@
             </div>
             <div class="col-md-3">
                 <label for="stock_status" class="visually-hidden">Stock Status</label>
-                <select class="form-select" id="stock_status" name="stock_status" disabled>
+                <select class="form-select" id="stock_status" name="stock_status">
                     <option value="">All Stock Statuses</option>
                     <option value="normal" {{ 'selected' if current_filters.stock_status == 'normal' else '' }}>In Stock</option>
                     <option value="low" {{ 'selected' if current_filters.stock_status == 'low' else '' }}>Low Stock</option>
                     <option value="out" {{ 'selected' if current_filters.stock_status == 'out' else '' }}>Out of Stock</option>
                 </select>
-                 <small class="form-text text-muted">Stock status filter is disabled.</small>
             </div>
             <div class="col-md-2">
                 <button type="submit" class="btn btn-primary w-100">
@@ -63,11 +62,14 @@
                         <th>SKU</th>
                         <th>Category</th>
                         <th>Sell Price</th>
+                        <th class="text-center">Stock Quantity</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for product in products.items %}
+                    {% for row in products.items %}
+                    {% set product = row.Product if row.Product is defined else row %}
+                    {% set stock = row.current_stock if row.current_stock is defined else 0 %}
                     <tr>
                         <td>
                             <div class="fw-bold">{{ product.name }}</div>
@@ -75,7 +77,16 @@
                         </td>
                         <td>{{ product.sku }}</td>
                         <td>{{ product.category_ref.name if product.category_ref else 'N/A' }}</td>
-                        <td>₹{{ "%.2f"|format(product.sell_price) }}</td>
+                        <td>₹{{ "%.2f"|format(product.sell_price or 0) }}</td>
+                        <td class="text-center">
+                            {% if stock <= 0 %}
+                                <span class="badge bg-danger">{{ stock|int }}</span>
+                            {% elif stock <= 10 %}
+                                <span class="badge bg-warning text-dark">{{ stock|int }}</span>
+                            {% else %}
+                                <span class="badge bg-success">{{ stock|int }}</span>
+                            {% endif %}
+                        </td>
                         <td>
                             <a href="{{ url_for('inventory.adjust_stock', product_id=product.id) }}" class="btn btn-sm btn-outline-warning" title="Adjust Stock">
                                 <i class="fas fa-edit"></i>

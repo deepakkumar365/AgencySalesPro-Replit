@@ -105,9 +105,9 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body">
-                {% if products %}
+                {% if product_rows %}
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="mb-0">{{ products|length }} product{{ 's' if products|length != 1 else '' }} found</h6>
+                    <h6 class="mb-0">{{ product_rows|length }} product{{ 's' if product_rows|length != 1 else '' }} found</h6>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover">
@@ -125,10 +125,10 @@
                         </thead>
                         <tbody>
                             {% for row in product_rows %}
-                            {% set product = row.product %}
+                            {% set product = row.Product %}
                             <tr>
                                 <td>
-                                    <strong>{{ row.mapping.display_name if row.mapping and row.mapping.display_name else product.name }}</strong>
+                                    <strong>{{ row.ProductAgency.display_name if row.ProductAgency and row.ProductAgency.display_name else product.name }}</strong>
                                     {% if product.description %}
                                     <br><small>{{ product.description[:50] }}{{ '...' if product.description|length > 50 else '' }}</small>
                                     {% endif %}
@@ -146,8 +146,8 @@
                                         N/A
                                     </span>
                                 </td>
-                                <td class="d-none-mobile">{{ row.effective_category.name if row.effective_category else (product.category_ref.name if product.category_ref else '-') }}</td>
-                                <td class="d-none-mobile">{{ row.mapping.agency.name if row.mapping else '-' }}</td>
+                                <td class="d-none-mobile">{{ product.category_ref.name if product.category_ref else '-' }}</td>
+                                <td class="d-none-mobile">{{ row.ProductAgency.agency.name if row.ProductAgency else '-' }}</td>
                                 <td>
                                     {% if row.effective_active %}
                                     <span class="badge bg-success">Active</span>

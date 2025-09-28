@@ -12,49 +12,57 @@ from utils.decorators import log_activity
 from utils.excel_utils import export_products_to_excel, import_products_from_excel
 from utils.sku import generate_sku
 
+def _get_master_data():
+    """Fetches all active master data for product forms."""
+    return {
+        'categories': Category.query.filter_by(is_active=True).order_by(Category.name).all(),
+        'uoms': UOM.query.filter_by(is_active=True).order_by(UOM.name).all(),
+        'tax_masters': TaxMaster.query.filter_by(is_active=True).order_by(TaxMaster.name).all()
+    }
+
 @product_bp.route('/')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson', 'pos_user'])
 def list_products(current_agency_id=None):
-    print(session.get('role'), session.get('agency_id'))
     user_role = session.get('role')
-    agency_filter = request.args.get('agency', type=int)
+    # For super_admin, the filter comes from the request args. For others, it's their session/current agency.
+    agency_filter_id = request.args.get('agency', type=int)
 
     # Determine the target agency_id for querying overrides
     target_agency_id = None
     if user_role == 'super_admin':
-        target_agency_id = agency_filter
+        target_agency_id = agency_filter_id
     else:
-        target_agency_id = current_agency_id
-    
-    # Optimized query to fetch products and their effective properties
-    query = db.session.query(
-        Product,
-        ProductAgency,
-        func.coalesce(ProductAgency.buy_price, Product.buy_price).label('effective_buy_price'),
-        func.coalesce(ProductAgency.sell_price, Product.sell_price).label('effective_sell_price'),
-        func.coalesce(ProductAgency.mrp_price, Product.mrp_price).label('effective_mrp_price'),
-        func.coalesce(ProductAgency.is_active, literal_column("1")).label('effective_active')
-    )
+        # Use current_agency_id if passed, otherwise fall back to session agency_id
+        target_agency_id = current_agency_id or session.get('agency_id')
 
-    # Join logic based on role and filters
-    if user_role == 'super_admin' and not target_agency_id:
-        # Super admin, no agency filter: show all master products
-        query = query.outerjoin(ProductAgency, and_(
-            ProductAgency.product_id == Product.id,
-            ProductAgency.agency_id == (current_agency_id or -1) # Join on session agency or a non-existent one
-        ))
+    # Base query selects all master products
+    query = db.session.query(Product)
+
+    if user_role == 'super_admin':
+        # Super admin sees all products. We join overrides if an agency is selected.
+        query = db.session.query(
+            Product,
+            func.coalesce(ProductAgency.buy_price, Product.buy_price).label('effective_buy_price'),
+            func.coalesce(ProductAgency.sell_price, Product.sell_price).label('effective_sell_price'),
+            func.coalesce(ProductAgency.mrp_price, Product.mrp_price).label('effective_mrp_price'),
+            func.coalesce(ProductAgency.is_active, Product.is_active).label('effective_active')
+        ).outerjoin(
+            ProductAgency, 
+            and_(Product.id == ProductAgency.product_id, ProductAgency.agency_id == target_agency_id)
+        )
     else:
-        # All other roles, or super admin with a filter: join on the target agency
-        join_condition = and_(ProductAgency.product_id == Product.id, ProductAgency.agency_id == target_agency_id)
-        if user_role == 'super_admin':
-            query = query.outerjoin(ProductAgency, join_condition)
-        else: # Non-super-admins must have a mapping to see the product
-            # Ensure the mapping is active for non-super-admins
-            active_join_condition = and_(
-                ProductAgency.product_id == Product.id, 
-                ProductAgency.agency_id == target_agency_id,
-                ProductAgency.is_active == True)
-            query = query.join(ProductAgency, active_join_condition)
+        # Other roles see master products that are mapped to their agency.
+        query = db.session.query(
+            Product,
+            func.coalesce(ProductAgency.buy_price, Product.buy_price).label('effective_buy_price'),
+            func.coalesce(ProductAgency.sell_price, Product.sell_price).label('effective_sell_price'),
+            func.coalesce(ProductAgency.mrp_price, Product.mrp_price).label('effective_mrp_price'),
+            # Effective status is the mapping's status. If no mapping, it's not active for this agency.
+            ProductAgency.is_active.label('effective_active')
+        ).join(
+            ProductAgency, 
+            and_(Product.id == ProductAgency.product_id, ProductAgency.agency_id == target_agency_id)
+        )
 
     # Apply filters
     date_from = request.args.get('date_from')
@@ -79,14 +87,19 @@ def list_products(current_agency_id=None):
         except ValueError:
             pass
 
-    if category_filter: # This filter might need adjustment based on new query structure
-        # Match either mapping override or global default
-        query = query.filter((ProductAgency.category_id == category_filter) | (Product.category_id == category_filter))
+    if category_filter:
+        # This filter now correctly checks the master product's category
+        query = query.filter(Product.category_id == category_filter)
 
-    if status_filter == 'active':
-        query = query.filter(ProductAgency.is_active == True)
-    elif status_filter == 'inactive':
-        query = query.filter(ProductAgency.is_active == False)
+    # Status filter needs to check the 'effective_active' column we created
+    if status_filter:
+        # We need to wrap the main query to filter on the calculated column
+        from_obj = query.subquery()
+        query = db.session.query(from_obj) # Query from the subquery
+        if status_filter == 'active':
+            query = query.filter(from_obj.c.effective_active == True)
+        elif status_filter == 'inactive':
+            query = query.filter(from_obj.c.effective_active == False)
 
     query = query.order_by(Product.name)
     results = query.all()
@@ -114,6 +127,8 @@ def list_products(current_agency_id=None):
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('create_product')
 def create_product():
+    master_data = _get_master_data()
+
     if request.method == 'POST':
         name = request.form.get('name')
         sku = (request.form.get('sku') or '').strip().upper()
@@ -127,7 +142,7 @@ def create_product():
         
         user_role = session.get('role')
         current_agency_id = session.get('agency_id')
-        
+
         # Auto-generate SKU if missing
         if name and not sku:
             try:
@@ -141,15 +156,15 @@ def create_product():
                 sku = f"CAT-UOM-{base}-{datetime.utcnow().strftime('%H%M%S')}"
         
         if not all([name, sku, buy_price, sell_price, mrp_price]):
-            flash('Name, SKU, Buy Price, Sell Price, and MRP are required', 'error')
-            return render_template('product/form.html', agencies=get_agencies_for_user())
+            flash('Name, SKU, Buy Price, Sell Price, and MRP are required.', 'error')
+            return render_template('product/form.html', agencies=get_agencies_for_user(), **master_data)
         
         # Non-super admin users can only create products for their agency
         if user_role != 'super_admin':
             agency_id = current_agency_id
         
         # For non-super admin, force mapping to their agency. For super admin, agency is optional.
-        if user_role != 'super_admin':
+        elif not agency_id: # agency_id is from form for super_admin
             agency_id = current_agency_id
         
         # If a master product was selected from search, map it to the agency and skip SKU duplication
@@ -158,11 +173,11 @@ def create_product():
             try:
                 selected_id = int(selected_product_id)
             except (TypeError, ValueError):
-                flash('Invalid selected product.', 'error')
-                return render_template('product/form.html', agencies=get_agencies_for_user())
+                flash('Invalid product selection.', 'error')
+                return render_template('product/form.html', agencies=get_agencies_for_user(), **master_data)
 
             existing_product = Product.query.get(selected_id)
-            if not existing_product:
+            if not existing_product: # Should not happen with a proper UI
                 flash('Selected product not found.', 'error')
                 return render_template('product/form.html', agencies=get_agencies_for_user())
 
@@ -196,7 +211,7 @@ def create_product():
             else:
                 # No agency chosen by super admin; cannot map automatically
                 flash('Select an agency to map the existing product, or create without selecting.', 'error')
-                return render_template('product/form.html', agencies=get_agencies_for_user())
+                return render_template('product/form.html', agencies=get_agencies_for_user(), **master_data)
 
         # No selection => creating a new product: enforce global SKU uniqueness
         if Product.query.filter_by(sku=sku).first():
@@ -210,15 +225,15 @@ def create_product():
             
             if not sku or Product.query.filter_by(sku=sku).first():
                 flash('SKU already exists. Please use search to select the existing product instead of creating a duplicate.', 'error')
-                return render_template('product/form.html', agencies=get_agencies_for_user())
+                return render_template('product/form.html', agencies=get_agencies_for_user(), **master_data)
         
         try:
             buy_price = float(buy_price) if buy_price else 0.0
             sell_price = float(sell_price) if sell_price else 0.0
             mrp_price = float(mrp_price) if mrp_price else 0.0
         except (ValueError, TypeError):
-            flash('Invalid numeric values', 'error')
-            return render_template('product/form.html', agencies=get_agencies_for_user())
+            flash('Invalid price values. Please enter numbers only.', 'error')
+            return render_template('product/form.html', agencies=get_agencies_for_user(), **master_data)
         
         # Calculate margin
         margin = round(((sell_price - buy_price) / buy_price) * 100, 2) if buy_price > 0 else 0
@@ -263,22 +278,10 @@ def create_product():
         flash('Product created successfully!', 'success')
         return redirect(url_for('product.list_products'))
     
-    # Get master data for dropdowns
-    from models import Category, UOM, TaxMaster
-    
-    user_role = session.get('role')
-    current_agency_id = session.get('agency_id')
-    
-    # Global masters
-    categories = Category.query.filter_by(is_active=True).all()
-    uoms = UOM.query.filter_by(is_active=True).all()
-    tax_masters = TaxMaster.query.filter_by(is_active=True).all()
-    
     return render_template('product/form.html', 
                          agencies=get_agencies_for_user(),
-                         categories=categories,
-                         uoms=uoms,
-                         tax_masters=tax_masters)
+                         **master_data
+                        )
 
 @product_bp.route('/<int:product_id>/edit', methods=['GET', 'POST'])
 @permission_required(roles=['super_admin'])
@@ -286,9 +289,6 @@ def create_product():
 def edit_product(product_id):
     product = Product.query.get_or_404(product_id)
     
-    user_role = session.get('role')
-    current_agency_id = session.get('agency_id')
-
     # Only super_admin can edit master
     if user_role != 'super_admin':
         flash('Only super admin can edit product master. Agency overrides will be provided separately.', 'error')
@@ -315,13 +315,13 @@ def edit_product(product_id):
                 pass
         
         if not all([product.name, product.sku, buy_price, sell_price, mrp_price]):
-            flash('Name, SKU, Buy Price, Sell Price, and MRP are required', 'error')
-            return render_template('product/form.html', product=product, agencies=get_agencies_for_user())
+            flash('Name, SKU, Buy Price, Sell Price, and MRP are required.', 'error')
+            return render_template('product/form.html', product=product, agencies=get_agencies_for_user(), **_get_master_data())
         
         # Check if SKU already exists (excluding current product)
         existing = Product.query.filter_by(sku=product.sku).first()
         if existing and existing.id != product.id:
-            flash('SKU already exists', 'error')
+            flash('SKU already exists.', 'error')
             return render_template('product/form.html', product=product, agencies=get_agencies_for_user())
         
         try:
@@ -333,30 +333,18 @@ def edit_product(product_id):
             product.uom_id = int(uom_id) if uom_id else None
             product.tax_master_id = int(tax_master_id) if tax_master_id else None
         except ValueError:
-            flash('Invalid numeric values', 'error')
-            return render_template('product/form.html', product=product, agencies=get_agencies_for_user())
+            flash('Invalid price values. Please enter numbers only.', 'error')
+            return render_template('product/form.html', product=product, agencies=get_agencies_for_user(), **_get_master_data())
         
         db.session.commit()
         flash('Product updated successfully!', 'success')
         return redirect(url_for('product.list_products'))
     
-    # Get master data for dropdowns
-    from models import Category, UOM, TaxMaster
-    
-    user_role = session.get('role')
-    current_agency_id = session.get('agency_id')
-    
-    # Global masters
-    categories = Category.query.filter_by(is_active=True).all()
-    uoms = UOM.query.filter_by(is_active=True).all()
-    tax_masters = TaxMaster.query.filter_by(is_active=True).all()
-    
     return render_template('product/form.html', 
                          product=product,
                          agencies=get_agencies_for_user(),
-                         categories=categories,
-                         uoms=uoms,
-                         tax_masters=tax_masters)
+                         **_get_master_data()
+                        )
 
 @product_bp.route('/api/generate-sku', methods=['GET'])
 @login_required

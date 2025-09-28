@@ -1,9 +1,9 @@
 from flask import render_template, request, redirect, url_for, flash, session, send_file, jsonify
 from datetime import datetime
 import uuid
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func
 from app import db
-from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode, ProductAgency
+from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode, ProductAgency, InventoryTransaction
 from order import order_bp
 from auth.utils import login_required, permission_required, order_owner_required
 from utils.decorators import log_activity
@@ -482,12 +482,62 @@ def update_order_status(order_id):
         flash('You can only update orders from your agency', 'error')
         return redirect(url_for('order.list_orders'))
     
-    if new_status in ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']:
+    if new_status not in ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']:
+        flash('Invalid status', 'error')
+        return redirect(url_for('order.view_order', order_id=order_id))
+
+    try:
+        # Check if stock needs to be deducted
+        if new_status in ['shipped', 'delivered'] and order.status in ['pending', 'confirmed']:
+            for item in order.order_items:
+                # Calculate current stock before this transaction
+                current_stock = db.session.query(func.sum(InventoryTransaction.quantity_change)).filter(
+                    InventoryTransaction.product_id == item.product_id
+                ).scalar() or 0
+
+                # Create a negative inventory transaction for the sale
+                transaction = InventoryTransaction(
+                    product_id=item.product_id,
+                    transaction_type='sale',
+                    quantity_change=-item.quantity,
+                    quantity_before=current_stock,
+                    quantity_after=current_stock - item.quantity,
+                    unit_cost=item.unit_price, # Or a calculated cost if available
+                    reference_id=order.id,
+                    reference_type='order',
+                    notes=f"Sale for Order {order.order_number}",
+                    created_by=user_id
+                )
+                db.session.add(transaction)
+
+        # Check if a fulfilled order is being cancelled (restock items)
+        elif new_status == 'cancelled' and order.status in ['shipped', 'delivered']:
+            for item in order.order_items:
+                current_stock = db.session.query(func.sum(InventoryTransaction.quantity_change)).filter(
+                    InventoryTransaction.product_id == item.product_id
+                ).scalar() or 0
+
+                # Create a positive inventory transaction to restock
+                transaction = InventoryTransaction(
+                    product_id=item.product_id,
+                    transaction_type='return',
+                    quantity_change=item.quantity,
+                    quantity_before=current_stock,
+                    quantity_after=current_stock + item.quantity,
+                    reference_id=order.id,
+                    reference_type='order_cancellation',
+                    notes=f"Restock from cancelled Order {order.order_number}",
+                    created_by=user_id
+                )
+                db.session.add(transaction)
+
+        # Update the order status and commit all changes
         order.status = new_status
         db.session.commit()
-        flash(f'Order status updated to {new_status}', 'success')
-    else:
-        flash('Invalid status', 'error')
+        flash(f'Order status updated to {new_status.capitalize()}', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'An error occurred while updating status: {str(e)}', 'danger')
     
     return redirect(url_for('order.view_order', order_id=order_id))
 

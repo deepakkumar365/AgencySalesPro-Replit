@@ -162,8 +162,10 @@ class ProductAgency(db.Model):
     tax_master_id = db.Column(db.Integer, db.ForeignKey('ASP_tax_masters.id'), index=True)
     
     is_active = db.Column(db.Boolean, default=True)
+    stock_quantity = db.Column(db.Integer, default=0)  # Current stock level for this product in this agency
+    low_stock_threshold = db.Column(db.Integer, default=5) # Threshold for low stock alerts
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     # Relationships for convenience
     category_ref = db.relationship('Category', lazy=True)
     uom_ref = db.relationship('UOM', lazy=True)

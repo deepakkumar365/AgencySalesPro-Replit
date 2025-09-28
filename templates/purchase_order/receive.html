@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Receive Purchase Order - {{ purchase_order.po_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-truck-loading me-2"></i>Receive Items for PO: {{ purchase_order.po_number }}
+        </h1>
+        <a href="{{ url_for('purchase_order.view_purchase_order', purchase_order_id=purchase_order.id) }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to PO
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header">
+            <h6 class="m-0 font-weight-bold text-primary">PO Details</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Supplier:</strong> {{ purchase_order.supplier.name }}</p>
+                    <p><strong>Order Date:</strong> {{ purchase_order.order_date.strftime('%d-%b-%Y') }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Status:</strong> <span class="badge bg-info">{{ purchase_order.status|replace('_', ' ')|title }}</span></p>
+                    <p><strong>Agency:</strong> {{ purchase_order.agency_ref.name }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST">
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">Enter Quantities Received</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-center">Ordered</th>
+                                <th class="text-center">Already Received</th>
+                                <th class="text-center" style="width: 150px;">Receiving Now</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in purchase_order.po_items %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.product.name }}</strong>
+                                    <br><small class="text-muted">{{ item.product.sku }}</small>
+                                </td>
+                                <td class="text-center">{{ item.quantity_ordered }}</td>
+                                <td class="text-center">{{ item.quantity_received or 0 }}</td>
+                                <td>
+                                    <input type="number" name="quantity_received_{{ item.id }}" class="form-control text-center" value="0" min="0" max="{{ item.quantity_ordered - (item.quantity_received or 0) }}">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-check-circle me-2"></i>Confirm Receipt
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

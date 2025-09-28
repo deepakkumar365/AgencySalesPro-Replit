@@ -3,13 +3,14 @@ from datetime import datetime
 
 import uuid
 from flask import render_template, request, redirect, url_for, flash, session, jsonify
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 
 from app import db
 from models import (
     PurchaseOrder,
     PurchaseOrderItem,
     Supplier,
+    InventoryTransaction,
     Product,
     Agency,
     User,
@@ -51,7 +52,11 @@ def list_purchase_orders(current_agency_id=None):
         agencies = []
         suppliers = Supplier.query.filter_by(agency_id=current_agency_id, is_active=True).all()
 
-    purchase_orders = query.order_by(PurchaseOrder.created_at.desc()).all()
+    purchase_orders = query.order_by(PurchaseOrder.created_at.desc()).paginate(
+        page=request.args.get('page', 1, type=int),
+        per_page=20,
+        error_out=False
+    )
 
     return render_template(
         "purchase_order/list.html",
@@ -194,6 +199,73 @@ def view_purchase_order(purchase_order_id):
 
     return render_template("purchase_order/view.html", purchase_order=purchase_order)
 
+
+@purchase_order_bp.route("/<int:po_id>/receive", methods=["GET", "POST"])
+@login_required
+@permission_required(roles=["super_admin", "agency_admin", "agency_manager", "staff"])
+@log_activity("receive_purchase_order")
+def receive_purchase_order(po_id, current_agency_id=None):
+    """Receive items against a purchase order and update inventory."""
+    po = PurchaseOrder.query.get_or_404(po_id)
+    user_role = session.get("role")
+    user_id = session.get("user_id")
+
+    # Permission check
+    if user_role != "super_admin" and po.agency_id != current_agency_id:
+        flash("You do not have permission to receive this purchase order.", "danger")
+        return redirect(url_for("purchase_order.list_purchase_orders"))
+
+    if po.status not in ["sent", "partially_received"]:
+        flash(f"Cannot receive items for a PO with status '{po.status}'.", "warning")
+        return redirect(url_for("purchase_order.view_purchase_order", purchase_order_id=po.id))
+
+    if request.method == "POST":
+        try:
+            total_quantity_received_in_this_session = 0
+            for item in po.po_items:
+                received_qty_str = request.form.get(f"quantity_received_{item.id}", "0")
+                received_qty = int(received_qty_str)
+
+                if received_qty > 0:
+                    total_quantity_received_in_this_session += received_qty
+
+                    # Calculate current stock before this transaction
+                    current_stock = db.session.query(func.sum(InventoryTransaction.quantity_change)).filter(
+                        InventoryTransaction.product_id == item.product_id
+                    ).scalar() or 0
+
+                    # Create inventory transaction
+                    transaction = InventoryTransaction(
+                        product_id=item.product_id,
+                        transaction_type='purchase',
+                        quantity_change=received_qty,
+                        quantity_before=current_stock,
+                        quantity_after=current_stock + received_qty,
+                        unit_cost=item.unit_cost,
+                        reference_id=po.id,
+                        reference_type='purchase_order',
+                        notes=f"Received from PO {po.po_number}",
+                        created_by=user_id
+                    )
+                    db.session.add(transaction)
+
+                    # Update the PO item
+                    item.quantity_received = (item.quantity_received or 0) + received_qty
+
+            # Update PO status
+            total_ordered = sum(item.quantity_ordered for item in po.po_items)
+            total_received = sum(item.quantity_received or 0 for item in po.po_items)
+            po.status = "received" if total_received >= total_ordered else "partially_received"
+            po.received_date = datetime.utcnow()
+
+            db.session.commit()
+            flash(f"Received {total_quantity_received_in_this_session} items for PO {po.po_number}.", "success")
+            return redirect(url_for("purchase_order.view_purchase_order", purchase_order_id=po.id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"An error occurred: {str(e)}", "danger")
+
+    return render_template("purchase_order/receive.html", purchase_order=po)
 
 @purchase_order_bp.route("/<int:purchase_order_id>/edit", methods=["GET", "POST"])
 @login_required
