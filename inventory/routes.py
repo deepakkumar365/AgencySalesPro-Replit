@@ -1,5 +1,7 @@
-from flask import render_template, request, redirect, url_for, flash, session, jsonify
+from flask import render_template, request, redirect, url_for, flash, session, jsonify, send_file
 from datetime import datetime, timedelta
+import pandas as pd
+import io
 from decimal import Decimal
 from app import db
 from models import (
@@ -706,3 +708,261 @@ def reports(current_agency_id=None):
                          report_data=report_data,
                          movement_summary=movement_summary,
                          top_products=top_products)
+
+@inventory_bp.route('/export_report')
+@login_required
+def export_inventory_report(current_agency_id=None):
+    """Export inventory report data to an Excel file."""
+    user_role = session.get('role')
+    
+    # Get date range from query params
+    today = datetime.utcnow().date()
+    start_date_str = request.args.get('start_date', today.replace(day=1).strftime('%Y-%m-%d'))
+    end_date_str = request.args.get('end_date', today.strftime('%Y-%m-%d'))
+    
+    try:
+        start_dt = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_dt = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+    except ValueError:
+        start_dt = datetime.combine(today.replace(day=1), datetime.min.time())
+        end_dt = datetime.combine(today, datetime.max.time())
+
+    # Base transaction query
+    if user_role == 'super_admin':
+        transaction_query = InventoryTransaction.query
+    else:
+        transaction_query = InventoryTransaction.query.join(Product).join(ProductAgency).filter(
+            ProductAgency.agency_id == current_agency_id
+        )
+
+    period_transactions = transaction_query.filter(
+        InventoryTransaction.created_at >= start_dt,
+        InventoryTransaction.created_at <= end_dt
+    ).all()
+
+    # --- Generate Data for Excel ---
+
+    # 1. Movement Summary
+    movement_summary = {}
+    for tx in period_transactions:
+        tx_type = tx.transaction_type.replace('_', ' ').title()
+        if tx_type not in movement_summary:
+            movement_summary[tx_type] = {'Items In': 0, 'Items Out': 0, 'Transaction Count': 0}
+        movement_summary[tx_type]['Transaction Count'] += 1
+        if tx.quantity_change > 0:
+            movement_summary[tx_type]['Items In'] += tx.quantity_change
+        else:
+            movement_summary[tx_type]['Items Out'] += abs(tx.quantity_change)
+    
+    movement_df = pd.DataFrame.from_dict(movement_summary, orient='index')
+    movement_df.index.name = 'Transaction Type'
+
+    # 2. Top Moving Products
+    product_movements = {}
+    for tx in period_transactions:
+        if tx.product_id not in product_movements:
+            product_movements[tx.product_id] = {'SKU': tx.product.sku, 'Product Name': tx.product.name, 'Total Movement (Units)': 0}
+        product_movements[tx.product_id]['Total Movement (Units)'] += abs(tx.quantity_change)
+    
+    top_products_list = sorted(product_movements.values(), key=lambda x: x['Total Movement (Units)'], reverse=True)
+    top_products_df = pd.DataFrame(top_products_list)
+
+    # --- Create Excel File in Memory ---
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        movement_df.to_excel(writer, sheet_name='Movement Summary')
+        top_products_df.to_excel(writer, sheet_name='Top Moving Products', index=False)
+
+        # --- Auto-adjust column widths for better readability ---
+        # For Movement Summary sheet
+        worksheet = writer.sheets['Movement Summary']
+        for idx, col in enumerate([movement_df.index.name] + movement_df.columns.tolist()):
+            max_len = max(movement_df.index.astype(str).map(len).max(), len(str(col))) + 2
+            worksheet.set_column(idx, idx, max_len)
+        # For Top Moving Products sheet
+        worksheet = writer.sheets['Top Moving Products']
+        for idx, col in enumerate(top_products_df.columns):
+            max_len = max(top_products_df[col].astype(str).map(len).max(), len(col)) + 2
+            worksheet.set_column(idx, idx, max_len)
+
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'inventory_report_{start_date_str}_to_{end_date_str}.xlsx'
+    )
+
+@inventory_bp.route('/bulk_adjust_stock', methods=['GET', 'POST'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@log_activity('bulk_stock_adjustment')
+def bulk_adjust_stock(current_agency_id=None):
+    """Handle bulk stock adjustment via file upload."""
+    from sqlalchemy import func
+    user_role = session.get('role')
+    user_id = session.get('user_id')
+
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('No file part in the request.', 'error')
+            return redirect(request.url)
+        
+        file = request.files['file']
+        if file.filename == '':
+            flash('No file selected for upload.', 'error')
+            return redirect(request.url)
+
+        if file and (file.filename.endswith('.csv') or file.filename.endswith('.xlsx')):
+            try:
+                df = pd.read_excel(file) if file.filename.endswith('.xlsx') else pd.read_csv(file)
+                
+                required_columns = ['sku', 'quantity_change', 'reason']
+                if user_role == 'super_admin':
+                    required_columns.append('agency_code')
+
+                if not all(col in df.columns for col in required_columns):
+                    flash(f'File must contain the following columns: {", ".join(required_columns)}', 'error')
+                    return redirect(request.url)
+
+                success_count = 0
+                error_count = 0
+                errors = []
+
+                for index, row in df.iterrows():
+                    sku = row['sku']
+                    product = Product.query.filter_by(sku=sku).first()
+
+                    if not product:
+                        errors.append(f"Row {index+2}: Product with SKU '{sku}' not found.")
+                        error_count += 1
+                        continue
+
+                    agency_id = current_agency_id
+                    if user_role == 'super_admin':
+                        agency = Agency.query.filter_by(code=row['agency_code']).first()
+                        if not agency:
+                            errors.append(f"Row {index+2}: Agency with code '{row['agency_code']}' not found for SKU '{sku}'.")
+                            error_count += 1
+                            continue
+                        agency_id = agency.id
+
+                    quantity_change = int(row['quantity_change'])
+                    reason = row['reason']
+                    notes = row.get('notes', '')
+
+                    current_stock = db.session.query(func.sum(InventoryTransaction.quantity_change)).filter(
+                        InventoryTransaction.product_id == product.id
+                    ).scalar() or 0
+
+                    transaction = InventoryTransaction(
+                        product_id=product.id,
+                        transaction_type='adjustment',
+                        quantity_change=quantity_change,
+                        quantity_before=current_stock,
+                        quantity_after=current_stock + quantity_change,
+                        reference_type='bulk_adjustment',
+                        notes=f"{reason}: {notes}".strip(),
+                        created_by=user_id
+                    )
+                    db.session.add(transaction)
+                    success_count += 1
+
+                db.session.commit()
+                flash(f'Bulk adjustment processed. Succeeded: {success_count}, Failed: {error_count}.', 'success')
+                if errors:
+                    flash("Errors: " + " | ".join(errors[:5]), 'danger') # Show first 5 errors
+
+            except Exception as e:
+                db.session.rollback()
+                flash(f'An error occurred during processing: {str(e)}', 'danger')
+            
+            return redirect(url_for('inventory.transaction_history'))
+
+    return render_template('inventory/bulk_adjust.html')
+
+@inventory_bp.route('/download_adjustment_template')
+@login_required
+def download_adjustment_template():
+    """Provides a CSV template for bulk stock adjustments."""
+    columns = ['sku', 'quantity_change', 'reason', 'notes']
+    if session.get('role') == 'super_admin':
+        columns.insert(1, 'agency_code')
+    
+    df = pd.DataFrame([['PROD-SKU-001', 'AGY01', -2, 'Damaged Goods', 'Box was wet'], ['PROD-SKU-002', 'AGY01', 10, 'Stock Count Correction', 'Found extra items']], columns=columns) if session.get('role') == 'super_admin' else pd.DataFrame([['PROD-SKU-001', -2, 'Damaged Goods', 'Box was wet'], ['PROD-SKU-002', 10, 'Stock Count Correction', 'Found extra items']], columns=columns)
+    
+    output = io.BytesIO()
+    df.to_csv(output, index=False)
+    output.seek(0)
+    
+    return send_file(output, mimetype='text/csv', as_attachment=True, download_name='bulk_adjustment_template.csv')
+
+@inventory_bp.route('/download_current_stock')
+@login_required
+def download_current_stock(current_agency_id=None):
+    """
+    Provides a CSV file with current stock levels for all relevant products,
+    formatted for re-upload as a bulk adjustment.
+    """
+    user_role = session.get('role')
+
+    # Subquery to calculate current stock for each product
+    from sqlalchemy import func
+    stock_subquery = db.session.query(
+        InventoryTransaction.product_id,
+        func.sum(InventoryTransaction.quantity_change).label('current_stock')
+    ).group_by(InventoryTransaction.product_id).subquery()
+
+    # Base query
+    query = db.session.query(
+        Product.sku,
+        Product.name,
+        Category.name.label('category'),
+        Agency.code.label('agency_code'),
+        func.coalesce(stock_subquery.c.current_stock, 0).label('current_stock')
+    ).select_from(Product)\
+     .join(ProductAgency, Product.id == ProductAgency.product_id)\
+     .join(Agency, ProductAgency.agency_id == Agency.id)\
+     .outerjoin(Category, Product.category_id == Category.id)\
+     .outerjoin(stock_subquery, Product.id == stock_subquery.c.product_id)\
+     .filter(Product.is_active == True, ProductAgency.is_active == True)
+
+    if user_role != 'super_admin':
+        query = query.filter(ProductAgency.agency_id == current_agency_id)
+
+    results = query.order_by(Agency.code, Product.sku).all()
+
+    # Prepare data for DataFrame
+    data = []
+    if user_role == 'super_admin':
+        columns = ['sku', 'product_name', 'category', 'agency_code', 'current_stock', 'quantity_change', 'reason', 'notes']
+        for row in results:
+            data.append({
+                'sku': row.sku,
+                'product_name': row.name,
+                'category': row.category,
+                'agency_code': row.agency_code,
+                'current_stock': row.current_stock,
+                'quantity_change': 0,
+                'reason': '',
+                'notes': ''
+            })
+    else:
+        columns = ['sku', 'product_name', 'category', 'current_stock', 'quantity_change', 'reason', 'notes']
+        for row in results:
+            data.append({
+                'sku': row.sku,
+                'product_name': row.name,
+                'category': row.category,
+                'current_stock': row.current_stock,
+                'quantity_change': 0,
+                'reason': '',
+                'notes': ''
+            })
+
+    df = pd.DataFrame(data, columns=columns)
+    output = io.BytesIO()
+    df.to_csv(output, index=False)
+    output.seek(0)
+
+    return send_file(output, mimetype='text/csv', as_attachment=True, download_name='current_stock_for_adjustment.csv')

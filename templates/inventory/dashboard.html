@@ -14,9 +14,9 @@
         <a href="{{ url_for('inventory.stock_levels') }}" class="btn btn-outline-primary" title="View All Stock Levels">
             <i class="fas fa-list me-2"></i>Stock List
         </a>
-        <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#adjustStockModal" title="Adjust Stock for a Product">
-            <i class="fas fa-edit me-2"></i>Adjust Stock
-        </button>
+        <a href="{{ url_for('inventory.bulk_adjust_stock') }}" class="btn btn-outline-success" title="Bulk Adjust Stock via Upload">
+            <i class="fas fa-file-upload me-2"></i>Bulk Adjust
+        </a>
         <a href="{{ url_for('inventory.reports') }}" class="btn btn-outline-info">
             <i class="fas fa-chart-bar me-2"></i>Reports
         </a>
