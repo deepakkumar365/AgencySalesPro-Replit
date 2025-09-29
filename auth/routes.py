@@ -29,6 +29,10 @@ def login():
             session['role'] = user.role
             session['agency_id'] = user.agency_id
             flash('Logged in successfully!', 'success')
+
+            if user.role == 'agency_admin':
+                return redirect(url_for('inventory.dashboard'))
+                
             return redirect(url_for('index'))
         else:
             flash('Invalid username or password', 'error')
