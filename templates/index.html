@@ -12,8 +12,7 @@
 </div>
 
 <div class="row">
-    {% if session.role == 'super_admin' %}
-    <!-- Super Admin Dashboard -->
+    {% if session.role in ['super_admin', 'agency_manager'] %}
     <div class="col-6 col-md-3 mb-4">
         <div class="card text-center">
             <div class="card-body">
@@ -24,7 +23,10 @@
             </div>
         </div>
     </div>
-    
+    {% endif %}
+
+    {% if session.role == 'super_admin' %}
+    <!-- Super Admin Dashboard -->
     <div class="col-6 col-md-3 mb-4">
         <div class="card text-center">
             <div class="card-body">
@@ -124,7 +126,7 @@
         </div>
     </div>
     
-    {% else %}
+    {% elif session.role != 'agency_manager' %}
     <!-- Staff Dashboard -->
     <div class="col-6 col-md-3 mb-4">
         <div class="card text-center">
@@ -183,7 +185,18 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    {% if session.role in ['super_admin', 'agency_admin'] %}
+                    {% if session.role in ['super_admin', 'agency_manager'] %}
+                    <div class="col-12 col-md-3 mb-2">
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-user-plus me-2"></i>Add New User
+                        </a>
+                    </div>
+                    <div class="col-12 col-md-3 mb-2">
+                        <a href="{{ url_for('agency.create_agency') }}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-building me-2"></i>Create Agency
+                        </a>
+                    </div>
+                    {% elif session.role == 'agency_admin' %}
                     <div class="col-12 col-md-4 mb-2">
                         <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary w-100">
                             <i class="fas fa-user-plus me-2"></i>Add New User
@@ -191,19 +204,20 @@
                     </div>
                     {% endif %}
                     
-                    {% if session.role != 'salesperson' %}
-                    <div class="col-12 col-md-4 mb-2">
-                        <a href="{{ url_for('product.create_product') }}" class="btn btn-outline-success w-100">
-                            <i class="fas fa-plus me-2"></i>Add Product
+                    {% if session.role in ['super_admin', 'agency_admin', 'agency_manager', 'staff'] %}
+                    <div class="col-12 col-md-3 mb-2">
+                        <a href="{{ url_for('customer.create_customer') }}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-user-plus me-2"></i>Add Customer
                         </a>
                     </div>
                     {% endif %}
-                    
-                    <div class="col-12 col-md-4 mb-2">
+                    {% if session.role in ['agency_admin', 'staff', 'salesperson'] %}
+                    <div class="col-12 col-md-3 mb-2">
                         <a href="{{ url_for('order.create_order') }}" class="btn btn-outline-info w-100">
                             <i class="fas fa-shopping-cart me-2"></i>Create Order
                         </a>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

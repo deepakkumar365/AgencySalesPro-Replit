@@ -45,14 +45,14 @@
                         <div class="col-md-6 mb-3">
                             <label for="role" class="form-label">Role</label>
                             <select class="form-select" id="role" name="role" required>
-                                {% if session.role == 'super_admin' or user.role == 'super_admin' %}
+                                {% if session.role == 'super_admin' %}
                                 <option value="super_admin" {{ 'selected' if user.role == 'super_admin' else '' }}>Super Admin</option>
                                 {% endif %}
-                                {% if session.role == 'super_admin' or user.role in ['agency_admin', 'agency_manager'] %}
+                                {% if session.role == 'super_admin' or session.role == 'agency_manager' %}
                                 <option value="agency_admin" {{ 'selected' if user.role == 'agency_admin' else '' }}>Agency Admin</option>                                
+                                {% endif %}
                                 {% if session.role == 'super_admin' %}
                                 <option value="agency_manager" {{ 'selected' if user.role == 'agency_manager' else '' }}>Agency Manager</option>
-                                {% endif %}
                                 {% endif %}
                                 <option value="staff" {{ 'selected' if user.role == 'staff' else '' }}>Staff</option>
                                 <option value="salesperson" {{ 'selected' if user.role == 'salesperson' else '' }}>Salesperson</option>
