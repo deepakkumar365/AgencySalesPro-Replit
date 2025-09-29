@@ -126,7 +126,7 @@ def list_products(current_agency_id=None):
 @product_bp.route('/create', methods=['GET', 'POST'])
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('create_product')
-def create_product():
+def create_product(current_agency_id=None):
     master_data = _get_master_data()
 
     if request.method == 'POST':
@@ -141,7 +141,6 @@ def create_product():
         agency_id = request.form.get('agency_id')
         
         user_role = session.get('role')
-        current_agency_id = session.get('agency_id')
 
         # Auto-generate SKU if missing
         if name and not sku:
