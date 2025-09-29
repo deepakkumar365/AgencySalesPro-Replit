@@ -23,7 +23,7 @@ def list_locations(current_agency_id=None):
 
 @location_bp.route('/create', methods=['GET', 'POST'])
 @login_required
-@role_required('super_admin', 'agency_admin', 'staff')
+@role_required('super_admin', 'agency_admin', 'agency_manager', 'staff')
 @log_activity('create_location')
 def create_location():
     if request.method == 'POST':
