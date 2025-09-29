@@ -147,14 +147,14 @@
                             <li><a class="dropdown-item" href="{{ url_for('order.list_orders') }}">
                                 <i class="fas fa-shopping-cart me-1"></i>Orders
                             </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('order.create_order') }}">
+                                <i class="fas fa-plus-circle me-1"></i>Sales Order
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('purchase_order.list_purchase_orders') }}">
+                                <i class="fas fa-receipt me-1"></i>Purchase Orders
+                            </a></li>
                             {% if session.role in ['pos_user', 'staff', 'agency_admin', 'agency_manager', 'super_admin'] %}
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('pos.dashboard') }}">
-                                <i class="fas fa-cash-register me-1"></i>POS Dashboard
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('pos.new_sale') }}">
-                                <i class="fas fa-plus-circle me-1"></i>New Order
-                            </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('pos.sales_history') }}">
                                 <i class="fas fa-history me-1"></i>Sales History
                             </a></li>
@@ -162,6 +162,25 @@
                         </ul>
                     </li>
                     
+                    {% if session.role in ['pos_user', 'staff', 'agency_admin', 'agency_manager', 'super_admin'] %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-cash-register me-1"></i>POS
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('pos.dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-1"></i>POS Dashboard
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('pos.new_sale') }}">
+                                <i class="fas fa-plus-circle me-1"></i>New POS Sale
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('pos.sales_history') }}">
+                                <i class="fas fa-history me-1"></i>Sales History
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
                     {% if session.role in ['super_admin', 'agency_admin', 'agency_manager', 'staff'] %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
