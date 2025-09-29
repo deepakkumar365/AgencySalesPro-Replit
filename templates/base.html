@@ -141,13 +141,8 @@
                         </a>
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="{{ url_for('order.list_orders') }}">
-                                <i class="fas fa-shopping-cart me-1"></i>Sales Orders
+                                <i class="fas fa-shopping-cart me-1"></i>Orders
                             </a></li>
-                            {% if session.role in ['super_admin', 'agency_admin', 'agency_manager', 'staff'] %}
-                            <li><a class="dropdown-item" href="{{ url_for('purchase_order.list_purchase_orders') }}">
-                                <i class="fas fa-file-invoice me-1"></i>Purchase Orders
-                            </a></li>
-                            {% endif %}
                             {% if session.role in ['pos_user', 'staff', 'agency_admin', 'agency_manager', 'super_admin'] %}
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('pos.dashboard') }}">

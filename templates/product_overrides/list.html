@@ -1,150 +1,168 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+
+{% block title %}Product Overrides - AgencySales Pro{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4>
-      <i class="fas fa-sliders-h me-2"></i>Agency Product Overrides
-    </h4>
-    <div class="d-flex align-items-center gap-2">
-      {% if session.role != 'super_admin' or filters.agency %}
-      <a href="{{ url_for('product.create_product') }}" class="btn btn-primary">
-        <i class="fas fa-plus me-2"></i>Add Product
-      </a>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Filters -->
-  <div class="row mb-4">
-    <div class="col-12">
-      {% set has_filters = filters.date_from or filters.date_to or (session.role == 'super_admin' and filters.agency) or filters.category or filters.status or filters.search %}
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h6 class="mb-0">
-            <i class="fas fa-filter me-2"></i>Filters
-          </h6>
-          <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#overrideFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}" aria-controls="overrideFilters">
-            <i class="fas fa-sliders-h me-1"></i> Toggle
-          </button>
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-cogs me-2"></i>Product Overrides</h1>
+        <div>
+            {% if session.role in ['super_admin', 'agency_admin', 'agency_manager'] %}
+            <a href="{{ url_for('product_overrides.bulk_upload_overrides', agency=filters.agency) }}" class="btn btn-info btn-sm shadow-sm me-2">
+                <i class="fas fa-file-upload fa-sm text-white-50 me-2"></i>Bulk Upload
+            </a>
+            <a href="{{ url_for('product.create_product', agency_id=filters.agency) }}" class="btn btn-primary btn-sm shadow-sm">
+                <i class="fas fa-plus fa-sm text-white-50 me-2"></i>Add / Create Product
+            </a>
+            {% endif %}
         </div>
-        <div id="overrideFilters" class="collapse {{ 'show' if has_filters else '' }}">
-          <div class="card-body">
-            <form method="GET" class="row g-3">
-              <div class="col-md-3">
-                <label for="date_from" class="form-label">Date From</label>
-                <input type="date" class="form-control" id="date_from" name="date_from" value="{{ filters.date_from or '' }}">
-              </div>
-              <div class="col-md-3">
-                <label for="date_to" class="form-label">Date To</label>
-                <input type="date" class="form-control" id="date_to" name="date_to" value="{{ filters.date_to or '' }}">
-              </div>
+    </div>
 
-              {% if session.role == 'super_admin' and agencies %}
-              <div class="col-md-3">
-                <label for="agency" class="form-label">Agency</label>
-                <select class="form-select" id="agency" name="agency">
-                  <option value="">All Agencies</option>
-                  {% for a in agencies %}
-                  <option value="{{ a.id }}" {{ 'selected' if filters.agency == a.id|string else '' }}>{{ a.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              {% endif %}
-
-              <div class="col-md-3">
-                <label for="category" class="form-label">Category</label>
-                <select class="form-select" id="category" name="category">
-                  <option value="">All Categories</option>
-                  {% for category in categories %}
-                  <option value="{{ category.id }}" {{ 'selected' if filters.category == category.id|string else '' }}>{{ category.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-
-              <div class="col-md-3">
-                <label for="status" class="form-label">Status</label>
-                <select class="form-select" id="status" name="status">
-                  <option value="">All Status</option>
-                  <option value="active" {{ 'selected' if filters.status == 'active' else '' }}>Active</option>
-                  <option value="inactive" {{ 'selected' if filters.status == 'inactive' else '' }}>Inactive</option>
-                </select>
-              </div>
-
-              <div class="col-md-3">
-                <label for="search" class="form-label">Search</label>
-                <input type="text" class="form-control" id="search" name="search" placeholder="Name or SKU" value="{{ filters.search or '' }}">
-              </div>
-
-              <div class="col-md-3 d-flex align-items-end">
-                <div class="btn-group w-100">
-                  <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-search me-1"></i>Filter
-                  </button>
-                  <a href="{{ url_for('product_overrides.list_overrides') }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-times me-1"></i>Clear
-                  </a>
+    <!-- Filter Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filters</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET">
+                <div class="row">
+                    {% if session.role == 'super_admin' %}
+                    <div class="col-md-3 mb-3">
+                        <label for="agency" class="form-label">Agency</label>
+                        <select name="agency" id="agency" class="form-select">
+                            <option value="">All Agencies</option>
+                            {% for a in agencies %}
+                            <option value="{{ a.id }}" {{ 'selected' if filters.agency and filters.agency|int == a.id }}>{{ a.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div class="col-md-3 mb-3">
+                        <label for="search" class="form-label">Search</label>
+                        <input type="text" name="search" id="search" class="form-control" placeholder="Name or SKU..." value="{{ filters.search }}">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="category" class="form-label">Category</label>
+                        <select name="category" id="category" class="form-select">
+                            <option value="">All Categories</option>
+                            {% for c in categories %}
+                            <option value="{{ c.id }}" {{ 'selected' if filters.category and filters.category|int == c.id }}>{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select name="status" id="status" class="form-select">
+                            <option value="">All</option>
+                            <option value="active" {{ 'selected' if filters.status == 'active' }}>Active</option>
+                            <option value="inactive" {{ 'selected' if filters.status == 'inactive' }}>Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end mb-3">
+                        <button type="submit" class="btn btn-primary w-100">Filter</button>
+                    </div>
                 </div>
-              </div>
             </form>
-          </div>
         </div>
-      </div>
     </div>
-  </div>
 
-  {% if session.role == 'super_admin' and not filters.agency %}
-    <div class="alert alert-info">Select an Agency to view and edit overrides.</div>
-  {% endif %}
-
-  <div class="table-responsive">
-    <table class="table table-striped align-middle">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>SKU</th>
-          <th>Prices (Buy / Sell / MRP)</th>
-          <th>Category</th>
-          <th>UOM</th>
-          <th>Tax</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for product, mapping in rows %}
-        <tr>
-          <td><strong>{{ mapping.display_name or product.name }}</strong></td>
-          <td><code>{{ product.sku }}</code></td>
-          <td>
-            ₹{{ '%.2f'|format(mapping.buy_price if mapping.buy_price is not none else (product.buy_price or 0)) }}
-            /
-            ₹{{ '%.2f'|format(mapping.sell_price if mapping.sell_price is not none else (product.sell_price or 0)) }}
-            /
-            ₹{{ '%.2f'|format(mapping.mrp_price if mapping.mrp_price is not none else (product.mrp_price or 0)) }}
-          </td>
-          <td>{{ mapping.category_ref.name if mapping.category_ref else (product.category_ref.name if product.category_ref else '-') }}</td>
-          <td>{{ mapping.uom_ref.name if mapping.uom_ref else (product.uom_ref.name if product.uom_ref else (product.uom or 'pcs')) }}</td>
-          <td>{{ mapping.tax_master_ref.tax_code if mapping.tax_master_ref else (product.tax_master_ref.tax_code if product.tax_master_ref else (product.tax_code or 'GST18')) }}</td>
-          <td>
-            {% if mapping.is_active %}
-              <span class="badge bg-success">Active</span>
-            {% else %}
-              <span class="badge bg-secondary">Inactive</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if session.role == 'super_admin' and not filters.agency %}
-              <span>Select Agency</span>
-            {% else %}
-              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('product_overrides.edit_override', product_id=product.id, agency=filters.agency) }}">
-                <i class="fas fa-edit"></i>
-              </a>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+    <!-- DataTales Example -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Mapped Products</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Product (SKU)</th>
+                            <th>Agency Name</th>
+                            <th>Effective Prices (Buy/Sell/MRP)</th>
+                            <th>Effective Category</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product, mapping in rows %}
+                        <tr>
+                            <td>
+                                <span>{{ mapping.display_name or product.name }}</span>
+                                <small class="text-muted ms-2">({{ product.sku }})</small>
+                            </td>
+                            <td>
+                                {% if mapping.agency %}
+                                    {{ mapping.agency.name }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">₹{{ "%.2f"|format(mapping.buy_price or product.buy_price) }}</span>
+                                <span class="badge bg-success">₹{{ "%.2f"|format(mapping.sell_price or product.sell_price) }}</span>
+                                <span class="badge bg-info text-dark">₹{{ "%.2f"|format(mapping.mrp_price or product.mrp_price) }}</span>
+                            </td>
+                            <td>
+                                {% if mapping.category_ref %}
+                                    {{ mapping.category_ref.name }} <span class="badge bg-warning text-dark">Override</span>
+                                {% elif product.category_ref %}
+                                    {{ product.category_ref.name }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if mapping.is_active %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('product_overrides.edit_override', product_id=product.id, agency=mapping.agency_id) }}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">No product overrides found for the selected criteria.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
+
+<style>
+    .table-responsive {
+        overflow-x: auto;
+    }
+    .table th, .table td {
+        white-space: nowrap;
+    }
+    .table td strong {
+        display: block;
+    }
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // If super admin changes agency, submit the form
+    const agencySelect = document.getElementById('agency');
+    if (agencySelect) {
+        agencySelect.addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+});
+</script>
 {% endblock %}

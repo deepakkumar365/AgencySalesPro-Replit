@@ -1,85 +1,167 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+
+{% block title %}Edit Product Override - AgencySales Pro{% endblock %}
+
 {% block content %}
-<div class="container" style="max-width: 920px;">
-  <h4 class="mb-3">Edit Agency Product</h4>
-  <form method="POST">
-    <div class="card mb-3">
-      <div class="card-body">
-        <div class="row g-3">
-          <!-- Read-only global info -->
-          <div class="col-md-4">
-            <label class="form-label">Global Name</label>
-            <input type="text" class="form-control" value="{{ product.name }}" disabled />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">SKU</label>
-            <input type="text" class="form-control" value="{{ product.sku }}" disabled />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Global MRP</label>
-            <input type="text" class="form-control" value="{{ '%.2f'|format(product.mrp_price or 0) }}" disabled />
-          </div>
-
-          <!-- Agency editable fields -->
-          <div class="col-md-6">
-            <label class="form-label">Display Name (Agency)</label>
-            <input type="text" class="form-control" name="display_name" value="{{ mapping.display_name or '' }}" placeholder="Optional" />
-          </div>
-          <div class="col-md-6 d-none d-md-block"></div>
-
-          <div class="col-md-4">
-            <label class="form-label">Buy Price (Agency)</label>
-            <input type="number" step="0.01" class="form-control" name="buy_price" value="{{ mapping.buy_price if mapping.buy_price is not none else '' }}" placeholder="Leave blank to use default ({{ '%.2f'|format(product.buy_price or 0) }})" />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Sell Price (Agency)</label>
-            <input type="number" step="0.01" class="form-control" name="sell_price" value="{{ mapping.sell_price if mapping.sell_price is not none else '' }}" placeholder="Leave blank to use default ({{ '%.2f'|format(product.sell_price or 0) }})" />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">MRP (Agency)</label>
-            <input type="number" step="0.01" class="form-control" name="mrp_price" value="{{ mapping.mrp_price if mapping.mrp_price is not none else '' }}" placeholder="Leave blank to use default ({{ '%.2f'|format(product.mrp_price or 0) }})" />
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Category (Agency)</label>
-            <select class="form-select" name="category_id">
-              <option value="">Use default</option>
-              {% for c in categories %}
-              <option value="{{ c.id }}" {{ 'selected' if mapping.category_id and mapping.category_id == c.id else '' }}>{{ c.name }}{% if c.short_name %} ({{ c.short_name }}){% endif %}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">UOM (Agency)</label>
-            <select class="form-select" name="uom_id">
-              <option value="">Use default</option>
-              {% for u in uoms %}
-              <option value="{{ u.id }}" {{ 'selected' if mapping.uom_id and mapping.uom_id == u.id else '' }}>{{ u.name }}{% if u.short_name %} ({{ u.short_name }}){% endif %}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Tax (Agency)</label>
-            <select class="form-select" name="tax_master_id">
-              <option value="">Use default</option>
-              {% for t in tax_masters %}
-              <option value="{{ t.id }}" {{ 'selected' if mapping.tax_master_id and mapping.tax_master_id == t.id else '' }}>{{ t.tax_code }} - {{ '%.2f'|format(t.tax_rate) }}%</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-md-4 d-flex align-items-end">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {{ 'checked' if mapping.is_active else '' }}>
-              <label class="form-check-label" for="is_active">Active</label>
+<div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Product Override</h4>
+                    <small class="text-muted">{{ product.name }} ({{ product.sku }})</small>
+                </div>
+                <a href="{{ url_for('product_overrides.list_overrides', agency=agency_id) }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </a>
             </div>
-          </div>
+            <div class="card-body">
+                <form method="POST">
+                    <p class="form-text">
+                        Set agency-specific values for this product. Leave fields blank to use the master product's default values.
+                    </p>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="display_name" class="form-label">Agency-Specific Display Name</label>
+                            <input type="text" class="form-control" id="display_name" name="display_name" 
+                                   value="{{ mapping.display_name or '' }}" placeholder="{{ product.name }}">
+                            <div class="form-text">If set, this name will be used in orders and searches for this agency.</div>
+                        </div>
+                    </div>
+
+                    <h5 class="mt-3">Price Overrides</h5>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="buy_price" class="form-label">Buy Price</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" step="0.01" class="form-control" id="buy_price" name="buy_price" 
+                                       value="{{ mapping.buy_price if mapping.buy_price is not none else '' }}" placeholder="{{ product.buy_price }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="sell_price" class="form-label">Sell Price</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" step="0.01" class="form-control" id="sell_price" name="sell_price" 
+                                       value="{{ mapping.sell_price if mapping.sell_price is not none else '' }}" placeholder="{{ product.sell_price }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="mrp_price" class="form-label">MRP</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" step="0.01" class="form-control" id="mrp_price" name="mrp_price" 
+                                       value="{{ mapping.mrp_price if mapping.mrp_price is not none else '' }}" placeholder="{{ product.mrp_price }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <h5 class="mt-3">Attribute Overrides</h5>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="category_id" class="form-label">Category</label>
+                            <select class="form-select" id="category_id" name="category_id">
+                                <option value="">-- Use Master ({{ product.category_ref.name or 'N/A' }}) --</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}" 
+                                        {{ 'selected' if mapping.category_id == category.id else '' }}>
+                                    {{ category.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="uom_id" class="form-label">Unit of Measure</label>
+                            <select class="form-select" id="uom_id" name="uom_id">
+                                <option value="">-- Use Master ({{ product.uom_ref.name or 'N/A' }}) --</option>
+                                {% for uom in uoms %}
+                                <option value="{{ uom.id }}" 
+                                        {{ 'selected' if mapping.uom_id == uom.id else '' }}>
+                                    {{ uom.name }} ({{ uom.short_name }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="tax_master_id" class="form-label">Tax Master</label>
+                            <select class="form-select" id="tax_master_id" name="tax_master_id">
+                                <option value="">-- Use Master ({{ product.tax_master_ref.name or 'N/A' }}) --</option>
+                                {% for tax_master in tax_masters %}
+                                <option value="{{ tax_master.id }}" 
+                                        {{ 'selected' if mapping.tax_master_id == tax_master.id else '' }}>
+                                    {{ tax_master.name }} ({{ tax_master.tax_rate }}%)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <h5 class="mt-3">Status</h5>
+                    <hr>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="is_active" name="is_active" 
+                               {{ 'checked' if mapping.is_active else '' }}>
+                        <label class="form-check-label" for="is_active">
+                            Product is Active for this Agency
+                        </label>
+                        <div class="form-text">
+                            If unchecked, this product will not appear in searches or be available for orders for this agency.
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{{ url_for('product_overrides.list_overrides', agency=agency_id) }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Save Overrides
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-      </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Master Product Details (Read-Only)</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Master Name</dt>
+                    <dd class="col-sm-8">{{ product.name }}</dd>
+
+                    <dt class="col-sm-4">Master SKU</dt>
+                    <dd class="col-sm-8">{{ product.sku }}</dd>
+
+                    <dt class="col-sm-4">Master Buy Price</dt>
+                    <dd class="col-sm-8">₹{{ "%.2f"|format(product.buy_price) }}</dd>
+
+                    <dt class="col-sm-4">Master Sell Price</dt>
+                    <dd class="col-sm-8">₹{{ "%.2f"|format(product.sell_price) }}</dd>
+
+                    <dt class="col-sm-4">Master MRP</dt>
+                    <dd class="col-sm-8">₹{{ "%.2f"|format(product.mrp_price) }}</dd>
+
+                    <dt class="col-sm-4">Master Category</dt>
+                    <dd class="col-sm-8">{{ product.category_ref.name if product.category_ref else 'N/A' }}</dd>
+
+                    <dt class="col-sm-4">Master UOM</dt>
+                    <dd class="col-sm-8">{{ product.uom_ref.name if product.uom_ref else 'N/A' }}</dd>
+
+                    <dt class="col-sm-4">Master Tax</dt>
+                    <dd class="col-sm-8">{{ product.tax_master_ref.name if product.tax_master_ref else 'N/A' }} ({{ product.tax_master_ref.tax_rate if product.tax_master_ref else 'N/A' }}%)</dd>
+                </dl>
+                {% if session.role == 'super_admin' %}
+                <div class="text-end">
+                    <a href="{{ url_for('product.edit_product', product_id=product.id) }}" class="btn btn-sm btn-outline-warning">
+                        <i class="fas fa-pencil-alt me-1"></i> Edit Master Product
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
     </div>
-    <div class="d-flex gap-2 justify-content-end">
-      <a class="btn btn-secondary" href="{{ url_for('product_overrides.list_overrides', agency=agency_id) }}">Cancel</a>
-      <button type="submit" class="btn btn-primary">Save</button>
-    </div>
-  </form>
 </div>
 {% endblock %}
