@@ -297,10 +297,14 @@ def search_products_v2(current_agency_id=None):
     if not q or len(q) < 2:
         return jsonify([])
 
+    # Check if a global search is requested (e.g., from the product creation form)
+    is_global_search = request.args.get('scope') == 'global'
+
     user_role = session.get('role')
     agency_id = current_agency_id or session.get('agency_id')
 
-    if user_role != 'super_admin':
+    # Restrict by agency unless it's a super_admin or a global search
+    if user_role != 'super_admin' and not is_global_search:
         # For non-super-admins, only show products actively mapped to their agency
         base = db.session.query(Product).join(
             ProductAgency,
@@ -309,10 +313,12 @@ def search_products_v2(current_agency_id=None):
                  ProductAgency.is_active == True) # Explicitly filter for active mappings
         )
     else:
-        # Super admin can see all master products, with overrides if they exist for the agency_id
+        # Super admin or global search: see all master products.
+        # We still join ProductAgency to fetch override prices if an agency context exists.
+        target_agency_id = None if is_global_search else agency_id
         base = db.session.query(Product).outerjoin(
             ProductAgency,
-            and_(ProductAgency.product_id == Product.id, ProductAgency.agency_id == agency_id))
+            and_(ProductAgency.product_id == Product.id, ProductAgency.agency_id == target_agency_id))
     base = base.add_entity(ProductAgency) # Add ProductAgency as an entity to the query for selection
 
     # Active products only

@@ -128,6 +128,13 @@ def list_products(current_agency_id=None):
 @log_activity('create_product')
 def create_product(current_agency_id=None):
     master_data = _get_master_data()
+    user_role = session.get('role')
+
+    # Determine the correct cancel URL based on user role
+    if user_role in ['super_admin', 'agency_manager']:
+        cancel_url = url_for('product.list_products')
+    else:
+        cancel_url = url_for('product_overrides.list_overrides', agency=current_agency_id)
 
     if request.method == 'POST':
         name = request.form.get('name')
@@ -139,8 +146,6 @@ def create_product(current_agency_id=None):
         uom_id = request.form.get('uom_id')
         tax_master_id = request.form.get('tax_master_id')
         agency_id = request.form.get('agency_id')
-        
-        user_role = session.get('role')
 
         # Auto-generate SKU if missing
         if name and not sku:
@@ -156,7 +161,7 @@ def create_product(current_agency_id=None):
         
         if not all([name, sku, buy_price, sell_price, mrp_price]):
             flash('Name, SKU, Buy Price, Sell Price, and MRP are required.', 'error')
-            return render_template('product/form.html', agencies=get_agencies_for_user(), **master_data)
+            return render_template('product/form.html', agencies=get_agencies_for_user(), cancel_url=cancel_url, **master_data)
         
         # Non-super admin users can only create products for their agency
         if user_role != 'super_admin':
@@ -173,12 +178,12 @@ def create_product(current_agency_id=None):
                 selected_id = int(selected_product_id)
             except (TypeError, ValueError):
                 flash('Invalid product selection.', 'error')
-                return render_template('product/form.html', agencies=get_agencies_for_user(), **master_data)
+                return render_template('product/form.html', agencies=get_agencies_for_user(), cancel_url=cancel_url, **master_data)
 
             existing_product = Product.query.get(selected_id)
             if not existing_product: # Should not happen with a proper UI
                 flash('Selected product not found.', 'error')
-                return render_template('product/form.html', agencies=get_agencies_for_user())
+                return render_template('product/form.html', agencies=get_agencies_for_user(), cancel_url=cancel_url)
 
             # Determine target agency for mapping
             target_agency_id = None
@@ -210,7 +215,7 @@ def create_product(current_agency_id=None):
             else:
                 # No agency chosen by super admin; cannot map automatically
                 flash('Select an agency to map the existing product, or create without selecting.', 'error')
-                return render_template('product/form.html', agencies=get_agencies_for_user(), **master_data)
+                return render_template('product/form.html', agencies=get_agencies_for_user(), cancel_url=cancel_url, **master_data)
 
         # No selection => creating a new product: enforce global SKU uniqueness
         if Product.query.filter_by(sku=sku).first():
@@ -224,7 +229,7 @@ def create_product(current_agency_id=None):
             
             if not sku or Product.query.filter_by(sku=sku).first():
                 flash('SKU already exists. Please use search to select the existing product instead of creating a duplicate.', 'error')
-                return render_template('product/form.html', agencies=get_agencies_for_user(), **master_data)
+                return render_template('product/form.html', agencies=get_agencies_for_user(), cancel_url=cancel_url, **master_data)
         
         try:
             buy_price = float(buy_price) if buy_price else 0.0
@@ -232,7 +237,7 @@ def create_product(current_agency_id=None):
             mrp_price = float(mrp_price) if mrp_price else 0.0
         except (ValueError, TypeError):
             flash('Invalid price values. Please enter numbers only.', 'error')
-            return render_template('product/form.html', agencies=get_agencies_for_user(), **master_data)
+            return render_template('product/form.html', agencies=get_agencies_for_user(), cancel_url=cancel_url, **master_data)
         
         # Calculate margin
         margin = round(((sell_price - buy_price) / buy_price) * 100, 2) if buy_price > 0 else 0
@@ -275,10 +280,16 @@ def create_product(current_agency_id=None):
         db.session.commit()
         
         flash('Product created successfully!', 'success')
-        return redirect(url_for('product.list_products'))
-    
+        
+        # Redirect based on role
+        if user_role in ['super_admin', 'agency_manager']:
+            return redirect(url_for('product.list_products'))
+        else:
+            return redirect(url_for('product_overrides.list_overrides', agency=agency_id))
+
     return render_template('product/form.html', 
                          agencies=get_agencies_for_user(),
+                         cancel_url=cancel_url,
                          **master_data
                         )
 
@@ -288,9 +299,10 @@ def create_product(current_agency_id=None):
 def edit_product(product_id):
     product = Product.query.get_or_404(product_id)
     
+    user_role = session.get('role')
     # Only super_admin can edit master
     if user_role != 'super_admin':
-        flash('Only super admin can edit product master. Agency overrides will be provided separately.', 'error')
+        flash('Only super admins can edit the product master. Use "Product Overrides" to manage agency-specific details.', 'error')
         return redirect(url_for('product.list_products'))
     
     if request.method == 'POST':
@@ -315,13 +327,13 @@ def edit_product(product_id):
         
         if not all([product.name, product.sku, buy_price, sell_price, mrp_price]):
             flash('Name, SKU, Buy Price, Sell Price, and MRP are required.', 'error')
-            return render_template('product/form.html', product=product, agencies=get_agencies_for_user(), **_get_master_data())
+            return render_template('product/form.html', product=product, agencies=get_agencies_for_user(), cancel_url=url_for('product.list_products'), **_get_master_data())
         
         # Check if SKU already exists (excluding current product)
         existing = Product.query.filter_by(sku=product.sku).first()
         if existing and existing.id != product.id:
             flash('SKU already exists.', 'error')
-            return render_template('product/form.html', product=product, agencies=get_agencies_for_user())
+            return render_template('product/form.html', product=product, agencies=get_agencies_for_user(), cancel_url=url_for('product.list_products'))
         
         try:
             product.buy_price = float(buy_price)
@@ -333,7 +345,7 @@ def edit_product(product_id):
             product.tax_master_id = int(tax_master_id) if tax_master_id else None
         except ValueError:
             flash('Invalid price values. Please enter numbers only.', 'error')
-            return render_template('product/form.html', product=product, agencies=get_agencies_for_user(), **_get_master_data())
+            return render_template('product/form.html', product=product, agencies=get_agencies_for_user(), cancel_url=url_for('product.list_products'), **_get_master_data())
         
         db.session.commit()
         flash('Product updated successfully!', 'success')
@@ -342,6 +354,7 @@ def edit_product(product_id):
     return render_template('product/form.html', 
                          product=product,
                          agencies=get_agencies_for_user(),
+                         cancel_url=url_for('product.list_products'),
                          **_get_master_data()
                         )
 
@@ -453,7 +466,7 @@ def export_products():
 @product_bp.route('/import', methods=['GET', 'POST'])
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('import_products')
-def import_products():
+def import_products(current_agency_id=None):
     if request.method == 'POST':
         if 'file' not in request.files:
             flash('No file selected', 'error')
@@ -470,7 +483,6 @@ def import_products():
         
         try:
             user_role = session.get('role')
-            current_agency_id = session.get('agency_id')
             
             # Import products
             result = import_products_from_excel(file, current_agency_id, user_role)

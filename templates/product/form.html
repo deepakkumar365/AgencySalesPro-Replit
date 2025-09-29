@@ -128,7 +128,7 @@
                     {% endif %}
                     
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{{ url_for('product.list_products') }}" class="btn btn-secondary">Cancel</a>
+                        <a href="{{ cancel_url or url_for('product.list_products') }}" class="btn btn-secondary">Cancel</a>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save me-2"></i>{{ 'Update' if product else 'Create' }} Product
                         </button>
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function() {
             placeholder: 'Type name or SKU to search',
             load: function(query, callback) {
                 if (!query || query.length < 2) return callback();
-                fetch(`/order/api/search-products-v2?q=${encodeURIComponent(query)}`)
+                fetch(`/order/api/search-products-v2?q=${encodeURIComponent(query)}&scope=global`)
                     .then(res => res.json())
                     .then(items => callback(items))
                     .catch(() => callback());

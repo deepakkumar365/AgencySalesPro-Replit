@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
     placeholder: 'Type name or SKU to search',
     load: function(query, callback) {
       if (!query || query.length < 2) return callback();
-      fetch(`/order/api/search-products?q=${encodeURIComponent(query)}`)
+      fetch(`/order/api/search-products-v2?q=${encodeURIComponent(query)}`)
         .then(res => res.json())
         .then(items => callback(items))
         .catch(() => callback());
