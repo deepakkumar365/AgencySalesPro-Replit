@@ -8,7 +8,7 @@ from utils.decorators import log_activity
 @agency_bp.route('/')
 @role_required('super_admin', 'agency_admin', 'agency_manager')
 def list_agencies():
-    user_role = session.get('role')
+    user_role = session.get('role') 
     user_id = session.get('user_id')
     
     if user_role == 'super_admin':
@@ -77,8 +77,8 @@ def create_agency():
         db.session.add(agency)
         db.session.commit()
         
-        flash('Agency created successfully!', 'success')
-        return redirect(url_for('agency.list_agencies'))
+        flash('Agency created successfully! Next, set up the default users.', 'success')
+        return redirect(url_for('agency.setup_users', agency_id=agency.id))
     
     # Get potential managers for the dropdown
     managers = []
@@ -86,6 +86,89 @@ def create_agency():
         managers = User.query.filter(User.role.in_(['agency_manager', 'super_admin'])).all()
 
     return render_template('agency/form.html', managers=managers, user_role=user_role)
+
+@agency_bp.route('/<int:agency_id>/setup/users', methods=['GET', 'POST'])
+@role_required('super_admin', 'agency_manager')
+def setup_users(agency_id):
+    """Wizard step 1: Create default users for a new agency."""
+    from models import User
+    agency = Agency.query.get_or_404(agency_id)
+
+    if request.method == 'POST':
+        users_to_create = request.form.getlist('create_user_role')
+        created_count = 0
+        
+        for role in users_to_create:
+            email = request.form.get(f'email_{role}')
+            password = request.form.get(f'password_{role}')
+
+            if not email or not password:
+                flash(f'Email and password are required for the {role} user.', 'error')
+                continue
+
+            username_suffix_map = {
+                'agency_admin': 'admin',
+                'staff': 'staff',
+                'salesperson': 'sales'
+            }
+            username_suffix = username_suffix_map.get(role, 'user')
+            
+            username = f"{agency.code.lower()}_{username_suffix}"
+
+            # Check for uniqueness
+            if User.query.filter_by(username=username).first() or User.query.filter_by(email=email).first():
+                flash(f'Username ({username}) or email ({email}) already exists. Please choose another.', 'error')
+                continue
+
+            new_user = User(
+                username=username,
+                email=email,
+                role=role,
+                agency_id=agency.id,
+                is_active=True
+            )
+            new_user.set_password(password)
+            db.session.add(new_user)
+            created_count += 1
+
+        if created_count > 0:
+            db.session.commit()
+            flash(f'{created_count} user(s) created. Now, create a mandatory location for the agency.', 'success')
+            return redirect(url_for('agency.setup_location', agency_id=agency.id))
+        else:
+            flash('No users were created. Please correct the errors and try again.', 'warning')
+
+    default_users = [
+        {'role': 'agency_admin', 'name': 'Agency Admin'},
+        {'role': 'staff', 'name': 'Staff'},
+        {'role': 'salesperson', 'name': 'Salesperson'}
+    ]
+    return render_template('agency/setup_users.html', agency=agency, default_users=default_users)
+
+@agency_bp.route('/<int:agency_id>/setup/location', methods=['GET', 'POST'])
+@role_required('super_admin', 'agency_manager')
+def setup_location(agency_id):
+    """Wizard step 2: Create the first location for a new agency."""
+    from models import Location
+    agency = Agency.query.get_or_404(agency_id)
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        if not name:
+            flash('Location name is required.', 'error')
+        else:
+            new_location = Location(
+                name=name,
+                address=request.form.get('address'),
+                agency_id=agency.id,
+                is_active=True
+            )
+            db.session.add(new_location)
+            db.session.commit()
+            flash(f'Agency "{agency.name}" setup is complete!', 'success')
+            return redirect(url_for('agency.list_agencies'))
+
+    return render_template('agency/setup_location.html', agency=agency)
 
 @agency_bp.route('/<int:agency_id>/edit', methods=['GET', 'POST'])
 @role_required('super_admin', 'agency_admin', 'agency_manager')
