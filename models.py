@@ -471,3 +471,108 @@ class TaxMaster(db.Model):
     
     # Relationships
     products = db.relationship('Product', backref='tax_master_ref', lazy=True)
+
+# Subscription Module Models
+class SubscriptionPlan(db.Model):
+    __tablename__ = 'ASP_subscription_plans'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    code = db.Column(db.String(50), nullable=False, unique=True)
+    description = db.Column(db.Text)
+    price = db.Column(db.Numeric(10, 2), nullable=False)
+    billing_cycle = db.Column(db.String(20), nullable=False, default='monthly')  # monthly, quarterly, half_yearly, yearly
+    features = db.Column(db.Text)  # JSON string or comma-separated features
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    subscriptions = db.relationship('Subscription', backref='plan', lazy=True)
+    subscription_items = db.relationship('SubscriptionItem', backref='plan', lazy=True)
+
+class Subscription(db.Model):
+    __tablename__ = 'ASP_subscriptions'
+    id = db.Column(db.Integer, primary_key=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, unique=True, index=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('ASP_subscription_plans.id'), nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False, default='active', index=True)  # active, suspended, cancelled, expired
+    start_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    end_date = db.Column(db.DateTime)
+    trial_end_date = db.Column(db.DateTime)  # For future use
+    next_billing_date = db.Column(db.DateTime)
+    cancelled_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    agency_rel = db.relationship('Agency', backref='subscription', lazy=True, uselist=False)
+    invoices = db.relationship('SubscriptionInvoice', backref='subscription', lazy=True, cascade='all, delete-orphan')
+    items = db.relationship('SubscriptionItem', backref='subscription', lazy=True, cascade='all, delete-orphan')
+    
+    @property
+    def is_active(self):
+        """Check if subscription is currently active"""
+        return self.status == 'active'
+    
+    @property
+    def is_expired(self):
+        """Check if subscription has expired"""
+        if self.end_date and self.end_date < datetime.utcnow():
+            return True
+        return False
+    
+    @property
+    def days_until_renewal(self):
+        """Calculate days until next billing"""
+        if self.next_billing_date:
+            delta = self.next_billing_date - datetime.utcnow()
+            return delta.days
+        return None
+
+class SubscriptionInvoice(db.Model):
+    __tablename__ = 'ASP_subscription_invoices'
+    id = db.Column(db.Integer, primary_key=True)
+    subscription_id = db.Column(db.Integer, db.ForeignKey('ASP_subscriptions.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    invoice_number = db.Column(db.String(50), nullable=False, unique=True, index=True)
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='draft', index=True)  # draft, issued, paid, overdue, cancelled
+    issue_date = db.Column(db.DateTime, default=datetime.utcnow)
+    due_date = db.Column(db.DateTime, nullable=False)
+    paid_at = db.Column(db.DateTime)
+    billing_period_start = db.Column(db.DateTime, nullable=False)
+    billing_period_end = db.Column(db.DateTime, nullable=False)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    agency_rel = db.relationship('Agency', backref='subscription_invoices', lazy=True)
+    
+    @property
+    def is_overdue(self):
+        """Check if invoice is overdue"""
+        if self.status in ['issued', 'draft'] and self.due_date < datetime.utcnow():
+            return True
+        return False
+    
+    @property
+    def days_overdue(self):
+        """Calculate days overdue"""
+        if self.is_overdue:
+            delta = datetime.utcnow() - self.due_date
+            return delta.days
+        return 0
+
+class SubscriptionItem(db.Model):
+    __tablename__ = 'ASP_subscription_items'
+    id = db.Column(db.Integer, primary_key=True)
+    subscription_id = db.Column(db.Integer, db.ForeignKey('ASP_subscriptions.id'), nullable=False, index=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('ASP_subscription_plans.id'), nullable=False, index=True)
+    item_description = db.Column(db.String(255), nullable=False)
+    quantity = db.Column(db.Integer, default=1)
+    unit_price = db.Column(db.Numeric(10, 2), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    @property
+    def total_price(self):
+        """Calculate total price for this item"""
+        return self.quantity * self.unit_price

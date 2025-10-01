@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}Subscription Reports - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-chart-bar me-2"></i>Subscription Reports & Analytics
+        </h1>
+    </div>
+</div>
+
+<!-- Key Metrics -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-chart-line fa-2x text-primary mb-2"></i>
+                <h3 class="card-title">{{ churn_rate }}%</h3>
+                <p class="card-text">Churn Rate (This Month)</p>
+                <small class="text-muted">Percentage of cancelled subscriptions</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-dollar-sign fa-2x text-success mb-2"></i>
+                {% set total_revenue = monthly_revenue|map(attribute='total')|sum %}
+                <h3 class="card-title">${{ "%.2f"|format(total_revenue) }}</h3>
+                <p class="card-text">Total Revenue (12 Months)</p>
+                <small class="text-muted">Last 12 months revenue</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-users fa-2x text-info mb-2"></i>
+                {% set total_active = plan_distribution|map(attribute='count')|sum %}
+                <h3 class="card-title">{{ total_active }}</h3>
+                <p class="card-text">Active Subscriptions</p>
+                <small class="text-muted">Currently active</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Revenue Trend Chart -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Monthly Revenue Trend (Last 12 Months)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="revenueChart" height="80"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Plan Distribution -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-pie-chart me-2"></i>Plan Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="planDistributionChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-table me-2"></i>Plan Details</h5>
+            </div>
+            <div class="card-body">
+                {% if plan_distribution %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Plan</th>
+                                <th class="text-end">Subscriptions</th>
+                                <th class="text-end">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for plan_name, count, revenue in plan_distribution %}
+                            <tr>
+                                <td><strong>{{ plan_name }}</strong></td>
+                                <td class="text-end">{{ count }}</td>
+                                <td class="text-end">${{ "%.2f"|format(revenue) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-active">
+                                <td><strong>Total</strong></td>
+                                <td class="text-end"><strong>{{ plan_distribution|map(attribute='count')|sum }}</strong></td>
+                                <td class="text-end"><strong>${{ "%.2f"|format(plan_distribution|map(attribute='revenue')|sum) }}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No active subscriptions.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Revenue by Month Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-calendar me-2"></i>Monthly Revenue Breakdown</h5>
+            </div>
+            <div class="card-body">
+                {% if monthly_revenue %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th class="text-end">Revenue</th>
+                                <th class="text-end">Growth</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for year, month, total in monthly_revenue %}
+                            <tr>
+                                <td>
+                                    <strong>{{ "%d-%02d"|format(year|int, month|int) }}</strong>
+                                </td>
+                                <td class="text-end">
+                                    ${{ "%.2f"|format(total) }}
+                                </td>
+                                <td class="text-end">
+                                    {% if not loop.first %}
+                                        {% set prev_total = monthly_revenue[loop.index0 - 1][2] %}
+                                        {% if prev_total > 0 %}
+                                            {% set growth = ((total - prev_total) / prev_total * 100) %}
+                                            {% if growth > 0 %}
+                                            <span class="text-success">
+                                                <i class="fas fa-arrow-up"></i> {{ "%.1f"|format(growth) }}%
+                                            </span>
+                                            {% elif growth < 0 %}
+                                            <span class="text-danger">
+                                                <i class="fas fa-arrow-down"></i> {{ "%.1f"|format(growth|abs) }}%
+                                            </span>
+                                            {% else %}
+                                            <span class="text-muted">0%</span>
+                                            {% endif %}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-active">
+                                <td><strong>Total</strong></td>
+                                <td class="text-end"><strong>${{ "%.2f"|format(monthly_revenue|map(attribute='total')|sum) }}</strong></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No revenue data available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Export Options -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-download me-2"></i>Export Reports</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Export subscription reports in various formats</p>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary" onclick="alert('CSV export coming soon!')">
+                        <i class="fas fa-file-csv me-2"></i>Export as CSV
+                    </button>
+                    <button type="button" class="btn btn-outline-success" onclick="alert('Excel export coming soon!')">
+                        <i class="fas fa-file-excel me-2"></i>Export as Excel
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" onclick="window.print()">
+                        <i class="fas fa-file-pdf me-2"></i>Print/PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Revenue Trend Chart
+const revenueData = {
+    labels: [{% for year, month, total in monthly_revenue %}'{{ "%d-%02d"|format(year|int, month|int) }}'{{ ',' if not loop.last else '' }}{% endfor %}],
+    datasets: [{
+        label: 'Revenue ($)',
+        data: [{% for year, month, total in monthly_revenue %}{{ total }}{{ ',' if not loop.last else '' }}{% endfor %}],
+        borderColor: '#0d6efd',
+        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+        tension: 0.4,
+        fill: true
+    }]
+};
+
+new Chart(document.getElementById('revenueChart'), {
+    type: 'line',
+    data: revenueData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return 'Revenue: $' + context.parsed.y.toFixed(2);
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '$' + value.toFixed(0);
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Plan Distribution Chart
+const planData = {
+    labels: [{% for plan_name, count, revenue in plan_distribution %}'{{ plan_name }}'{{ ',' if not loop.last else '' }}{% endfor %}],
+    datasets: [{
+        data: [{% for plan_name, count, revenue in plan_distribution %}{{ count }}{{ ',' if not loop.last else '' }}{% endfor %}],
+        backgroundColor: [
+            '#0d6efd',
+            '#198754',
+            '#ffc107',
+            '#dc3545',
+            '#0dcaf0',
+            '#6610f2',
+            '#fd7e14'
+        ]
+    }]
+};
+
+new Chart(document.getElementById('planDistributionChart'), {
+    type: 'doughnut',
+    data: planData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.parsed || 0;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return label + ': ' + value + ' (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

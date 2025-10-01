@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Subscriptions - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-users me-2"></i>Subscriptions</h1>
+            <a href="{{ url_for('subscription.create_subscription') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Create New Subscription
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status" onchange="this.form.submit()">
+                            <option value="all" {{ 'selected' if status_filter == 'all' else '' }}>All Status</option>
+                            <option value="active" {{ 'selected' if status_filter == 'active' else '' }}>Active</option>
+                            <option value="suspended" {{ 'selected' if status_filter == 'suspended' else '' }}>Suspended</option>
+                            <option value="cancelled" {{ 'selected' if status_filter == 'cancelled' else '' }}>Cancelled</option>
+                            <option value="expired" {{ 'selected' if status_filter == 'expired' else '' }}>Expired</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label for="agency" class="form-label">Agency</label>
+                        <select class="form-select" id="agency" name="agency" onchange="this.form.submit()">
+                            <option value="">All Agencies</option>
+                            {% for agency in agencies %}
+                            <option value="{{ agency.id }}" {{ 'selected' if agency_filter == agency.id else '' }}>
+                                {{ agency.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label for="plan" class="form-label">Plan</label>
+                        <select class="form-select" id="plan" name="plan" onchange="this.form.submit()">
+                            <option value="">All Plans</option>
+                            {% for plan in plans %}
+                            <option value="{{ plan.id }}" {{ 'selected' if plan_filter == plan.id else '' }}>
+                                {{ plan.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Subscriptions Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if subscriptions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Agency</th>
+                                <th>Plan</th>
+                                <th>Status</th>
+                                <th>Start Date</th>
+                                <th>Next Billing</th>
+                                <th>Price</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for subscription in subscriptions %}
+                            <tr>
+                                <td>
+                                    <strong>{{ subscription.agency_rel.name }}</strong>
+                                    {% if subscription.agency_rel.agency_manager %}
+                                    <br><small class="text-muted">Manager: {{ subscription.agency_rel.agency_manager.username }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ subscription.plan.name }}</strong>
+                                    <br><small class="text-muted">{{ subscription.plan.billing_cycle }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if subscription.status == 'active' else 'warning' if subscription.status == 'suspended' else 'danger' }}">
+                                        {{ subscription.status.title() }}
+                                    </span>
+                                </td>
+                                <td>{{ subscription.start_date.strftime('%Y-%m-%d') if subscription.start_date else 'N/A' }}</td>
+                                <td>
+                                    {% if subscription.next_billing_date %}
+                                        {{ subscription.next_billing_date.strftime('%Y-%m-%d') }}
+                                        {% set days_until = (subscription.next_billing_date - now).days if subscription.next_billing_date > now else 0 %}
+                                        {% if days_until <= 7 and subscription.status == 'active' %}
+                                        <br><small class="text-warning"><i class="fas fa-exclamation-triangle"></i> Due soon</small>
+                                        {% endif %}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>${{ subscription.plan.price }}</strong>
+                                    <br><small class="text-muted">per {{ subscription.plan.billing_cycle }}</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ url_for('subscription.view_subscription', subscription_id=subscription.id) }}" 
+                                           class="btn btn-outline-primary" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('subscription.edit_subscription', subscription_id=subscription.id) }}"
+                                           class="btn btn-outline-secondary" title="Edit Subscription">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% if subscription.status == 'active' %}
+                                        <form method="POST" action="{{ url_for('subscription.suspend_subscription', subscription_id=subscription.id) }}" 
+                                              style="display: inline;" onsubmit="return confirm('Are you sure you want to suspend this subscription?');">
+                                            <button type="submit" class="btn btn-outline-warning" title="Suspend">
+                                                <i class="fas fa-pause"></i>
+                                            </button>
+                                        </form>
+                                        {% elif subscription.status == 'suspended' %}
+                                        <form method="POST" action="{{ url_for('subscription.activate_subscription', subscription_id=subscription.id) }}" 
+                                              style="display: inline;">
+                                            <button type="submit" class="btn btn-outline-success" title="Activate">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        {% if subscription.status != 'cancelled' %}
+                                        <form method="POST" action="{{ url_for('subscription.cancel_subscription', subscription_id=subscription.id) }}" 
+                                              style="display: inline;" onsubmit="return confirm('Are you sure you want to cancel this subscription?');">
+                                            <button type="submit" class="btn btn-outline-danger" title="Cancel">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>No subscriptions found.
+                    <a href="{{ url_for('subscription.create_subscription') }}" class="alert-link">Create your first subscription</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+{% if subscriptions %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">{{ subscriptions|selectattr('status', 'equalto', 'active')|list|length }}</h5>
+                <p class="card-text text-success">Active</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">{{ subscriptions|selectattr('status', 'equalto', 'suspended')|list|length }}</h5>
+                <p class="card-text text-warning">Suspended</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">{{ subscriptions|selectattr('status', 'equalto', 'cancelled')|list|length }}</h5>
+                <p class="card-text text-danger">Cancelled</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">{{ subscriptions|length }}</h5>
+                <p class="card-text text-info">Total</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Set current datetime for comparison
+const now = new Date();
+</script>
+{% endblock %}

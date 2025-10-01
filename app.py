@@ -67,6 +67,7 @@ def create_app():
     from agency_manager import agency_manager_bp
     from api import api_bp
     from masters.routes import masters_bp
+    from subscription import subscription_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(agency_bp, url_prefix='/agency')
@@ -84,6 +85,7 @@ def create_app():
     app.register_blueprint(agency_manager_bp, url_prefix='/agency_manager')
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     app.register_blueprint(masters_bp, url_prefix='/masters')
+    app.register_blueprint(subscription_bp, url_prefix='/subscription')
 
     # Product Overrides (Agency-specific)
     from product_overrides import overrides_bp
