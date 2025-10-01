@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Subscription Invoices - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-file-invoice me-2"></i>Subscription Invoices</h1>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-6">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status" onchange="this.form.submit()">
+                            <option value="all" {{ 'selected' if status_filter == 'all' else '' }}>All Status</option>
+                            <option value="draft" {{ 'selected' if status_filter == 'draft' else '' }}>Draft</option>
+                            <option value="issued" {{ 'selected' if status_filter == 'issued' else '' }}>Issued</option>
+                            <option value="paid" {{ 'selected' if status_filter == 'paid' else '' }}>Paid</option>
+                            <option value="cancelled" {{ 'selected' if status_filter == 'cancelled' else '' }}>Cancelled</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="agency" class="form-label">Agency</label>
+                        <select class="form-select" id="agency" name="agency" onchange="this.form.submit()">
+                            <option value="">All Agencies</option>
+                            {% for agency in agencies %}
+                            <option value="{{ agency.id }}" {{ 'selected' if agency_filter == agency.id else '' }}>
+                                {{ agency.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Invoices Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if invoices %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Agency</th>
+                                <th>Subscription</th>
+                                <th>Amount</th>
+                                <th>Issue Date</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in invoices %}
+                            <tr class="{{ 'table-danger' if invoice.status in ['issued', 'draft'] and invoice.due_date and invoice.due_date < now else '' }}">
+                                <td>
+                                    <strong>#{{ invoice.id }}</strong>
+                                </td>
+                                <td>
+                                    {{ invoice.agency_rel.name if invoice.agency_rel else 'N/A' }}
+                                </td>
+                                <td>
+                                    {% if invoice.subscription_rel %}
+                                    {{ invoice.subscription_rel.plan.name }}
+                                    <br><small class="text-muted">{{ invoice.subscription_rel.plan.billing_cycle }}</small>
+                                    {% else %}
+                                    N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>${{ invoice.amount }}</strong>
+                                </td>
+                                <td>
+                                    {{ invoice.issue_date.strftime('%Y-%m-%d') if invoice.issue_date else 'N/A' }}
+                                </td>
+                                <td>
+                                    {% if invoice.due_date %}
+                                        {{ invoice.due_date.strftime('%Y-%m-%d') }}
+                                        {% if invoice.status in ['issued', 'draft'] and invoice.due_date < now %}
+                                        <br><small class="text-danger"><i class="fas fa-exclamation-triangle"></i> Overdue</small>
+                                        {% endif %}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if invoice.status == 'paid' %}
+                                    <span class="badge bg-success">Paid</span>
+                                    {% if invoice.paid_at %}
+                                    <br><small class="text-muted">{{ invoice.paid_at.strftime('%Y-%m-%d') }}</small>
+                                    {% endif %}
+                                    {% elif invoice.status == 'issued' %}
+                                    <span class="badge bg-warning">Issued</span>
+                                    {% elif invoice.status == 'draft' %}
+                                    <span class="badge bg-secondary">Draft</span>
+                                    {% elif invoice.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                    {% else %}
+                                    <span class="badge bg-info">{{ invoice.status.title() }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        {% if invoice.status in ['issued', 'draft'] and session.role == 'super_admin' %}
+                                        <form method="POST" action="{{ url_for('subscription.mark_invoice_paid', invoice_id=invoice.id) }}" 
+                                              style="display: inline;" onsubmit="return confirm('Mark this invoice as paid?');">
+                                            <button type="submit" class="btn btn-outline-success" title="Mark as Paid">
+                                                <i class="fas fa-check"></i> Pay
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        {% if invoice.status == 'draft' and session.role == 'super_admin' %}
+                                        <form method="POST" action="{{ url_for('subscription.cancel_invoice', invoice_id=invoice.id) }}" 
+                                              style="display: inline;" onsubmit="return confirm('Cancel this invoice?');">
+                                            <button type="submit" class="btn btn-outline-danger" title="Cancel">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>No invoices found.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+{% if invoices %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">{{ invoices|selectattr('status', 'equalto', 'paid')|list|length }}</h5>
+                <p class="card-text text-success">Paid</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">{{ invoices|selectattr('status', 'equalto', 'issued')|list|length }}</h5>
+                <p class="card-text text-warning">Issued</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">{{ invoices|selectattr('status', 'equalto', 'draft')|list|length }}</h5>
+                <p class="card-text text-secondary">Draft</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                {% set total_amount = invoices|selectattr('status', 'equalto', 'paid')|map(attribute='amount')|sum %}
+                <h5 class="card-title">${{ "%.2f"|format(total_amount) }}</h5>
+                <p class="card-text text-info">Total Paid</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Set current datetime for comparison
+const now = new Date();
+</script>
+{% endblock %}

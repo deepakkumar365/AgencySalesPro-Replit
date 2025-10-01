@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}My Subscription - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-receipt me-2"></i>
+            My Subscription
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Subscription Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small">Plan Name</label>
+                        <p class="mb-0"><strong>{{ subscription.plan.name }}</strong></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small">Status</label>
+                        <p class="mb-0">
+                            <span class="badge bg-{{ 'success' if subscription.status == 'active' else 'warning' if subscription.status == 'suspended' else 'danger' }}">
+                                {{ subscription.status|upper }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small">Price</label>
+                        <p class="mb-0"><strong>${{ subscription.plan.price }}</strong> / {{ subscription.plan.billing_cycle }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small">Billing Cycle</label>
+                        <p class="mb-0">{{ subscription.plan.billing_cycle|title }}</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small">Start Date</label>
+                        <p class="mb-0">{{ subscription.start_date.strftime('%B %d, %Y') if subscription.start_date else 'N/A' }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted small">Next Billing Date</label>
+                        <p class="mb-0">
+                            {% if subscription.next_billing_date %}
+                                {{ subscription.next_billing_date.strftime('%B %d, %Y') }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                {% if subscription.end_date %}
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <label class="text-muted small">End Date</label>
+                        <p class="mb-0">{{ subscription.end_date.strftime('%B %d, %Y') }}</p>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if subscription.plan.description %}
+                <hr>
+                <div class="mb-0">
+                    <label class="text-muted small">Plan Description</label>
+                    <p class="mb-0">{{ subscription.plan.description }}</p>
+                </div>
+                {% endif %}
+                
+                {% if subscription.plan.features %}
+                <hr>
+                <div class="mb-0">
+                    <label class="text-muted small">Plan Features</label>
+                    <div class="mt-2">
+                        {% set features = subscription.plan.features.split('\n') if '\n' in subscription.plan.features else subscription.plan.features.split(',') %}
+                        <ul class="mb-0">
+                            {% for feature in features %}
+                            <li>{{ feature.strip() }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Invoices</h5>
+            </div>
+            <div class="card-body">
+                {% if invoices %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Due Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in invoices %}
+                            <tr>
+                                <td>{{ invoice.invoice_number }}</td>
+                                <td>{{ invoice.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>${{ invoice.amount }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if invoice.status == 'paid' else 'warning' if invoice.status == 'issued' else 'secondary' }}">
+                                        {{ invoice.status|upper }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {{ invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else 'N/A' }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No invoices found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-building me-2"></i>Agency Info</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>Agency:</strong> {{ subscription.agency_rel.name }}</p>
+                {% if subscription.agency_rel.email %}
+                <p class="mb-2"><strong>Email:</strong> {{ subscription.agency_rel.email }}</p>
+                {% endif %}
+                {% if subscription.agency_rel.phone %}
+                <p class="mb-0"><strong>Phone:</strong> {{ subscription.agency_rel.phone }}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if subscription.status == 'active' %}
+        <div class="card mb-3 border-success">
+            <div class="card-body text-center">
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <h5 class="mb-2">Subscription Active</h5>
+                <p class="text-muted small mb-0">Your subscription is active and all features are available.</p>
+            </div>
+        </div>
+        {% elif subscription.status == 'suspended' %}
+        <div class="card mb-3 border-warning">
+            <div class="card-body text-center">
+                <i class="fas fa-pause-circle fa-3x text-warning mb-3"></i>
+                <h5 class="mb-2">Subscription Suspended</h5>
+                <p class="text-muted small mb-0">Your subscription is temporarily suspended. Please contact your administrator.</p>
+            </div>
+        </div>
+        {% elif subscription.status == 'cancelled' %}
+        <div class="card mb-3 border-danger">
+            <div class="card-body text-center">
+                <i class="fas fa-times-circle fa-3x text-danger mb-3"></i>
+                <h5 class="mb-2">Subscription Cancelled</h5>
+                <p class="text-muted small mb-0">Your subscription has been cancelled. Please contact your administrator to reactivate.</p>
+            </div>
+        </div>
+        {% elif subscription.status == 'expired' %}
+        <div class="card mb-3 border-danger">
+            <div class="card-body text-center">
+                <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
+                <h5 class="mb-2">Subscription Expired</h5>
+                <p class="text-muted small mb-0">Your subscription has expired. Please contact your administrator to renew.</p>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>Need Help?</h5>
+            </div>
+            <div class="card-body">
+                <p class="small mb-2">If you have questions about your subscription:</p>
+                <ul class="small mb-3">
+                    <li>Contact your agency manager</li>
+                    <li>Reach out to support</li>
+                    <li>Check the documentation</li>
+                </ul>
+                <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-primary w-100">
+                    <i class="fas fa-home me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

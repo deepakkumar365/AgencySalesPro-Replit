@@ -30,7 +30,9 @@ def login():
             session['agency_id'] = user.agency_id
             flash('Logged in successfully!', 'success')
 
-            if user.role == 'agency_admin':
+            if user.role == 'agency_manager':
+                return redirect(url_for('agency_manager.dashboard'))
+            elif user.role == 'agency_admin':
                 return redirect(url_for('inventory.dashboard'))
                 
             return redirect(url_for('index'))

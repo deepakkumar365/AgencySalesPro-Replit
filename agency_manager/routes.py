@@ -11,34 +11,8 @@ from . import agency_manager_bp
 @agency_manager_bp.route('/dashboard')
 @role_required('agency_manager')
 def dashboard():
-    user_id = session.get('user_id')
-
-    # Get agencies managed by this manager
-    managed_agencies = Agency.query.filter_by(agency_manager_id=user_id).all()
-    managed_agency_ids = [agency.id for agency in managed_agencies]
-
-    # Get statistics scoped to managed agencies
-    stats = {
-        'total_agencies': len(managed_agencies),
-        'active_agencies': len([a for a in managed_agencies if getattr(a, 'is_active', False)]),
-        'total_users': User.query.filter(User.agency_id.in_(managed_agency_ids)).count(),
-        'active_users': User.query.filter(User.agency_id.in_(managed_agency_ids), User.is_active == True).count(),
-        'total_orders': Order.query.filter(Order.agency_id.in_(managed_agency_ids)).count(),
-        'pending_orders': Order.query.filter(Order.agency_id.in_(managed_agency_ids), Order.status == 'pending').count(),
-    }
-
-    # Order statistics by status for managed agencies
-    order_stats = (
-        db.session.query(
-            Order.status,
-            func.count(Order.id).label('count')
-        )
-        .filter(Order.agency_id.in_(managed_agency_ids))
-        .group_by(Order.status)
-        .all()
-    )
-
-    return render_template('agency_manager/dashboard.html', stats=stats, order_stats=order_stats)
+    """Redirects the agency manager to the super admin dashboard."""
+    return redirect(url_for('super_admin.dashboard'))
 
 
 @agency_manager_bp.route('/users')

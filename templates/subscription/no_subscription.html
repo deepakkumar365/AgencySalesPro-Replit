@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}No Subscription - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card text-center">
+            <div class="card-body py-5">
+                <i class="fas fa-exclamation-circle fa-5x text-warning mb-4"></i>
+                <h2 class="mb-3">No Active Subscription</h2>
+                <p class="lead mb-4">Your agency does not have an active subscription.</p>
+                <p class="text-muted mb-4">
+                    Please contact your agency manager or administrator to set up a subscription plan.
+                </p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-home me-2"></i>Return to Dashboard
+                </a>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Why do I need a subscription?</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">A subscription is required to:</p>
+                <ul>
+                    <li>Access all features of AgencySales Pro</li>
+                    <li>Manage inventory and products</li>
+                    <li>Process orders and sales</li>
+                    <li>Generate reports and analytics</li>
+                    <li>Use the POS system</li>
+                </ul>
+                <p class="mb-0 mt-3">
+                    <strong>Need help?</strong> Contact your agency manager or reach out to support.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

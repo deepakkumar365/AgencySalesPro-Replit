@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Subscription Dashboard - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-crown me-2"></i>Subscription Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-users fa-2x text-success mb-2"></i>
+                <h3 class="card-title">{{ stats.active_subscriptions }}</h3>
+                <p class="card-text">Active Subscriptions</p>
+                <small>{{ stats.total_subscriptions }} Total</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-dollar-sign fa-2x text-primary mb-2"></i>
+                <h3 class="card-title">${{ stats.total_mrr }}</h3>
+                <p class="card-text">Monthly Recurring Revenue</p>
+                <small>${{ stats.total_arr }} ARR</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                <h3 class="card-title">{{ stats.expiring_soon }}</h3>
+                <p class="card-text">Expiring Soon</p>
+                <small>Next 30 Days</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-ban fa-2x text-danger mb-2"></i>
+                <h3 class="card-title">{{ stats.suspended_subscriptions }}</h3>
+                <p class="card-text">Suspended</p>
+                <small>{{ stats.overdue_invoices }} Overdue Invoices</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Subscriptions by Status</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="subscriptionStatusChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Subscriptions by Plan</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="planDistributionChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Revenue Trend -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Monthly Revenue Trend</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="revenueChart" width="400" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Subscriptions -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Subscriptions</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_subscriptions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Agency</th>
+                                <th>Plan</th>
+                                <th>Status</th>
+                                <th>Start Date</th>
+                                <th>Next Billing</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sub in recent_subscriptions %}
+                            <tr>
+                                <td>{{ sub.agency_rel.name }}</td>
+                                <td>{{ sub.plan.name }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if sub.status == 'active' else 'warning' if sub.status == 'suspended' else 'danger' }}">
+                                        {{ sub.status.title() }}
+                                    </span>
+                                </td>
+                                <td>{{ sub.start_date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ sub.next_billing_date.strftime('%Y-%m-%d') if sub.next_billing_date else 'N/A' }}</td>
+                                <td>
+                                    <a href="{{ url_for('subscription.view_subscription', subscription_id=sub.id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No subscriptions yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('subscription.create_plan') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-plus me-2"></i>Create Plan
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('subscription.create_subscription') }}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-user-plus me-2"></i>New Subscription
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('subscription.list_subscriptions') }}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-list me-2"></i>All Subscriptions
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('subscription.list_invoices') }}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-file-invoice me-2"></i>Invoices
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Subscription Status Chart
+const statusData = {
+    labels: [{% for status, count in subscription_stats %}'{{ status.title() }}'{{ ',' if not loop.last else '' }}{% endfor %}],
+    datasets: [{
+        data: [{% for status, count in subscription_stats %}{{ count }}{{ ',' if not loop.last else '' }}{% endfor %}],
+        backgroundColor: ['#198754', '#ffc107', '#dc3545', '#6c757d']
+    }]
+};
+
+new Chart(document.getElementById('subscriptionStatusChart'), {
+    type: 'doughnut',
+    data: statusData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } }
+    }
+});
+
+// Plan Distribution Chart
+const planData = {
+    labels: [{% for name, count in plan_stats %}'{{ name }}'{{ ',' if not loop.last else '' }}{% endfor %}],
+    datasets: [{
+        data: [{% for name, count in plan_stats %}{{ count }}{{ ',' if not loop.last else '' }}{% endfor %}],
+        backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#0dcaf0']
+    }]
+};
+
+new Chart(document.getElementById('planDistributionChart'), {
+    type: 'pie',
+    data: planData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } }
+    }
+});
+
+// Revenue Chart
+const revenueData = {
+    labels: [{% for year, month, total in monthly_revenue %}'{{ "%d-%02d"|format(year|int, month|int) }}'{{ ',' if not loop.last else '' }}{% endfor %}],
+    datasets: [{
+        label: 'Revenue',
+        data: [{% for year, month, total in monthly_revenue %}{{ total }}{{ ',' if not loop.last else '' }}{% endfor %}],
+        borderColor: '#0d6efd',
+        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+        tension: 0.1
+    }]
+};
+
+new Chart(document.getElementById('revenueChart'), {
+    type: 'line',
+    data: revenueData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true } }
+    }
+});
+</script>
+{% endblock %}

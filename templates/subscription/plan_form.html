@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if plan else 'Create' }} Subscription Plan - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-{{ 'edit' if plan else 'plus' }} me-2"></i>
+            {{ 'Edit' if plan else 'Create' }} Subscription Plan
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Plan Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ plan.name if plan else '' }}" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="code" class="form-label">Plan Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="code" name="code" 
+                                   value="{{ plan.code if plan else '' }}" required
+                                   placeholder="e.g., BASIC, PRO, ENTERPRISE">
+                            <small class="text-muted">Unique identifier for this plan</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ plan.description if plan else '' }}</textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="price" class="form-label">Price <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="price" name="price" 
+                                       value="{{ plan.price if plan else '' }}" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="billing_cycle" class="form-label">Billing Cycle <span class="text-danger">*</span></label>
+                            <select class="form-select" id="billing_cycle" name="billing_cycle" required>
+                                <option value="monthly" {{ 'selected' if plan and plan.billing_cycle == 'monthly' else '' }}>Monthly</option>
+                                <option value="quarterly" {{ 'selected' if plan and plan.billing_cycle == 'quarterly' else '' }}>Quarterly</option>
+                                <option value="half_yearly" {{ 'selected' if plan and plan.billing_cycle == 'half_yearly' else '' }}>Half-Yearly</option>
+                                <option value="yearly" {{ 'selected' if plan and plan.billing_cycle == 'yearly' else '' }}>Yearly</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="features" class="form-label">Features</label>
+                        <textarea class="form-control" id="features" name="features" rows="4" 
+                                  placeholder="List features (one per line or comma-separated)">{{ plan.features if plan else '' }}</textarea>
+                        <small class="text-muted">Describe what's included in this plan</small>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="is_active" name="is_active" 
+                               {{ 'checked' if not plan or plan.is_active else '' }}>
+                        <label class="form-check-label" for="is_active">
+                            Active (available for new subscriptions)
+                        </label>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('subscription.list_plans') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>{{ 'Update' if plan else 'Create' }} Plan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Plan Guidelines</h5>
+            </div>
+            <div class="card-body">
+                <h6>Billing Cycles:</h6>
+                <ul class="small">
+                    <li><strong>Monthly:</strong> Billed every 30 days</li>
+                    <li><strong>Quarterly:</strong> Billed every 90 days</li>
+                    <li><strong>Half-Yearly:</strong> Billed every 180 days</li>
+                    <li><strong>Yearly:</strong> Billed every 365 days</li>
+                </ul>
+                
+                <hr>
+                
+                <h6>Status:</h6>
+                <p class="small">Inactive plans won't be available for new subscriptions but existing subscriptions will continue.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

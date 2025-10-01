@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Subscription - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-edit me-2"></i>
+            Edit Subscription
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Subscription Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Agency</label>
+                    <input type="text" class="form-control" value="{{ subscription.agency_rel.name }}" disabled>
+                    <small class="text-muted">Agency cannot be changed</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="text" class="form-control" 
+                           value="{{ subscription.start_date.strftime('%Y-%m-%d') if subscription.start_date else 'N/A' }}" 
+                           disabled>
+                    <small class="text-muted">Start date cannot be changed</small>
+                </div>
+                
+                <hr>
+                
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="plan_id" class="form-label">Subscription Plan</label>
+                        <select class="form-select" id="plan_id" name="plan_id">
+                            {% for plan in plans %}
+                            <option value="{{ plan.id }}" 
+                                    data-price="{{ plan.price }}"
+                                    data-cycle="{{ plan.billing_cycle }}"
+                                    {{ 'selected' if subscription.plan_id == plan.id else '' }}>
+                                {{ plan.name }} - ${{ plan.price }} / {{ plan.billing_cycle }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Current plan: {{ subscription.plan.name }}</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
+                        <select class="form-select" id="status" name="status" required>
+                            <option value="active" {{ 'selected' if subscription.status == 'active' else '' }}>Active</option>
+                            <option value="suspended" {{ 'selected' if subscription.status == 'suspended' else '' }}>Suspended</option>
+                            <option value="cancelled" {{ 'selected' if subscription.status == 'cancelled' else '' }}>Cancelled</option>
+                            <option value="expired" {{ 'selected' if subscription.status == 'expired' else '' }}>Expired</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="next_billing_date" class="form-label">Next Billing Date</label>
+                        <input type="date" class="form-control" id="next_billing_date" name="next_billing_date" 
+                               value="{{ subscription.next_billing_date.strftime('%Y-%m-%d') if subscription.next_billing_date else '' }}">
+                        <small class="text-muted">Leave empty to keep current date</small>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('subscription.view_subscription', subscription_id=subscription.id) }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Update Subscription
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Current Subscription</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>Agency:</strong> {{ subscription.agency_rel.name }}</p>
+                <p class="mb-2"><strong>Plan:</strong> {{ subscription.plan.name }}</p>
+                <p class="mb-2"><strong>Price:</strong> ${{ subscription.plan.price }}</p>
+                <p class="mb-2"><strong>Billing Cycle:</strong> {{ subscription.plan.billing_cycle }}</p>
+                <p class="mb-2">
+                    <strong>Status:</strong> 
+                    <span class="badge bg-{{ 'success' if subscription.status == 'active' else 'warning' if subscription.status == 'suspended' else 'danger' }}">
+                        {{ subscription.status|upper }}
+                    </span>
+                </p>
+                <p class="mb-2"><strong>Start Date:</strong> {{ subscription.start_date.strftime('%Y-%m-%d') if subscription.start_date else 'N/A' }}</p>
+                <p class="mb-2"><strong>Next Billing:</strong> {{ subscription.next_billing_date.strftime('%Y-%m-%d') if subscription.next_billing_date else 'N/A' }}</p>
+                {% if subscription.end_date %}
+                <p class="mb-2"><strong>End Date:</strong> {{ subscription.end_date.strftime('%Y-%m-%d') }}</p>
+                {% endif %}
+                {% if subscription.cancelled_at %}
+                <p class="mb-2"><strong>Cancelled At:</strong> {{ subscription.cancelled_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Important Notes</h5>
+            </div>
+            <div class="card-body">
+                <ul class="small mb-0">
+                    <li>Changing the plan will affect future billing</li>
+                    <li>Suspending will prevent access to services</li>
+                    <li>Cancelling is permanent and cannot be undone</li>
+                    <li>Expired subscriptions need to be renewed</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Timestamps</h5>
+            </div>
+            <div class="card-body">
+                <p class="small mb-1"><strong>Created:</strong> {{ subscription.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                {% if subscription.updated_at %}
+                <p class="small mb-0"><strong>Last Updated:</strong> {{ subscription.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusSelect = document.getElementById('status');
+    const originalStatus = '{{ subscription.status }}';
+    
+    statusSelect.addEventListener('change', function() {
+        if (this.value === 'cancelled' && originalStatus !== 'cancelled') {
+            if (!confirm('Are you sure you want to cancel this subscription? This action cannot be undone.')) {
+                this.value = originalStatus;
+            }
+        }
+    });
+});
+</script>
+
+{% endblock %}

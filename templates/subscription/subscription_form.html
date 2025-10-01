@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if subscription else 'Create' }} Subscription - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-{{ 'edit' if subscription else 'plus' }} me-2"></i>
+            {{ 'Edit' if subscription else 'Create' }} Subscription
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="agency_id" class="form-label">Agency <span class="text-danger">*</span></label>
+                        <select class="form-select" id="agency_id" name="agency_id" required 
+                                {{ 'disabled' if subscription else '' }}>
+                            <option value="">Select an agency...</option>
+                            {% for agency in agencies %}
+                            <option value="{{ agency.id }}" 
+                                    {{ 'selected' if (subscription and subscription.agency_id == agency.id) or (selected_agency and selected_agency.id == agency.id) else '' }}>
+                                {{ agency.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if subscription %}
+                        <input type="hidden" name="agency_id" value="{{ subscription.agency_id }}">
+                        <small class="text-muted">Agency cannot be changed after subscription is created</small>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="plan_id" class="form-label">Subscription Plan <span class="text-danger">*</span></label>
+                        <select class="form-select" id="plan_id" name="plan_id" required>
+                            <option value="">Select a plan...</option>
+                            {% for plan in plans %}
+                            <option value="{{ plan.id }}" 
+                                    data-price="{{ plan.price }}"
+                                    data-cycle="{{ plan.billing_cycle }}"
+                                    {{ 'selected' if subscription and subscription.plan_id == plan.id else '' }}>
+                                {{ plan.name }} - ${{ plan.price }} / {{ plan.billing_cycle }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="start_date" class="form-label">Start Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" 
+                                   value="{{ subscription.start_date.strftime('%Y-%m-%d') if subscription else '' }}" 
+                                   required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="billing_cycle_count" class="form-label">Billing Cycles <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="billing_cycle_count" name="billing_cycle_count" 
+                                   value="{{ subscription.billing_cycle_count if subscription else '1' }}" 
+                                   min="1" max="12" required>
+                            <small class="text-muted">Number of billing cycles to prepay</small>
+                        </div>
+                    </div>
+                    
+                    {% if subscription %}
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
+                        <select class="form-select" id="status" name="status" required>
+                            <option value="active" {{ 'selected' if subscription.status == 'active' else '' }}>Active</option>
+                            <option value="suspended" {{ 'selected' if subscription.status == 'suspended' else '' }}>Suspended</option>
+                            <option value="cancelled" {{ 'selected' if subscription.status == 'cancelled' else '' }}>Cancelled</option>
+                            <option value="expired" {{ 'selected' if subscription.status == 'expired' else '' }}>Expired</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="next_billing_date" class="form-label">Next Billing Date</label>
+                        <input type="date" class="form-control" id="next_billing_date" name="next_billing_date" 
+                               value="{{ subscription.next_billing_date.strftime('%Y-%m-%d') if subscription and subscription.next_billing_date else '' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" 
+                               value="{{ subscription.end_date.strftime('%Y-%m-%d') if subscription and subscription.end_date else '' }}">
+                        <small class="text-muted">Leave empty for ongoing subscription</small>
+                    </div>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('subscription.list_subscriptions') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>{{ 'Update' if subscription else 'Create' }} Subscription
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Subscription Info</h5>
+            </div>
+            <div class="card-body">
+                <h6>Billing Cycles:</h6>
+                <ul class="small">
+                    <li><strong>Monthly:</strong> 30 days per cycle</li>
+                    <li><strong>Quarterly:</strong> 90 days per cycle</li>
+                    <li><strong>Half-Yearly:</strong> 180 days per cycle</li>
+                    <li><strong>Yearly:</strong> 365 days per cycle</li>
+                </ul>
+                
+                <hr>
+                
+                <h6>Status:</h6>
+                <ul class="small">
+                    <li><strong>Active:</strong> Subscription is active and running</li>
+                    <li><strong>Suspended:</strong> Temporarily suspended</li>
+                    <li><strong>Cancelled:</strong> Cancelled by user</li>
+                    <li><strong>Expired:</strong> Subscription has expired</li>
+                </ul>
+                
+                {% if subscription %}
+                <hr>
+                
+                <h6>Subscription Details:</h6>
+                <p class="small mb-1"><strong>Created:</strong> {{ subscription.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                {% if subscription.updated_at %}
+                <p class="small mb-0"><strong>Last Updated:</strong> {{ subscription.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3" id="plan-preview" style="display: none;">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-receipt me-2"></i>Plan Preview</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-1"><strong>Price:</strong> $<span id="preview-price">0.00</span></p>
+                <p class="mb-1"><strong>Billing Cycle:</strong> <span id="preview-cycle">-</span></p>
+                <p class="mb-0"><strong>Total:</strong> $<span id="preview-total">0.00</span></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const planSelect = document.getElementById('plan_id');
+    const cycleCountInput = document.getElementById('billing_cycle_count');
+    const planPreview = document.getElementById('plan-preview');
+    const previewPrice = document.getElementById('preview-price');
+    const previewCycle = document.getElementById('preview-cycle');
+    const previewTotal = document.getElementById('preview-total');
+    
+    function updatePreview() {
+        const selectedOption = planSelect.options[planSelect.selectedIndex];
+        if (selectedOption.value) {
+            const price = parseFloat(selectedOption.dataset.price);
+            const cycle = selectedOption.dataset.cycle;
+            const cycleCount = parseInt(cycleCountInput.value) || 1;
+            const total = price * cycleCount;
+            
+            previewPrice.textContent = price.toFixed(2);
+            previewCycle.textContent = cycle;
+            previewTotal.textContent = total.toFixed(2);
+            planPreview.style.display = 'block';
+        } else {
+            planPreview.style.display = 'none';
+        }
+    }
+    
+    planSelect.addEventListener('change', updatePreview);
+    cycleCountInput.addEventListener('input', updatePreview);
+    
+    // Initial update if plan is already selected
+    if (planSelect.value) {
+        updatePreview();
+    }
+});
+</script>
+
+{% endblock %}

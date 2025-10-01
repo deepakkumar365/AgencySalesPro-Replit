@@ -82,6 +82,18 @@ def manage_users():
         users = []
     return render_template('super_admin/users.html', users=users, agencies_for_filter=agencies_for_filter, current_agency_filter=agency_filter)
 
+@super_admin_bp.route('/users/create')
+@role_required('super_admin', 'agency_manager')
+def create_user():
+    """Redirects to the main user registration page."""
+    return redirect(url_for('auth.register'))
+
+@super_admin_bp.route('/users/create_agency_admin')
+@role_required('super_admin', 'agency_manager')
+def create_agency_admin():
+    """Catches an incorrect endpoint and redirects to the main user registration page."""
+    return redirect(url_for('auth.register'))
+
 @super_admin_bp.route('/users/<int:user_id>/toggle_status', methods=['POST'])
 @role_required('super_admin')
 def toggle_user_status(user_id):

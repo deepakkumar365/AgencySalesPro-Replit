@@ -41,4 +41,31 @@ ALTER TABLE "ASP_purchase_orders"
     ADD CONSTRAINT IF NOT EXISTS fk_po_location FOREIGN KEY (location_id)
         REFERENCES "ASP_locations" (id) ON DELETE SET NULL;
 
+-- First add the column
+ALTER TABLE "ASP_subscriptions" 
+ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+-- Then create a function to update the timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Finally, create the trigger
+CREATE TRIGGER update_asp_subscriptions_updated_at 
+BEFORE UPDATE ON "ASP_subscriptions" 
+FOR EACH ROW 
+EXECUTE FUNCTION update_updated_at_column();
+
+-- Add the column
+ALTER TABLE "ASP_subscription_items" 
+ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+-- Optional: Update existing rows to have the current timestamp
+UPDATE "ASP_subscription_items" 
+SET created_at = CURRENT_TIMESTAMP 
+WHERE created_at IS NULL;
 

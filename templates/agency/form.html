@@ -19,8 +19,11 @@
                         <input type="text" class="form-control" id="name" name="name" value="{{ agency.name if agency else '' }}" required>
                     </div>
                     <div class="mb-3">
-                        <label for="code" class="form-label">Agency Code</label>
-                        <input type="text" class="form-control" id="code" name="code" value="{{ agency.code if agency else '' }}" required>
+                        <label for="code" class="form-label">Agency Code (Auto-generated)</label>
+                        <input type="text" class="form-control" id="code" name="code" 
+                               value="{{ agency.code if agency else '' }}" 
+                               placeholder="Generated from Agency Name" readonly>
+                        <div class="form-text">The final code will be made unique if a duplicate exists (e.g., TE, TE1).</div>
                     </div>
 
                     {% if session.role == 'super_admin' %}
@@ -67,4 +70,19 @@
         </div>
     </div>
 </div>
+
+{% if not agency %} {# Only run JS on create form #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const nameInput = document.getElementById('name');
+    const codeInput = document.getElementById('code');
+
+    nameInput.addEventListener('input', function() {
+        const words = this.value.trim().split(/\s+/).filter(w => w); // Split and remove empty strings
+        const code = words.map(word => word.substring(0, 2)).join('').toUpperCase();
+        codeInput.value = code;
+    });
+});
+</script>
+{% endif %}
 {% endblock %}
