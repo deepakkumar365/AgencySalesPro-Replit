@@ -24,7 +24,7 @@
 <body>
     <!-- Navigation -->
     {% if session.user_id %}
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-chart-line me-2"></i>AgencySales Pro
@@ -256,6 +256,12 @@
                 </ul>
                 
                 <ul class="navbar-nav">
+                    <li class="nav-item me-2">
+                        <a class="nav-link" href="#" id="theme-toggle" title="Toggle theme">
+                            <i class="fas fa-moon" id="theme-icon-moon"></i>
+                            <i class="fas fa-sun d-none" id="theme-icon-sun"></i>
+                        </a>
+                    </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-user me-1"></i>{{ session.username }}
@@ -303,6 +309,11 @@
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
+    <!-- Back to Top Button -->
+    <a href="#" id="back-to-top-btn" class="btn btn-primary back-to-top-btn d-none" title="Go to top">
+        <i class="fas fa-arrow-up"></i>
+    </a>
+
     {% block scripts %}{% endblock %}
 </body>
 </html>

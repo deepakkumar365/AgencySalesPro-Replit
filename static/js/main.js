@@ -28,6 +28,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Setup notification handling
     setupNotifications();
+
+    // Setup Back to Top button
+    setupBackToTopButton();
     
     console.log('AgencySales Pro JavaScript initialized');
 });
@@ -711,4 +714,31 @@ if (typeof module !== 'undefined' && module.exports) {
         debounce: window.debounce,
         copyToClipboard: window.copyToClipboard
     };
+}
+
+/**
+ * Setup Back to Top button functionality
+ */
+function setupBackToTopButton() {
+    const backToTopBtn = document.getElementById('back-to-top-btn');
+
+    if (backToTopBtn) {
+        // Show or hide the button based on scroll position
+        window.addEventListener('scroll', () => {
+            if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+                backToTopBtn.classList.remove('d-none');
+            } else {
+                backToTopBtn.classList.add('d-none');
+            }
+        });
+
+        // Scroll to top on click
+        backToTopBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    }
 }

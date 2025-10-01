@@ -833,3 +833,20 @@ a:hover {
     margin-bottom: 0.5rem !important;
   }
 }
+
+/* Back to Top Button */
+.back-to-top-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1050;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
