@@ -11,7 +11,7 @@ from . import agency_manager_bp
 @agency_manager_bp.route('/dashboard')
 @role_required('agency_manager')
 def dashboard():
-    """Redirects the agency manager to the super admin dashboard."""
+    """Redirects agency managers to the main dashboard, which will show their scoped data."""
     return redirect(url_for('super_admin.dashboard'))
 
 

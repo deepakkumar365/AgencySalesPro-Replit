@@ -11,39 +11,67 @@ from utils.decorators import log_activity
 @super_admin_bp.route('/dashboard')
 @role_required('super_admin', 'agency_manager')
 def dashboard():
+    user_role = session.get('role')
+    user_id = session.get('user_id')
+    managed_agency_ids = []
+
+    # Base queries
+    agency_query = Agency.query
+    user_query = User.query
+    order_query = Order.query
+    product_query = Product.query
+    customer_query = Customer.query
+
+    if user_role == 'agency_manager':
+        # Get agencies managed by this manager
+        managed_agencies = Agency.query.filter_by(agency_manager_id=user_id).all()
+        managed_agency_ids = [agency.id for agency in managed_agencies]
+
+        # Filter all queries by managed agency IDs
+        agency_query = agency_query.filter(Agency.id.in_(managed_agency_ids))
+        user_query = user_query.filter(User.agency_id.in_(managed_agency_ids))
+        order_query = order_query.filter(Order.agency_id.in_(managed_agency_ids))
+        # Products are global, but customers are tied to agencies via locations
+        customer_query = customer_query.join(Location).filter(Location.agency_id.in_(managed_agency_ids))
+
     # Get statistics
     stats = {
-        'total_agencies': Agency.query.count(),
-        'active_agencies': Agency.query.filter_by(is_active=True).count(),
-        'total_users': User.query.count(),
-        'active_users': User.query.filter_by(is_active=True).count(),
-        'total_orders': Order.query.count(),
-        'pending_orders': Order.query.filter_by(status='pending').count(),
-        'total_products': Product.query.count(),
-        'total_customers': Customer.query.count()
+        'total_agencies': agency_query.count(),
+        'active_agencies': agency_query.filter(Agency.is_active == True).count(),
+        'total_users': user_query.count(),
+        'active_users': user_query.filter(User.is_active == True).count(),
+        'total_orders': order_query.count(),
+        'pending_orders': order_query.filter(Order.status == 'pending').count(),
+        'total_products': product_query.count(),  # Products are global
+        'total_customers': customer_query.count()
     }
-    
+
     # Recent activities removed as not required
-    
+
     # Get order statistics by status
     order_stats = db.session.query(
         Order.status,
         func.count(Order.id).label('count')
-    ).group_by(Order.status).all()
-    
+    ).select_from(order_query).group_by(Order.status).all()
+
     # Get monthly order trends (last 6 months)
     six_months_ago = datetime.utcnow() - timedelta(days=180)
     monthly_orders = db.session.query(
         func.date_trunc('month', Order.created_at).label('month'),
         func.count(Order.id).label('count')
-    ).filter(Order.created_at >= six_months_ago).group_by(func.date_trunc('month', Order.created_at)).order_by(func.date_trunc('month', Order.created_at)).all()
+    ).select_from(order_query).filter(Order.created_at >= six_months_ago).group_by(func.date_trunc('month', Order.created_at)).order_by(func.date_trunc('month', Order.created_at)).all()
 
     # Get top agencies by orders
-    top_agencies = db.session.query(
+    top_agencies_query = db.session.query(
         Agency.name,
         func.count(Order.id).label('order_count')
-    ).join(Order).group_by(Agency.id).order_by(func.count(Order.id).desc()).limit(5).all()
-    
+    ).join(Order, Order.agency_id == Agency.id)
+
+    if user_role == 'agency_manager':
+        top_agencies_query = top_agencies_query.filter(Agency.id.in_(managed_agency_ids))
+
+    top_agencies = top_agencies_query.group_by(Agency.id).order_by(func.count(Order.id).desc()).limit(5).all()
+
     return render_template('super_admin/dashboard.html',
                          stats=stats,
                          order_stats=order_stats,
