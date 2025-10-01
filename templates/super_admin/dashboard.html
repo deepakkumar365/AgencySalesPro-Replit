@@ -154,28 +154,6 @@
     </div>
 </div>
 
-<!-- API Status Section - Always Visible -->
-<div class="row">
-    <div class="col-12">
-        <div class="card border-success" id="api-status-card">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0"><i class="fas fa-server me-2"></i>API Status</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-check-circle text-success fa-2x me-3"></i>
-                    <div>
-                        <h6 class="mb-1">System Operational</h6>
-                        <p class="mb-0 text-muted">All services running normally</p>
-                    </div>
-                    <div class="ms-auto">
-                        <span class="badge bg-success">Online</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
@@ -239,7 +217,7 @@ const monthlyOrdersConfig = {
 
 new Chart(document.getElementById('monthlyOrdersChart'), monthlyOrdersConfig);
 
-// Auto-hide functionality - hide content after 30 seconds, keep API status and messages visible
+// Auto-hide functionality - hide content after 30 seconds
 setTimeout(function() {
     const elementsToHide = document.querySelectorAll('.auto-hide-content');
     elementsToHide.forEach(function(element) {
@@ -256,14 +234,12 @@ setTimeout(function() {
     
     // Show a subtle notification that content has been minimized
     if (window.showNotification) {
-        window.showNotification('Dashboard minimized - API status remains visible', 'info', 3000);
+        window.showNotification('Dashboard content minimized. Click anywhere to restore.', 'info', 3000);
     }
 }, 30000); // Hide after 30 seconds
 
 // Add click handler to restore content when needed
 document.addEventListener('click', function(e) {
-    if (e.target.closest('#api-status-card')) return; // Don't restore on API status clicks
-    
     const hiddenElements = document.querySelectorAll('.auto-hide-content[style*="display: none"]');
     if (hiddenElements.length > 0) {
         hiddenElements.forEach(function(element) {

@@ -36,20 +36,28 @@ def create_agency():
 
     if request.method == 'POST':
         name = request.form.get('name')
-        code = request.form.get('code')
         address = request.form.get('address')
         phone = request.form.get('phone')
         email = request.form.get('email')
         
-        if not name or not code:
-            flash('Name and code are required', 'error')
+        if not name:
+            flash('Agency Name is required', 'error')
             return redirect(url_for('agency.create_agency'))
         
-        # Check if code already exists
-        if Agency.query.filter_by(code=code).first():
-            flash('Agency code already exists', 'error')
-            return redirect(url_for('agency.create_agency'))
+        # Auto-generate a unique agency code
+        words = name.strip().split()
+        base_code = "".join([word[:2] for word in words]).upper()
         
+        # Fallback for empty or very short names
+        if not base_code:
+            base_code = "XX"
+
+        new_code = base_code
+        counter = 1
+        while Agency.query.filter_by(code=new_code).first():
+            new_code = f"{base_code}{counter}"
+            counter += 1
+
         # Determine manager_id based on role
         if user_role == 'agency_manager':
             manager_id = user_id
@@ -58,7 +66,7 @@ def create_agency():
 
         agency = Agency(
             name=name,
-            code=code,
+            code=new_code,
             address=address,
             phone=phone,
             email=email,
