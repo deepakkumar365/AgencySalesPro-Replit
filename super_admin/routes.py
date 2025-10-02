@@ -142,12 +142,20 @@ def toggle_user_status(user_id):
     return redirect(url_for('super_admin.manage_users'))
 
 @super_admin_bp.route('/activities')
-@role_required('super_admin', 'agency_manager')
+@login_required
 def view_activities():
+    """
+    Displays activity logs.
+    - Super Admins see all logs.
+    - Other users see only their own activity logs.
+    """
     page = request.args.get('page', 1, type=int)
-    activities = ActivityLog.query.order_by(ActivityLog.created_at.desc()).paginate(
-        page=page, per_page=50, error_out=False
-    )
+    query = ActivityLog.query.order_by(ActivityLog.created_at.desc())
+
+    if session.get('role') != 'super_admin':
+        query = query.filter_by(user_id=session.get('user_id'))
+
+    activities = query.paginate(page=page, per_page=50, error_out=False)
     return render_template('super_admin/activities.html', activities=activities)
 
 @super_admin_bp.route('/system_config', methods=['GET', 'POST'])
