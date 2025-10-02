@@ -199,6 +199,16 @@ def edit_user(user_id):
         user.last_name = request.form.get('last_name')
         user.email = request.form.get('email')
         role = request.form.get('role')
+        username = request.form.get('username')
+
+        # If the role is 'customer', the username must be the customer's phone number.
+        if role == 'customer':
+            customer_record = Customer.query.filter_by(email=user.email).first()
+            if not customer_record or not customer_record.phone:
+                flash('A customer record with a valid phone number must exist for this email before assigning the customer role.', 'error')
+                return render_template('super_admin/edit_user.html', user=user, agencies=Agency.query.filter_by(is_active=True).all())
+            user.username = customer_record.phone
+
         agency_id = request.form.get('agency_id')
         
         # Check if email is unique (excluding current user)
@@ -217,16 +227,22 @@ def edit_user(user_id):
                 return render_template('super_admin/edit_user.html', user=user, agencies=agencies)
 
         # Ensure agency-specific roles are assigned to an agency
-        roles_requiring_agency = ['agency_admin', 'staff', 'salesperson', 'pos_user']
+        roles_requiring_agency = ['agency_admin', 'staff', 'salesperson', 'pos_user', 'agency_manager', 'customer']
         if role in roles_requiring_agency and not agency_id:
             flash(f"The role '{role.replace('_', ' ').title()}' requires an agency assignment. Please select an agency.", 'error')
             agencies = Agency.query.filter_by(is_active=True).all()
             # Pass back the attempted form data
             return render_template('super_admin/edit_user.html', user=user, agencies=agencies)
 
+        # Set username only if it's not a customer role
         user.role = role
         user.agency_id = agency_id if agency_id else None
         
+        # Handle subscription status for customers
+        # NOTE: This requires a new `is_subscribed` boolean field on the User model.
+        if user.role == 'customer':
+            user.is_subscribed = 'is_subscribed' in request.form
+
         # Handle password change if provided
         new_password = request.form.get('new_password')
         if new_password:
@@ -301,7 +317,7 @@ def download_user_template():
     writer.writerow(['username', 'email', 'first_name', 'last_name', 'role', 'agency_code', 'password'])
     
     # Write sample data
-    writer.writerow(['sample_user', 'user@example.com', 'John', 'Doe', 'staff', 'AGENCY001', 'password123'])
+    writer.writerow(['sample_user', 'user@example.com', 'John', 'Doe', 'staff', 'AGENCY001', 'password123']) # username can be phone for customer
     writer.writerow(['sample_admin', 'admin@example.com', 'Jane', 'Smith', 'agency_admin', 'AGENCY001', 'admin123'])
     
     # Create response

@@ -93,7 +93,7 @@ class Customer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120))
-    phone = db.Column(db.String(20))
+    phone = db.Column(db.String(20), nullable=False)
     address = db.Column(db.Text)
     city = db.Column(db.String(50))  # For better search and display
     state = db.Column(db.String(50))  # For regional filtering
@@ -107,6 +107,7 @@ class Customer(db.Model):
     
     # Relationships
     orders = db.relationship('Order', backref='customer', lazy=True)
+    subscription = db.relationship('Subscription', back_populates='customer_rel', uselist=False)
 
 class Product(db.Model):
     __tablename__ = 'ASP_products'
@@ -492,7 +493,8 @@ class SubscriptionPlan(db.Model):
 class Subscription(db.Model):
     __tablename__ = 'ASP_subscriptions'
     id = db.Column(db.Integer, primary_key=True)
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, unique=True, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=True, unique=True, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=True, unique=True, index=True)
     plan_id = db.Column(db.Integer, db.ForeignKey('ASP_subscription_plans.id'), nullable=False, index=True)
     status = db.Column(db.String(20), nullable=False, default='active', index=True)  # active, suspended, cancelled, expired
     start_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -505,9 +507,24 @@ class Subscription(db.Model):
     
     # Relationships
     agency_rel = db.relationship('Agency', backref='subscription', lazy=True, uselist=False)
+    customer_rel = db.relationship('Customer', back_populates='subscription', lazy=True, uselist=False)
     invoices = db.relationship('SubscriptionInvoice', backref='subscription', lazy=True, cascade='all, delete-orphan')
     items = db.relationship('SubscriptionItem', backref='subscription', lazy=True, cascade='all, delete-orphan')
     
+    __table_args__ = (
+        db.CheckConstraint('num_nonnulls(agency_id, customer_id) = 1', name='chk_subscription_owner'),
+        # num_nonnulls is a postgres function. For other DBs, this might be:
+        # db.CheckConstraint('(agency_id IS NOT NULL AND customer_id IS NULL) OR (agency_id IS NULL AND customer_id IS NOT NULL)', name='chk_subscription_owner'),
+    )
+    @property
+    def owner(self):
+        """Returns the owner (Agency or Customer) of the subscription."""
+        if self.agency_rel:
+            return self.agency_rel
+        elif self.customer_rel:
+            return self.customer_rel
+        return None
+
     @property
     def is_active(self):
         """Check if subscription is currently active"""
@@ -532,7 +549,8 @@ class SubscriptionInvoice(db.Model):
     __tablename__ = 'ASP_subscription_invoices'
     id = db.Column(db.Integer, primary_key=True)
     subscription_id = db.Column(db.Integer, db.ForeignKey('ASP_subscriptions.id'), nullable=False, index=True)
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=True, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=True, index=True)
     invoice_number = db.Column(db.String(50), nullable=False, unique=True, index=True)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     status = db.Column(db.String(20), nullable=False, default='draft', index=True)  # draft, issued, paid, overdue, cancelled
@@ -546,6 +564,7 @@ class SubscriptionInvoice(db.Model):
     
     # Relationships
     agency_rel = db.relationship('Agency', backref='subscription_invoices', lazy=True)
+    customer_rel = db.relationship('Customer', backref='subscription_invoices', lazy=True)
     
     @property
     def is_overdue(self):

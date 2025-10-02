@@ -432,7 +432,11 @@ document.getElementById('find-customer').addEventListener('click', function() {
     const email = document.getElementById('customer-email').value.trim();
     
     if (!phone && !email) {
-        alert('Please enter phone number or email to search for customer');
+        // If both fields are empty, reset to walk-in customer
+        document.getElementById('customer-name').value = 'Walk-in Customer';
+        document.getElementById('customer-phone').value = '';
+        document.getElementById('customer-email').value = '';
+        flashMessage('Customer fields cleared.', 'info');
         return;
     }
     
@@ -449,11 +453,18 @@ document.getElementById('find-customer').addEventListener('click', function() {
                 document.getElementById('customer-name').value = data.name;
                 document.getElementById('customer-phone').value = data.phone;
                 document.getElementById('customer-email').value = data.email;
+                flashMessage(`Found customer: ${data.name}`, 'success');
             }
         })
         .catch(error => {
             console.error('Customer search error:', error);
         });
+});
+
+// Clean phone number input
+document.getElementById('customer-phone').addEventListener('input', function(e) {
+    // Remove non-numeric characters
+    e.target.value = e.target.value.replace(/[^0-9]/g, '');
 });
 
 // Complete sale

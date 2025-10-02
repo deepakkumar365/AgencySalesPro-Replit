@@ -69,3 +69,28 @@ UPDATE "ASP_subscription_items"
 SET created_at = CURRENT_TIMESTAMP 
 WHERE created_at IS NULL;
 
+-- Add Foreign Key to ASP_customers table
+ALTER TABLE "ASP_subscriptions" 
+ADD CONSTRAINT "ASP_subscriptions_customer_id_fkey" 
+FOREIGN KEY (customer_id) 
+REFERENCES "ASP_customers" (id);
+
+-- Add Unique Constraint
+ALTER TABLE "ASP_subscriptions" 
+ADD CONSTRAINT "ASP_subscriptions_customer_id_key" 
+UNIQUE (customer_id);
+
+-- Create Index
+CREATE INDEX "ix_ASP_subscriptions_customer_id" 
+ON "ASP_subscriptions" (customer_id);
+
+
+ALTER TABLE "ASP_subscriptions" ALTER COLUMN agency_id DROP NOT NULL;
+
+ALTER TABLE "ASP_subscriptions" ALTER COLUMN customer_id DROP NOT NULL;
+
+ALTER TABLE "ASP_subscription_invoices" 
+ADD COLUMN customer_id INTEGER,
+ADD CONSTRAINT "ASP_subscription_invoices_customer_id_fkey" FOREIGN KEY (customer_id) REFERENCES "ASP_customers" (id);
+
+CREATE INDEX "ix_ASP_subscription_invoices_customer_id" ON "ASP_subscription_invoices" (customer_id);

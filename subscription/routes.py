@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from app import db
-from models import (
+from models import ( Customer,
     Agency, User, Subscription, SubscriptionPlan, 
     SubscriptionInvoice, SubscriptionItem, ActivityLog
 )
@@ -359,34 +359,55 @@ def list_subscriptions():
 @role_required('super_admin', 'agency_manager')
 def create_subscription():
     """Create a new subscription for an agency"""
-    agency_id = request.args.get('agency_id', type=int)
+    # Allow pre-filling agency or customer
+    agency_id_arg = request.args.get('agency_id', type=int)
+    customer_id_arg = request.args.get('customer_id', type=int)
     
     if request.method == 'POST':
         agency_id = request.form.get('agency_id', type=int)
+        customer_id = request.form.get('customer_id', type=int)
         plan_id = request.form.get('plan_id', type=int)
         start_date_str = request.form.get('start_date')
         billing_cycle_count = request.form.get('billing_cycle_count', type=int, default=1)
         
         # Validation
-        if not all([agency_id, plan_id, start_date_str]):
-            flash('Agency, plan, and start date are required.', 'error')
-            return redirect(url_for('subscription.create_subscription'))
+        if not (agency_id or customer_id):
+            flash('An Agency or a Customer must be selected.', 'error')
+            # Redirect back with args to pre-fill if they existed
+            return redirect(url_for('subscription.create_subscription', agency_id=agency_id_arg, customer_id=customer_id_arg))
         
-        agency = Agency.query.get_or_404(agency_id)
+        if agency_id and customer_id:
+            flash('Please select either an Agency or a Customer, not both.', 'error')
+            return redirect(url_for('subscription.create_subscription', agency_id=agency_id_arg, customer_id=customer_id_arg))
+
+        if not all([plan_id, start_date_str]):
+            flash('Plan and start date are required.', 'error')
+            return redirect(url_for('subscription.create_subscription', agency_id=agency_id_arg, customer_id=customer_id_arg))
+        
+        target_entity = None
+        if agency_id:
+            target_entity = Agency.query.get_or_404(agency_id)
+            # Check if agency already has a subscription
+            existing_sub = Subscription.query.filter_by(agency_id=agency_id).first()
+            if existing_sub:
+                flash(f'Agency "{target_entity.name}" already has a subscription.', 'error')
+                return redirect(url_for('subscription.list_subscriptions'))
+        elif customer_id:
+            target_entity = Customer.query.get_or_404(customer_id)
+            # Check if customer already has a subscription
+            existing_sub = Subscription.query.filter_by(customer_id=customer_id).first()
+            if existing_sub:
+                flash(f'Customer "{target_entity.name}" already has a subscription.', 'error')
+                return redirect(url_for('subscription.list_subscriptions'))
+        
         plan = SubscriptionPlan.query.get_or_404(plan_id)
-        
-        # Check if agency already has a subscription
-        existing_sub = Subscription.query.filter_by(agency_id=agency_id).first()
-        if existing_sub:
-            flash(f'Agency "{agency.name}" already has a subscription.', 'error')
-            return redirect(url_for('subscription.list_subscriptions'))
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
         
         try:
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-            
             # Calculate next billing date based on billing cycle
             if plan.billing_cycle == 'monthly':
-                next_billing = start_date + timedelta(days=30 * billing_cycle_count)
+                # Using days for simplicity; consider dateutil.relativedelta for more precise month additions
+                next_billing = start_date + timedelta(days=30 * billing_cycle_count) 
             elif plan.billing_cycle == 'quarterly':
                 next_billing = start_date + timedelta(days=90 * billing_cycle_count)
             elif plan.billing_cycle == 'half_yearly':
@@ -397,20 +418,21 @@ def create_subscription():
                 next_billing = start_date + timedelta(days=30)
             
             new_subscription = Subscription(
-                agency_id=agency_id,
                 plan_id=plan_id,
                 status='active',
-                start_date=start_date,
+                start_date=datetime.combine(start_date, datetime.min.time()),
                 next_billing_date=next_billing
             )
+            if agency_id:
+                new_subscription.agency_id = agency_id
+            if customer_id:
+                new_subscription.customer_id = customer_id
             
             db.session.add(new_subscription)
+            _log_subscription_activity('create_subscription', f'Created subscription for {target_entity.name} with plan: {plan.name}')
             db.session.commit()
             
-            _log_subscription_activity('create_subscription', f'Created subscription for agency: {agency.name} with plan: {plan.name}')
-            db.session.commit()
-            
-            flash(f'Subscription created successfully for "{agency.name}"!', 'success')
+            flash(f'Subscription created successfully for "{target_entity.name}"!', 'success')
             return redirect(url_for('subscription.view_subscription', subscription_id=new_subscription.id))
             
         except Exception as e:
@@ -423,20 +445,26 @@ def create_subscription():
         agencies = Agency.query.filter_by(agency_manager_id=manager_id).order_by(Agency.name).all()
     else:
         agencies = Agency.query.order_by(Agency.name).all()
-    
+
+    customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
     plans = SubscriptionPlan.query.filter_by(is_active=True).order_by(SubscriptionPlan.price).all()
     
-    # Pre-select agency if provided
+    # Pre-select entity if provided
     selected_agency = None
-    if agency_id:
-        selected_agency = Agency.query.get(agency_id)
+    selected_customer = None
+    if agency_id_arg:
+        selected_agency = Agency.query.get(agency_id_arg)
+    if customer_id_arg:
+        selected_customer = Customer.query.get(customer_id_arg)
     
     return render_template(
         'subscription/subscription_form.html',
         subscription=None,
         agencies=agencies,
+        customers=customers,
         plans=plans,
-        selected_agency=selected_agency
+        selected_agency=selected_agency,
+        selected_customer=selected_customer
     )
 
 
@@ -503,17 +531,19 @@ def edit_subscription(subscription_id):
                 old_status = subscription.status
                 subscription.status = status
                 
+                owner_name = subscription.agency_rel.name if subscription.agency_rel else subscription.customer_rel.name
+
                 # If suspending, log it
                 if status == 'suspended' and old_status != 'suspended':
-                    _log_subscription_activity('suspend_subscription', f'Suspended subscription for agency: {subscription.agency_rel.name}')
+                    _log_subscription_activity('suspend_subscription', f'Suspended subscription for: {owner_name}')
                 
                 # If cancelling, set cancelled_at
                 if status == 'cancelled' and old_status != 'cancelled':
                     subscription.cancelled_at = datetime.utcnow()
-                    _log_subscription_activity('cancel_subscription', f'Cancelled subscription for agency: {subscription.agency_rel.name}')
+                    _log_subscription_activity('cancel_subscription', f'Cancelled subscription for: {owner_name}')
                 
                 if status == 'active' and old_status != 'active':
-                    _log_subscription_activity('activate_subscription', f'Activated subscription for agency: {subscription.agency_rel.name}')
+                    _log_subscription_activity('activate_subscription', f'Activated subscription for: {owner_name}')
             
             if next_billing_date_str:
                 subscription.next_billing_date = datetime.strptime(next_billing_date_str, '%Y-%m-%d')

@@ -1,7 +1,10 @@
 from flask import render_template, request, redirect, url_for, flash, session, make_response
 import csv, io
+import re
+from sqlalchemy import func, and_
+from werkzeug.security import generate_password_hash
 from app import db
-from models import Customer, Location, Agency
+from models import Customer, Location, Agency, User, Product, ProductAgency, Order
 from customer import customer_bp
 from auth.utils import login_required, permission_required, role_required
 from utils.decorators import log_activity
@@ -75,6 +78,23 @@ def list_customers(current_agency_id=None):
                              'status': status_filter
                          })
 
+@customer_bp.route('/dashboard')
+@role_required('customer')
+def customer_dashboard():
+    """Dashboard for a logged-in customer user."""
+    user_id = session.get('user_id')
+    user = User.query.get_or_404(user_id)
+
+    # Assuming a customer user's email matches a customer record's email.
+    # This is one way to link a User to a Customer.
+    customer_record = Customer.query.filter_by(email=user.email).first()
+
+    # Get subscription if it exists
+    subscription = customer_record.subscription if customer_record else None
+
+    return render_template('customer/dashboard.html', user=user, customer=customer_record, subscription=subscription)
+
+
 @customer_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @log_activity('create_customer')
@@ -82,12 +102,15 @@ def create_customer():
     if request.method == 'POST':
         name = request.form.get('name')
         email = request.form.get('email')
-        phone = request.form.get('phone')
+        # Clean phone number: remove non-numeric characters
+        phone = re.sub(r'[^0-9]', '', request.form.get('phone', ''))
         address = request.form.get('address')
         location_id = request.form.get('location_id')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
         
-        if not name or not location_id:
-            flash('Customer name and location are required', 'error')
+        if not all([name, phone, location_id]):
+            flash('Customer name, phone number, and location are required.', 'error')
             return render_template('customer/form.html', locations=get_locations_for_user())
         
         # Validate location belongs to user's agency
@@ -102,6 +125,26 @@ def create_customer():
         if user_role != 'super_admin' and location.agency_id != current_agency_id:
             flash('You can only create customers for your agency locations', 'error')
             return render_template('customer/form.html', locations=get_locations_for_user())
+
+        # --- User Creation Logic ---
+        if user_role in ['super_admin', 'agency_manager', 'agency_admin'] and password:
+            if password != confirm_password:
+                flash('Passwords do not match.', 'error')
+                return render_template('customer/form.html', locations=get_locations_for_user())
+            
+            if len(password) < 6:
+                flash('Password must be at least 6 characters long.', 'error')
+                return render_template('customer/form.html', locations=get_locations_for_user())
+
+            # Check for existing user by phone (username) or email
+            if User.query.filter((User.username == phone) | (User.email == email)).first():
+                flash('A user with this phone number or email already exists.', 'error')
+                return render_template('customer/form.html', locations=get_locations_for_user())
+        
+        # Check for existing customer with the same phone number
+        if Customer.query.filter_by(phone=phone).first():
+            flash('A customer with this phone number already exists.', 'error')
+            return render_template('customer/form.html', locations=get_locations_for_user())
         
         customer = Customer(
             name=name,
@@ -112,10 +155,26 @@ def create_customer():
             is_active=True
         )
         
+        # Create user only if password was provided by an authorized role
+        if user_role in ['super_admin', 'agency_manager', 'agency_admin'] and password:
+            user = User(
+                username=phone, # Use phone as username
+                email=email,
+                first_name=name.split(' ')[0],
+                last_name=' '.join(name.split(' ')[1:]) if ' ' in name else '',
+                role='customer',
+                agency_id=location.agency_id,
+                is_active=True
+            )
+            user.set_password(password)
+            db.session.add(user)
+            flash('Customer and user portal access created successfully!', 'success')
+        else:
+            flash('Customer created successfully!', 'success')
+
         db.session.add(customer)
         db.session.commit()
         
-        flash('Customer created successfully!', 'success')
         return redirect(url_for('customer.list_customers'))
     
     return render_template('customer/form.html', locations=get_locations_for_user())
@@ -133,16 +192,21 @@ def edit_customer(customer_id):
     if user_role != 'super_admin' and customer.location.agency_id != current_agency_id:
         flash('You can only edit customers from your agency', 'error')
         return redirect(url_for('customer.list_customers'))
-    
+
+    original_email = customer.email  # Capture original email before any changes
+
     if request.method == 'POST':
+        # Update customer fields from form
         customer.name = request.form.get('name')
         customer.email = request.form.get('email')
-        customer.phone = request.form.get('phone')
+        customer.phone = re.sub(r'[^0-9]', '', request.form.get('phone', ''))
         customer.address = request.form.get('address')
         location_id = request.form.get('location_id')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
         
-        if not customer.name or not location_id:
-            flash('Customer name and location are required', 'error')
+        if not all([customer.name, customer.phone, location_id]):
+            flash('Customer name, phone number, and location are required.', 'error')
             return render_template('customer/form.html', customer=customer, locations=get_locations_for_user())
         
         # Validate location
@@ -157,8 +221,46 @@ def edit_customer(customer_id):
         
         customer.location_id = location_id
         
+        # --- User Update Logic ---
+        user = User.query.filter_by(email=original_email).first()
+        flash_message = 'Customer updated successfully!'
+
+        # Only process user updates if an authorized role is acting
+        if user_role in ['super_admin', 'agency_manager', 'agency_admin']:
+            if user:
+                # Check for username (phone) uniqueness if changed
+                if user.username != customer.phone and User.query.filter_by(username=customer.phone).first():
+                    flash('Another user with this phone number already exists.', 'error')
+                    return render_template('customer/form.html', customer=customer, locations=get_locations_for_user())
+                
+                # Check for email uniqueness if changed
+                if user.email != customer.email and User.query.filter_by(email=customer.email).first():
+                    flash('Another user with this email address already exists.', 'error')
+                    return render_template('customer/form.html', customer=customer, locations=get_locations_for_user())
+
+                user.username = customer.phone
+                user.email = customer.email
+                user.agency_id = location.agency_id
+                
+                # Update password if provided
+                if password:
+                    if password != confirm_password:
+                        flash('Passwords do not match.', 'error')
+                        return render_template('customer/form.html', customer=customer, locations=get_locations_for_user())
+                    if len(password) < 6:
+                        flash('Password must be at least 6 characters long.', 'error')
+                        return render_template('customer/form.html', customer=customer, locations=get_locations_for_user())
+                    user.set_password(password)
+                    if password:
+                        flash_message = 'Customer and user password updated successfully!'
+            elif password:
+                # If a user doesn't exist, we can't update them.
+                flash('Cannot set password because no linked user account was found for the original email.', 'warning')
+
+        # --- End User Update Logic ---
+
         db.session.commit()
-        flash('Customer updated successfully!', 'success')
+        flash(flash_message, 'success')
         return redirect(url_for('customer.list_customers'))
     
     return render_template('customer/form.html', customer=customer, locations=get_locations_for_user())
@@ -233,7 +335,7 @@ def download_customer_template():
     writer.writerow(['name', 'email', 'phone', 'address', 'location_name', 'agency_code'])
     
     # Write sample data
-    writer.writerow(['John Doe', 'john@example.com', '555-0123', '123 Main St', 'Main Office', 'AGENCY001'])
+    writer.writerow(['John Doe', 'john@example.com', '5550123', '123 Main St', 'Main Office', 'AGENCY001'])
     
     # Create response
     response = make_response(output.getvalue())
@@ -367,7 +469,8 @@ def import_customers():
                     customer = Customer(
                         name=row['name'].strip(),
                         email=email if email else None,
-                        phone=row.get('phone', '').strip(),
+                        # Clean phone number: remove non-numeric characters
+                        phone=re.sub(r'[^0-9]', '', row.get('phone', '')),
                         address=row.get('address', '').strip(),
                         location_id=location.id,
                         is_active=True
@@ -400,3 +503,84 @@ def import_customers():
             return redirect(url_for('customer.import_customers'))
     
     return render_template('customer/import.html')
+
+@customer_bp.route('/products')
+@login_required
+@role_required('customer')
+def view_products():
+    """
+    Displays a product catalog for the logged-in customer.
+    Shows only products actively mapped to the customer's agency.
+    """
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+    
+    # Find the customer record linked to the user's email
+    customer = Customer.query.filter(func.lower(Customer.email) == func.lower(user.email)).first()
+
+    if not customer or not customer.location or not customer.location.agency_id:
+        flash('Could not determine your agency. Please contact support.', 'error')
+        return render_template('customer/product_catalog.html', products=[], agency_name=None)
+
+    agency_id = customer.location.agency_id
+    agency_name = customer.location.agency.name
+
+    # Query for products actively mapped to the customer's agency
+    # This joins Product and ProductAgency and filters by the agency_id and active status
+    product_rows = db.session.query(
+        Product,
+        ProductAgency
+    ).join(
+        ProductAgency,
+        and_(
+            ProductAgency.product_id == Product.id,
+            ProductAgency.agency_id == agency_id,
+            ProductAgency.is_active == True
+        )
+    ).filter(Product.is_active == True).order_by(Product.name).all()
+
+    # Prepare products for display, using agency-specific overrides where available
+    products_to_display = []
+    for product, pa_mapping in product_rows:
+        products_to_display.append({
+            'id': product.id,
+            'name': pa_mapping.display_name or product.name,
+            'sku': product.sku,
+            'description': product.description,
+            'price': pa_mapping.sell_price if pa_mapping.sell_price is not None else product.sell_price,
+            'category': product.category_ref.name if product.category_ref else 'Uncategorized'
+        })
+
+    return render_template('customer/product_catalog.html', 
+                           products=products_to_display, 
+                           agency_name=agency_name)
+
+@customer_bp.route('/orders')
+@login_required
+@role_required('customer')
+def view_orders():
+    """
+    Displays a list of orders for the logged-in customer.
+    """
+    user_id = session.get('user_id')
+    user = User.query.get(user_id)
+    
+    # Find the customer record linked to the user's email
+    customer = Customer.query.filter(func.lower(Customer.email) == func.lower(user.email)).first()
+
+    if not customer:
+        flash('Could not find your customer profile. Please contact support.', 'error')
+        return render_template('customer/my_orders.html', orders=[])
+
+    # Fetch all orders for this customer, newest first
+    orders = Order.query.filter_by(customer_id=customer.id).order_by(Order.created_at.desc()).all()
+
+    status_classes = {
+        'pending': 'bg-warning',
+        'confirmed': 'bg-info',
+        'shipped': 'bg-primary',
+        'delivered': 'bg-success',
+        'cancelled': 'bg-danger',
+    }
+
+    return render_template('customer/my_orders.html', orders=orders, status_classes=status_classes)
