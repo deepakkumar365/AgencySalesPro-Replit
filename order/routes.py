@@ -3,7 +3,7 @@ from datetime import datetime
 import uuid
 from sqlalchemy import or_, and_, func
 from app import db
-from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode, ProductAgency, InventoryTransaction
+from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode, ProductAgency, InventoryTransaction, Job
 from order import order_bp
 from auth.utils import login_required, permission_required, order_owner_required
 from utils.decorators import log_activity
@@ -224,7 +224,39 @@ def create_order():
             # order.tax = tax_amount # This is already set
 
             db.session.commit()
-            flash('Order created successfully!', 'success')
+            
+            # Auto-create Job for this Order
+            try:
+                # Generate job number
+                last_job = Job.query.order_by(Job.id.desc()).first()
+                job_number = f"JOB{(last_job.id + 1):05d}" if last_job else "JOB00001"
+                
+                # Create job linked to this order
+                job = Job(
+                    job_number=job_number,
+                    name=f"Order {order_number} - {customer.name}",
+                    description=f"Auto-generated job for order {order_number}. Customer: {customer.name}",
+                    job_type='service',
+                    agency_id=order.agency_id,
+                    customer_id=order.customer_id,
+                    order_id=order.id,  # Link job to order
+                    assigned_to=order.salesperson_id,
+                    status='draft',
+                    budget_amount=order.total_amount,
+                    estimated_cost=0,
+                    start_date=order.order_date,
+                    end_date=order.delivery_date,
+                    created_by=user_id
+                )
+                db.session.add(job)
+                db.session.commit()
+                
+                flash(f'Order created successfully! Job {job_number} has been automatically created.', 'success')
+            except Exception as job_error:
+                # If job creation fails, log it but don't fail the order creation
+                db.session.rollback()
+                flash(f'Order created successfully, but job creation failed: {str(job_error)}', 'warning')
+            
             return jsonify({'success': True, 'order_id': order.id, 'redirect_url': url_for('order.view_order', order_id=order.id)})
 
         except Exception as e:
@@ -300,11 +332,13 @@ def search_products_v2(current_agency_id=None):
     # Check if a global search is requested (e.g., from the product creation form)
     is_global_search = request.args.get('scope') == 'global'
 
-    user_role = session.get('role')
-    agency_id = current_agency_id or session.get('agency_id')
+    user_role = session.get('role')    
+    # Prefer agency_id from request, fallback to session, then to what's passed in.
+    agency_id = request.args.get('agency_id', type=int) or current_agency_id or session.get('agency_id')
 
     # Restrict by agency unless it's a super_admin or a global search
-    if user_role != 'super_admin' and not is_global_search:
+    # If an agency_id is provided, we must filter by it.
+    if agency_id and (user_role != 'super_admin' or not is_global_search):
         # For non-super-admins, only show products actively mapped to their agency
         base = db.session.query(Product).join(
             ProductAgency,
@@ -337,6 +371,7 @@ def search_products_v2(current_agency_id=None):
     for prod, pa in rows:
         # Prefer agency override values when present, else fallback to product master
         sell_price = float(pa.sell_price) if pa and pa.sell_price is not None else (float(prod.sell_price) if prod.sell_price is not None else 0)
+        buy_price = float(pa.buy_price) if pa and pa.buy_price is not None else (float(prod.buy_price) if prod.buy_price is not None else 0)
         mrp_price = float(pa.mrp_price) if pa and pa.mrp_price is not None else (float(prod.mrp_price) if prod.mrp_price is not None else sell_price)
         uom = (pa.uom_ref.short_name if pa and pa.uom_ref else (prod.uom_ref.short_name if prod.uom_ref else 'pcs'))
         tax_code = (pa.tax_master_ref.tax_code if pa and pa.tax_master_ref else (prod.tax_master_ref.tax_code if prod.tax_master_ref else 'GST18'))
@@ -348,6 +383,7 @@ def search_products_v2(current_agency_id=None):
             'name': display_name,
             'sku': prod.sku,
             'price': sell_price,
+            'buy_price': buy_price,
             'mrp_price': mrp_price,
             'uom': uom,
             'tax_code': tax_code,
@@ -504,6 +540,8 @@ def update_order_status(order_id):
                 # Create a negative inventory transaction for the sale
                 transaction = InventoryTransaction(
                     product_id=item.product_id,
+                    agency_id=order.agency_id, # Associate transaction with the order's agency
+                    customer_id=order.customer_id, # Associate transaction with the customer
                     transaction_type='sale',
                     quantity_change=-item.quantity,
                     quantity_before=current_stock,
@@ -526,6 +564,8 @@ def update_order_status(order_id):
                 # Create a positive inventory transaction to restock
                 transaction = InventoryTransaction(
                     product_id=item.product_id,
+                    agency_id=order.agency_id, # Associate transaction with the order's agency
+                    customer_id=order.customer_id, # Associate transaction with the customer
                     transaction_type='return',
                     quantity_change=item.quantity,
                     quantity_before=current_stock,

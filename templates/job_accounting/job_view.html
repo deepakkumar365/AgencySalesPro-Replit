@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+
+{% block title %}{{ job.job_number }} - {{ job.name }} - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-briefcase me-2"></i>{{ job.job_number }}</h2>
+            <p class="text-muted mb-0">{{ job.name }}</p>
+        </div>
+        <div>
+            <a href="{{ url_for('job_accounting.edit_job', job_id=job.id) }}" class="btn btn-outline-primary">
+                <i class="fas fa-edit me-1"></i>Edit Job
+            </a>
+            <a href="{{ url_for('job_accounting.list_jobs') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to List
+            </a>
+        </div>
+    </div>
+
+    <!-- Job Details Card -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-1"></i>Job Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>Status:</strong>
+                            {% if job.status == 'active' %}
+                            <span class="badge bg-success">Active</span>
+                            {% elif job.status == 'completed' %}
+                            <span class="badge bg-info">Completed</span>
+                            {% elif job.status == 'draft' %}
+                            <span class="badge bg-secondary">Draft</span>
+                            {% elif job.status == 'planning' %}
+                            <span class="badge bg-primary">Planning</span>
+                            {% elif job.status == 'on_hold' %}
+                            <span class="badge bg-warning">On Hold</span>
+                            {% elif job.status == 'review' %}
+                            <span class="badge bg-info">Review</span>
+                            {% elif job.status == 'cancelled' %}
+                            <span class="badge bg-danger">Cancelled</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Type:</strong>
+                            {% if job.job_type == 'client_project' %}
+                            <span class="badge bg-primary">Client Project</span>
+                            {% elif job.job_type == 'internal_project' %}
+                            <span class="badge bg-info">Internal Project</span>
+                            {% elif job.job_type == 'service' %}
+                            <span class="badge bg-success">Service</span>
+                            {% endif %}
+                        </div>
+                        {% if job.customer_ref %}
+                        <div class="col-md-6 mb-3">
+                            <strong>Customer:</strong> {{ job.customer_ref.name }}
+                        </div>
+                        {% endif %}
+                        {% if job.assigned_user %}
+                        <div class="col-md-6 mb-3">
+                            <strong>Assigned To:</strong> {{ job.assigned_user.full_name or job.assigned_user.username
+                            }}
+                        </div>
+                        {% endif %}
+                        {% if job.start_date %}
+                        <div class="col-md-6 mb-3">
+                            <strong>Start Date:</strong> {{ job.start_date.strftime('%Y-%m-%d') }}
+                        </div>
+                        {% endif %}
+                        {% if job.end_date %}
+                        <div class="col-md-6 mb-3">
+                            <strong>End Date:</strong> {{ job.end_date.strftime('%Y-%m-%d') }}
+                        </div>
+                        {% endif %}
+                        {% if job.description %}
+                        <div class="col-12 mb-3">
+                            <strong>Description:</strong><br>
+                            {{ job.description }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <!-- Income Section -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-arrow-up text-success me-1"></i>Income Entries</h5>
+                    <a href="{{ url_for('job_accounting.add_income', job_id=job.id) }}" class="btn btn-sm btn-success">
+                        <i class="fas fa-plus me-1"></i>Add Income
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if income_entries %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Category</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Payment Method</th>
+                                    <th>Reference</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for income in income_entries %}
+                                <tr>
+                                    <td>{{ income.income_date.strftime('%Y-%m-%d') }}</td>
+                                    <td><span class="badge bg-info">{{ income.category }}</span></td>
+                                    <td>
+                                        {{ income.description }}
+                                        {% if income.order_ref %}
+                                        <br><small class="text-muted">Order: {{ income.order_ref.order_number }}</small>
+                                        {% endif %}
+                                        {% if income.invoice_ref %}
+                                        <br><small class="text-muted">Invoice: {{ income.invoice_ref.invoice_number
+                                            }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-success"><strong>₹{{ "{:,.2f}".format(income.amount) }}</strong>
+                                    </td>
+                                    <td>
+                                        {% if income.status == 'confirmed' %}
+                                        <span class="badge bg-success">Confirmed</span>
+                                        {% elif income.status == 'pending' %}
+                                        <span class="badge bg-warning">Pending</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Cancelled</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ income.payment_method or '-' }}</td>
+                                    <td>{{ income.reference_number or '-' }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('job_accounting.edit_income', income_id=income.id) }}"
+                                                class="btn btn-outline-primary" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form method="POST"
+                                                action="{{ url_for('job_accounting.delete_income', income_id=income.id) }}"
+                                                style="display: inline;"
+                                                onsubmit="return confirm('Are you sure you want to delete this income entry?');">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                    title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-success">
+                                    <td colspan="3" class="text-end"><strong>Total Income:</strong></td>
+                                    <td colspan="5"><strong>₹{{ "{:,.2f}".format(job.total_income) }}</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Income by Category Chart -->
+                    {% if income_by_category %}
+                    <div class="mt-4">
+                        <h6>Income by Category</h6>
+                        <canvas id="incomeCategoryChart" style="max-height: 200px;"></canvas>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted text-center py-4">
+                        <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                        No income entries yet. <a href="{{ url_for('job_accounting.add_income', job_id=job.id) }}">Add
+                            the first income entry</a>
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Expense Section -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-arrow-down text-danger me-1"></i>Expense Entries</h5>
+                    <a href="{{ url_for('job_accounting.add_expense', job_id=job.id) }}" class="btn btn-sm btn-danger">
+                        <i class="fas fa-plus me-1"></i>Add Expense
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if expense_entries %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Category</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Billable</th>
+                                    <th>Receipt</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for expense in expense_entries %}
+                                <tr>
+                                    <td>{{ expense.expense_date.strftime('%Y-%m-%d') }}</td>
+                                    <td><span class="badge bg-warning">{{ expense.category }}</span></td>
+                                    <td>
+                                        {{ expense.description }}
+                                        {% if expense.purchase_order_ref %}
+                                        <br><small class="text-muted">PO: {{ expense.purchase_order_ref.po_number
+                                            }}</small>
+                                        {% endif %}
+                                        {% if expense.supplier_ref %}
+                                        <br><small class="text-muted">Supplier: {{ expense.supplier_ref.name }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-danger"><strong>₹{{ "{:,.2f}".format(expense.amount) }}</strong>
+                                    </td>
+                                    <td>
+                                        {% if expense.status == 'confirmed' %}
+                                        <span class="badge bg-success">Confirmed</span>
+                                        {% elif expense.status == 'pending' %}
+                                        <span class="badge bg-warning">Pending</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Cancelled</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if expense.is_billable %}
+                                        <span class="badge bg-success">Yes</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">No</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ expense.receipt_number or '-' }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('job_accounting.edit_expense', expense_id=expense.id) }}"
+                                                class="btn btn-outline-primary" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form method="POST"
+                                                action="{{ url_for('job_accounting.delete_expense', expense_id=expense.id) }}"
+                                                style="display: inline;"
+                                                onsubmit="return confirm('Are you sure you want to delete this expense entry?');">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                    title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-danger">
+                                    <td colspan="3" class="text-end"><strong>Total Expenses:</strong></td>
+                                    <td colspan="5"><strong>₹{{ "{:,.2f}".format(job.total_expenses) }}</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Expense by Category Chart -->
+                    {% if expense_by_category %}
+                    <div class="mt-4">
+                        <h6>Expenses by Category</h6>
+                        <canvas id="expenseCategoryChart" style="max-height: 200px;"></canvas>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted text-center py-4">
+                        <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                        No expense entries yet. <a href="{{ url_for('job_accounting.add_expense', job_id=job.id) }}">Add
+                            the first expense entry</a>
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Summary -->
+        <div class="col-md-4">
+            <div class="row">
+                <div class="col-4 pe-2">
+                    <div class="card mb-3">
+                        <div class="card-body text-center p-2">
+                            <h6 class="text-muted small mb-0">Budget</h6>
+                            <h5 class="mb-0">₹{{ "{:,.0f}".format(job.budget_amount) }}</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4 px-1">
+                    <div class="card mb-3 border-success">
+                        <div class="card-body text-center p-2">
+                            <h6 class="text-success small mb-0">Income</h6>
+                            <h5 class="text-success mb-0">₹{{ "{:,.0f}".format(job.total_income) }}</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4 ps-2">
+                    <div class="card mb-3 border-danger">
+                        <div class="card-body text-center p-2">
+                            <h6 class="text-danger small mb-0">Expenses</h6>
+                            <h5 class="text-danger mb-0">₹{{ "{:,.0f}".format(job.total_expenses) }}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6 pe-2">
+                    <div class="card mb-3 {% if job.net_profit >= 0 %}border-success{% else %}border-danger{% endif %}">
+                        <div class="card-body text-center p-2">
+                            <h6 class="{% if job.net_profit >= 0 %}text-success{% else %}text-danger{% endif %} small mb-0">Net Profit</h6>
+                            <h5 class="{% if job.net_profit >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">
+                                ₹{{ "{:,.0f}".format(job.net_profit) }}
+                            </h5>
+                            <small class="text-muted">({{ "{:.1f}".format(job.profit_margin) }}%)</small>
+                        </div>
+                    </div>
+                </div>
+                {% if job.budget_amount > 0 %}
+                <div class="col-6 ps-2">
+                    <div class="card mb-3">
+                        <div class="card-body text-center p-2">
+                            <h6 class="text-muted small mb-0">Budget Variance</h6>
+                            <h5 class="{% if job.budget_variance >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">
+                                ₹{{ "{:,.0f}".format(job.budget_variance) }}
+                            </h5>
+                            <small class="text-muted">{% if job.budget_variance >= 0 %}Under{% else %}Over{% endif %}</small>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% if income_by_category or expense_by_category %}
+<script>
+    {% if income_by_category %}
+    // Income Category Chart
+    const incomeCtx = document.getElementById('incomeCategoryChart').getContext('2d');
+    new Chart(incomeCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for cat, total in income_by_category %}'{{ cat }}'{% if not loop.last %}, {% endif %} {% endfor %}],
+    datasets: [{
+        label: 'Income',
+        data: [{% for cat, total in income_by_category %}{{ total }}{% if not loop.last %}, {% endif %} {% endfor %}],
+    backgroundColor: 'rgba(25, 135, 84, 0.7)',
+        borderColor: 'rgba(25, 135, 84, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+            maintainAspectRatio: true,
+                plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                    ticks: {
+                    callback: function(value) {
+                        return '₹' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+    {% endif %}
+
+    {% if expense_by_category %}
+    // Expense Category Chart
+    const expenseCtx = document.getElementById('expenseCategoryChart').getContext('2d');
+    new Chart(expenseCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for cat, total in expense_by_category %}'{{ cat }}'{% if not loop.last %}, {% endif %} {% endfor %}],
+    datasets: [{
+        label: 'Expenses',
+        data: [{% for cat, total in expense_by_category %}{{ total }}{% if not loop.last %}, {% endif %} {% endfor %}],
+    backgroundColor: 'rgba(220, 53, 69, 0.7)',
+        borderColor: 'rgba(220, 53, 69, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+            maintainAspectRatio: true,
+                plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                    ticks: {
+                    callback: function(value) {
+                        return '₹' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+    {% endif %}
+</script>
+{% endif %}
+{% endblock %}

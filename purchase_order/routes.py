@@ -237,6 +237,7 @@ def receive_purchase_order(po_id, current_agency_id=None):
                     # Create inventory transaction
                     transaction = InventoryTransaction(
                         product_id=item.product_id,
+                        agency_id=po.agency_id,
                         transaction_type='purchase',
                         quantity_change=received_qty,
                         quantity_before=current_stock,

@@ -69,12 +69,11 @@ def dashboard(current_agency_id=None):
     ).join(Product, ProductAgency.product_id == Product.id)\
      .join(Agency, ProductAgency.agency_id == Agency.id)\
      .outerjoin(stock_subquery, Product.id == stock_subquery.c.product_id)\
-     .filter(ProductAgency.is_active == True and stock_subquery.c.stock_quantity != None)
+     .filter(ProductAgency.is_active == True)
 
     if user_role != 'super_admin':
         query = query.filter(ProductAgency.agency_id == current_agency_id)
 
-    print(query)
     results = query.all()
 
     low_stock_products = []
@@ -83,7 +82,7 @@ def dashboard(current_agency_id=None):
 
     # The query now returns a tuple with the columns we selected
     for pa_id, pa_buy_price, agency_id, agency, product, stock_quantity in results:
-        stock = stock_quantity or 0
+        stock = stock_quantity or 0 # Coalesce NULL to 0
         # NOTE: low_stock_threshold is not on the model. Using a hardcoded value of 10 for now.
         low_stock_threshold = 10 
         if stock <= 0:
@@ -99,8 +98,8 @@ def dashboard(current_agency_id=None):
             InventoryTransaction.created_at.desc()
         ).limit(10).all()
     else:
-        recent_transactions = InventoryTransaction.query.join(Product).join(ProductAgency).filter(
-            ProductAgency.agency_id == current_agency_id
+        recent_transactions = InventoryTransaction.query.filter_by(
+            agency_id=current_agency_id
         ).order_by(InventoryTransaction.created_at.desc()).limit(10).all()
 
     # Stock movement trends (last 30 days)
@@ -110,9 +109,9 @@ def dashboard(current_agency_id=None):
             InventoryTransaction.created_at >= thirty_days_ago
         ).all()
     else:
-        movement_transactions = InventoryTransaction.query.join(Product).join(ProductAgency).filter(
-            ProductAgency.agency_id == current_agency_id,
-            InventoryTransaction.created_at >= thirty_days_ago
+        movement_transactions = InventoryTransaction.query.filter(
+            InventoryTransaction.agency_id == current_agency_id,
+            InventoryTransaction.created_at >= thirty_days_ago,
         ).all()
 
     total_in = sum(t.quantity_change for t in movement_transactions if t.quantity_change > 0)
@@ -287,6 +286,7 @@ def adjust_stock(product_id, current_agency_id=None):
 
             transaction = InventoryTransaction(
                 product_id=product.id,
+                agency_id=product_agency.agency_id,
                 transaction_type='adjustment',
                 quantity_change=quantity_change,
                 quantity_before=quantity_before,
@@ -340,12 +340,9 @@ def transaction_history(current_agency_id=None):
             db.joinedload(InventoryTransaction.user)
         )
     else:
-        from models import ProductAgency
-        query = InventoryTransaction.query.join(Product).join(ProductAgency).options(
+        query = InventoryTransaction.query.filter_by(agency_id=current_agency_id).options(
             db.joinedload(InventoryTransaction.product),
             db.joinedload(InventoryTransaction.user)
-        ).filter(
-            ProductAgency.agency_id == current_agency_id
         )
     
     # Apply filters
@@ -647,9 +644,7 @@ def reports(current_agency_id=None):
         from models import ProductAgency
         product_query = db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id)\
             .filter(ProductAgency.agency_id == current_agency_id, Product.is_active == True)
-        transaction_query = InventoryTransaction.query.join(Product).join(ProductAgency).filter(
-            ProductAgency.agency_id == current_agency_id
-        )
+        transaction_query = InventoryTransaction.query.filter_by(agency_id=current_agency_id)
     
     # Stock level analysis
     products = product_query.all()
@@ -731,9 +726,9 @@ def export_inventory_report(current_agency_id=None):
     if user_role == 'super_admin':
         transaction_query = InventoryTransaction.query
     else:
-        transaction_query = InventoryTransaction.query.join(Product).join(ProductAgency).filter(
-            ProductAgency.agency_id == current_agency_id
-        )
+        transaction_query = InventoryTransaction.query.filter_by(agency_id=current_agency_id)
+
+
 
     period_transactions = transaction_query.filter(
         InventoryTransaction.created_at >= start_dt,
@@ -857,6 +852,7 @@ def bulk_adjust_stock(current_agency_id=None):
 
                     transaction = InventoryTransaction(
                         product_id=product.id,
+                        agency_id=agency_id,
                         transaction_type='adjustment',
                         quantity_change=quantity_change,
                         quantity_before=current_stock,

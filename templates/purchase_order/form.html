@@ -169,29 +169,47 @@
 {{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const products = {{ products|tojson }};
     let selectedProduct = null;
+    const agencySelect = document.getElementById('agency_id');
 
     const productSelect = new TomSelect('#product-search', {
         valueField: 'id',
-        labelField: 'name',
-        searchField: ['name', 'sku'],
-        options: products,
+        labelField: 'display_text',
+        searchField: ['name', 'sku', 'display_text'],
         create: false,
         render: {
             option: function(data, escape) {
                 return `<div>
                             <span class="fw-bold">${escape(data.name)}</span>
                             <span class="small text-muted ms-2">(${escape(data.sku)})</span>
+                            <div class="small text-muted">₹${escape(data.buy_price)}</div>
                         </div>`;
             },
             item: function(data, escape) {
                 return `<div>${escape(data.name)}</div>`;
             }
         },
+        load: function(query, callback) {
+            if (!query.length) return callback();
+            
+            let agencyId = '';
+            if (agencySelect) {
+                agencyId = agencySelect.value;
+            }
+
+            const url = `{{ url_for('order.search_products_v2') }}?q=${encodeURIComponent(query)}&agency_id=${agencyId}`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(json => {
+                    callback(json);
+                }).catch(()=>{
+                    callback();
+                });
+        },
         onChange: function(value) {
             if (value) {
-                selectedProduct = products.find(p => p.id == value);
+                selectedProduct = this.options[value];
                 if (selectedProduct) {
                     // For PO, we should use buy_price if available, else sell_price as fallback
                     const buyPrice = selectedProduct.buy_price;
@@ -208,6 +226,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    if (agencySelect) {
+        agencySelect.addEventListener('change', function() {
+            productSelect.clear();
+            productSelect.clearOptions();
+        });
+    }
 
     const addItemBtn = document.getElementById('add-item-btn');
     const itemRows = document.getElementById('item-rows');

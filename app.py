@@ -50,46 +50,48 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
     
-    # Register blueprints
-    from auth import auth_bp
-    from agency import agency_bp
-    from salesperson import salesperson_bp
-    from location import location_bp
-    from customer import customer_bp
-    from product import product_bp
-    from order import order_bp
-    from purchase_order import purchase_order_bp
-    from super_admin import super_admin_bp
-    from pos import pos_bp
-    from billing import billing_bp
-    from inventory import inventory_bp
-    from reports import reports_bp
-    from agency_manager import agency_manager_bp
-    from api import api_bp
-    from masters.routes import masters_bp
-    from subscription import subscription_bp
-    
-    app.register_blueprint(auth_bp, url_prefix='/auth')
-    app.register_blueprint(agency_bp, url_prefix='/agency')
-    app.register_blueprint(salesperson_bp, url_prefix='/salesperson')
-    app.register_blueprint(location_bp, url_prefix='/location')
-    app.register_blueprint(customer_bp, url_prefix='/customer')
-    app.register_blueprint(product_bp, url_prefix='/product')
-    app.register_blueprint(order_bp, url_prefix='/order')
-    app.register_blueprint(purchase_order_bp, url_prefix='/purchase-order')
-    app.register_blueprint(super_admin_bp, url_prefix='/super_admin')
-    app.register_blueprint(pos_bp, url_prefix='/pos')
-    app.register_blueprint(billing_bp, url_prefix='/billing')
-    app.register_blueprint(inventory_bp, url_prefix='/inventory')
-    app.register_blueprint(reports_bp, url_prefix='/reports')
-    app.register_blueprint(agency_manager_bp, url_prefix='/agency_manager')
-    app.register_blueprint(api_bp, url_prefix='/api/v1')
-    app.register_blueprint(masters_bp, url_prefix='/masters')
-    app.register_blueprint(subscription_bp, url_prefix='/subscription')
+    def register_blueprints(app):
+        from auth import auth_bp
+        from agency import agency_bp
+        from salesperson import salesperson_bp
+        from location import location_bp
+        from customer import customer_bp
+        from product import product_bp
+        from order import order_bp
+        from purchase_order import purchase_order_bp
+        from super_admin import super_admin_bp
+        from pos import pos_bp
+        from billing import billing_bp
+        from inventory import inventory_bp
+        from reports import reports_bp
+        from agency_manager import agency_manager_bp
+        from api import api_bp
+        from masters.routes import masters_bp
+        from subscription import subscription_bp
+        from job_accounting import job_accounting_bp
+        from product_overrides import overrides_bp
 
-    # Product Overrides (Agency-specific)
-    from product_overrides import overrides_bp
-    app.register_blueprint(overrides_bp)
+        app.register_blueprint(auth_bp, url_prefix='/auth')
+        app.register_blueprint(agency_bp, url_prefix='/agency')
+        app.register_blueprint(salesperson_bp, url_prefix='/salesperson')
+        app.register_blueprint(location_bp, url_prefix='/location')
+        app.register_blueprint(customer_bp, url_prefix='/customer')
+        app.register_blueprint(product_bp, url_prefix='/product')
+        app.register_blueprint(order_bp, url_prefix='/order')
+        app.register_blueprint(purchase_order_bp, url_prefix='/purchase-order')
+        app.register_blueprint(super_admin_bp, url_prefix='/super_admin')
+        app.register_blueprint(pos_bp, url_prefix='/pos')
+        app.register_blueprint(billing_bp, url_prefix='/billing')
+        app.register_blueprint(inventory_bp, url_prefix='/inventory')
+        app.register_blueprint(reports_bp, url_prefix='/reports')
+        app.register_blueprint(agency_manager_bp, url_prefix='/agency_manager')
+        app.register_blueprint(api_bp, url_prefix='/api/v1')
+        app.register_blueprint(masters_bp, url_prefix='/masters')
+        app.register_blueprint(subscription_bp, url_prefix='/subscription')
+        app.register_blueprint(job_accounting_bp)
+        app.register_blueprint(overrides_bp)
+
+    register_blueprints(app)
     
     # Main routes
     @app.route('/')

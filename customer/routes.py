@@ -1,10 +1,11 @@
 from flask import render_template, request, redirect, url_for, flash, session, make_response
 import csv, io
 import re
+from datetime import datetime
 from sqlalchemy import func, and_
 from werkzeug.security import generate_password_hash
 from app import db
-from models import Customer, Location, Agency, User, Product, ProductAgency, Order
+from models import Customer, Location, Agency, User, Product, ProductAgency, Order, CustomerAgency
 from customer import customer_bp
 from auth.utils import login_required, permission_required, role_required
 from utils.decorators import log_activity
@@ -14,11 +15,15 @@ from utils.decorators import log_activity
 def list_customers(current_agency_id=None):
     user_role = session.get('role')
     
-    # Start with base query
+    # Start with base query using CustomerAgency mapping
     if user_role == 'super_admin':
-        query = Customer.query.join(Location)
+        query = Customer.query
     else:
-        query = Customer.query.join(Location).filter(Location.agency_id == current_agency_id)
+        # Filter customers by agency mapping
+        query = Customer.query.join(CustomerAgency).filter(
+            CustomerAgency.agency_id == current_agency_id,
+            CustomerAgency.is_active == True
+        )
     
     # Apply filters
     date_from = request.args.get('date_from')
@@ -29,7 +34,6 @@ def list_customers(current_agency_id=None):
     
     if date_from:
         try:
-            from datetime import datetime
             date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
             query = query.filter(Customer.created_at >= date_from_obj)
         except ValueError:
@@ -37,14 +41,14 @@ def list_customers(current_agency_id=None):
     
     if date_to:
         try:
-            from datetime import datetime
             date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
             query = query.filter(Customer.created_at <= date_to_obj)
         except ValueError:
             pass
     
     if agency_filter and user_role == 'super_admin':
-        query = query.filter(Location.agency_id == agency_filter)
+        # Filter by agency using the mapping table
+        query = query.join(CustomerAgency).filter(CustomerAgency.agency_id == agency_filter)
     
     if location_filter:
         query = query.filter(Customer.location_id == location_filter)
@@ -154,6 +158,16 @@ def create_customer():
             location_id=location_id,
             is_active=True
         )
+        db.session.add(customer)
+        db.session.flush()  # Get customer ID before creating mapping
+        
+        # Create customer-agency mapping
+        customer_agency = CustomerAgency(
+            customer_id=customer.id,
+            agency_id=location.agency_id,
+            is_active=True
+        )
+        db.session.add(customer_agency)
         
         # Create user only if password was provided by an authorized role
         if user_role in ['super_admin', 'agency_manager', 'agency_admin'] and password:
@@ -172,7 +186,6 @@ def create_customer():
         else:
             flash('Customer created successfully!', 'success')
 
-        db.session.add(customer)
         db.session.commit()
         
         return redirect(url_for('customer.list_customers'))
@@ -188,10 +201,16 @@ def edit_customer(customer_id):
     user_role = session.get('role')
     current_agency_id = session.get('agency_id')
     
-    # Check permissions
-    if user_role != 'super_admin' and customer.location.agency_id != current_agency_id:
-        flash('You can only edit customers from your agency', 'error')
-        return redirect(url_for('customer.list_customers'))
+    # Check permissions using agency mapping
+    if user_role != 'super_admin':
+        customer_agency = CustomerAgency.query.filter_by(
+            customer_id=customer_id,
+            agency_id=current_agency_id,
+            is_active=True
+        ).first()
+        if not customer_agency:
+            flash('You can only edit customers from your agency', 'error')
+            return redirect(url_for('customer.list_customers'))
 
     original_email = customer.email  # Capture original email before any changes
 
@@ -219,7 +238,28 @@ def edit_customer(customer_id):
             flash('You can only assign customers to your agency locations', 'error')
             return render_template('customer/form.html', customer=customer, locations=get_locations_for_user())
         
+        # Update location
+        old_location = Location.query.get(customer.location_id)
         customer.location_id = location_id
+        
+        # Update agency mapping if location's agency changed
+        if old_location and old_location.agency_id != location.agency_id:
+            # Check if mapping exists for new agency
+            existing_mapping = CustomerAgency.query.filter_by(
+                customer_id=customer.id,
+                agency_id=location.agency_id
+            ).first()
+            
+            if existing_mapping:
+                existing_mapping.is_active = True
+            else:
+                # Create new mapping
+                new_mapping = CustomerAgency(
+                    customer_id=customer.id,
+                    agency_id=location.agency_id,
+                    is_active=True
+                )
+                db.session.add(new_mapping)
         
         # --- User Update Logic ---
         user = User.query.filter_by(email=original_email).first()
@@ -274,10 +314,16 @@ def toggle_customer_status(customer_id):
     user_role = session.get('role')
     current_agency_id = session.get('agency_id')
     
-    # Check permissions
-    if user_role != 'super_admin' and customer.location.agency_id != current_agency_id:
-        flash('You can only modify customers from your agency', 'error')
-        return redirect(url_for('customer.list_customers'))
+    # Check permissions using agency mapping
+    if user_role != 'super_admin':
+        customer_agency = CustomerAgency.query.filter_by(
+            customer_id=customer_id,
+            agency_id=current_agency_id,
+            is_active=True
+        ).first()
+        if not customer_agency:
+            flash('You can only modify customers from your agency', 'error')
+            return redirect(url_for('customer.list_customers'))
     
     customer.is_active = not customer.is_active
     db.session.commit()
@@ -295,10 +341,16 @@ def delete_customer(customer_id):
     user_role = session.get('role')
     current_agency_id = session.get('agency_id')
     
-    # Check permissions
-    if user_role != 'super_admin' and customer.location.agency_id != current_agency_id:
-        flash('You can only delete customers from your agency', 'error')
-        return redirect(url_for('customer.list_customers'))
+    # Check permissions using agency mapping
+    if user_role != 'super_admin':
+        customer_agency = CustomerAgency.query.filter_by(
+            customer_id=customer_id,
+            agency_id=current_agency_id,
+            is_active=True
+        ).first()
+        if not customer_agency:
+            flash('You can only delete customers from your agency', 'error')
+            return redirect(url_for('customer.list_customers'))
     
     # Check if customer has orders
     if customer.orders:

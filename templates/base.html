@@ -182,6 +182,28 @@
                     {% endif %}
                     {% endif %}
 
+                    {% if session.role in ['super_admin', 'agency_admin', 'agency_manager', 'staff'] %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-briefcase me-2"></i>Job Accounting
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('job_accounting.dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-1"></i>Job Dashboard
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('job_accounting.list_jobs') }}">
+                                <i class="fas fa-list-alt me-1"></i>All Jobs
+                            </a></li>
+                            {% if session.role in ['super_admin', 'agency_admin', 'agency_manager'] %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('job_accounting.create_job') }}">
+                                <i class="fas fa-plus-circle me-1"></i>Create Job
+                            </a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+
                     {% if session.role == 'customer' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('customer.view_products') }}">
