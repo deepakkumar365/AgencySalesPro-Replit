@@ -1,6 +1,7 @@
 import os
 import logging
 from flask import Flask
+from markupsafe import escape, Markup
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
@@ -47,6 +48,14 @@ def create_app():
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
     
     # Initialize extensions
+    
+    # Custom Jinja2 filter for nl2br
+    def nl2br_filter(s):
+        if s:
+            return Markup(str(escape(s)).replace('\n', '<br>\n'))
+        return ''
+    app.jinja_env.filters['nl2br'] = nl2br_filter
+
     db.init_app(app)
     jwt.init_app(app)
     
@@ -88,7 +97,7 @@ def create_app():
         app.register_blueprint(api_bp, url_prefix='/api/v1')
         app.register_blueprint(masters_bp, url_prefix='/masters')
         app.register_blueprint(subscription_bp, url_prefix='/subscription')
-        app.register_blueprint(job_accounting_bp)
+        app.register_blueprint(job_accounting_bp, url_prefix='/job-accounting')
         app.register_blueprint(overrides_bp)
 
     register_blueprints(app)

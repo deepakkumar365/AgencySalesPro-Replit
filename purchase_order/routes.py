@@ -45,6 +45,10 @@ def list_purchase_orders(current_agency_id=None):
     if status_filter:
         query = query.filter(PurchaseOrder.status == status_filter)
 
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+    # Note: date filters are not applied here as the main list is now in `order.list_orders`
+
     if user_role == "super_admin":
         agencies = Agency.query.filter_by(is_active=True).all()
         suppliers = Supplier.query.filter_by(is_active=True).all()
@@ -67,6 +71,8 @@ def list_purchase_orders(current_agency_id=None):
             "agency": request.args.get("agency"),
             "supplier": supplier_filter,
             "status": status_filter,
+            "date_from": date_from,
+            "date_to": date_to,
         },
     )
 
@@ -164,13 +170,15 @@ def create_purchase_order(current_agency_id=None):
         locations = Location.query.filter_by(agency_id=agency_id, is_active=True).all()
         suppliers = Supplier.query.filter_by(agency_id=agency_id, is_active=True).all()
 
-    product_records = Product.query.filter_by(is_active=True).all()
+    # Pre-load some recent products for the dropdown to have initial options
+    product_records = Product.query.filter_by(is_active=True).order_by(Product.created_at.desc()).limit(20).all()
     products = [
         {
             "id": product.id,
             "name": product.name,
             "sku": product.sku,
-            "sell_price": float(product.sell_price or 0),
+            "buy_price": float(product.buy_price or 0),
+            "display_text": f"{product.name} ({product.sku})"
         }
         for product in product_records
     ]

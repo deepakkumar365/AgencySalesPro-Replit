@@ -169,6 +169,7 @@
 {{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const products = {{ products|tojson }};
     let selectedProduct = null;
     const agencySelect = document.getElementById('agency_id');
 
@@ -176,6 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
         valueField: 'id',
         labelField: 'display_text',
         searchField: ['name', 'sku', 'display_text'],
+        options: products,
         create: false,
         render: {
             option: function(data, escape) {
@@ -190,20 +192,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         },
         load: function(query, callback) {
-            if (!query.length) return callback();
-            
-            let agencyId = '';
-            if (agencySelect) {
-                agencyId = agencySelect.value;
+            if (!query || query.length < 2) {
+                // Do not load if query is too short, but still allow TomSelect to search the initial options.
+                return callback();
             }
 
-            const url = `{{ url_for('order.search_products_v2') }}?q=${encodeURIComponent(query)}&agency_id=${agencyId}`;
+            let agencyId = agencySelect ? agencySelect.value : '';
+            const url = `{{ url_for('order.search_products_v2') }}?q=${encodeURIComponent(query)}&agency_id=${agencyId}&scope=global`;
             
             fetch(url)
                 .then(response => response.json())
                 .then(json => {
+                    // TomSelect will combine the initial options with the loaded ones.
+                    // The backend should ideally not return duplicates if they were in the initial set.
                     callback(json);
                 }).catch(()=>{
+                    // Even if fetch fails, callback to not break TomSelect
                     callback();
                 });
         },
