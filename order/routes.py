@@ -1,14 +1,15 @@
 from flask import render_template, request, redirect, url_for, flash, session, send_file, jsonify
 from datetime import datetime
 import uuid
-from sqlalchemy import or_, and_, func
+from sqlalchemy import or_, and_, func, union_all
 from app import db
-from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode, ProductAgency, InventoryTransaction
+from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode, ProductAgency, InventoryTransaction, Job
 from order import order_bp
 from auth.utils import login_required, permission_required, order_owner_required
 from utils.decorators import log_activity
 from utils.excel_utils import export_orders_to_excel
 
+from models import PurchaseOrder, Supplier
 @order_bp.route('/api/tax-codes')
 @login_required
 def get_tax_codes():
@@ -27,25 +28,25 @@ def get_tax_codes():
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson'])
 def list_orders(current_agency_id=None):
     user_role = session.get('role')
-    user_id = session.get('user_id')
-    
-    # Start with base query
-    if user_role == 'super_admin':
-        query = Order.query
-    elif user_role == 'salesperson':
-        query = Order.query.filter_by(salesperson_id=user_id)
-    else:
-        query = Order.query.filter_by(agency_id=current_agency_id)
-    
-    # Apply filters
+    user_id = session.get('user_id')    
+
+    # Get filters from request
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
     agency_filter = request.args.get('agency')
     location_filter = request.args.get('location')
     customer_filter = request.args.get('customer')
+    supplier_filter = request.args.get('supplier') # For POs
     salesperson_filter = request.args.get('salesperson')
     status_filter = request.args.get('status')
     
+    # --- Sales Orders (SO) Query ---
+    so_query = Order.query
+    if user_role == 'salesperson':
+        so_query = so_query.filter(Order.salesperson_id == user_id)
+    elif user_role != 'super_admin':
+        so_query = so_query.filter(Order.agency_id == current_agency_id)
+
     if date_from:
         try:
             from datetime import datetime
@@ -63,22 +64,57 @@ def list_orders(current_agency_id=None):
             pass
     
     if agency_filter and user_role == 'super_admin':
-        query = query.filter(Order.agency_id == agency_filter)
+        so_query = so_query.filter(Order.agency_id == agency_filter)
     
     if location_filter:
-        query = query.join(Customer).filter(Customer.location_id == location_filter)
+        so_query = so_query.join(Customer).filter(Customer.location_id == location_filter)
     
     if customer_filter:
-        query = query.filter(Order.customer_id == customer_filter)
+        so_query = so_query.filter(Order.customer_id == customer_filter)
     
     if salesperson_filter:
-        query = query.filter(Order.salesperson_id == salesperson_filter)
+        so_query = so_query.filter(Order.salesperson_id == salesperson_filter)
     
     if status_filter:
-        query = query.filter(Order.status == status_filter)
+        so_query = so_query.filter(Order.status == status_filter)
     
-    orders = query.order_by(Order.created_at.desc()).all()
+    sales_orders = so_query.all()
+
+    # --- Purchase Orders (PO) Query ---
+    po_query = PurchaseOrder.query
+    if user_role != 'super_admin':
+        po_query = po_query.filter(PurchaseOrder.agency_id == current_agency_id)
+
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+            po_query = po_query.filter(PurchaseOrder.created_at >= date_from_obj)
+        except ValueError: pass
+
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
+            po_query = po_query.filter(PurchaseOrder.created_at <= date_to_obj)
+        except ValueError: pass
+
+    if agency_filter and user_role == 'super_admin':
+        po_query = po_query.filter(PurchaseOrder.agency_id == agency_filter)
+
+    if supplier_filter:
+        po_query = po_query.filter(PurchaseOrder.supplier_id == supplier_filter)
+
+    if status_filter:
+        po_query = po_query.filter(PurchaseOrder.status == status_filter)
+
+    purchase_orders = po_query.all()
+
+    # --- Combine and Sort ---
+    # Add a 'type' attribute to each object before combining
+    for so in sales_orders: so.type = 'SO'
+    for po in purchase_orders: po.type = 'PO'
     
+    combined_list = sorted(sales_orders + purchase_orders, key=lambda x: x.created_at, reverse=True)
+
     # Get filter options
     agencies = []
     if user_role == 'super_admin':
@@ -87,21 +123,25 @@ def list_orders(current_agency_id=None):
     locations = []
     customers = []
     salespersons = []
+    suppliers = []
     
     if user_role == 'super_admin':
         locations = Location.query.filter_by(is_active=True).all()
         customers = Customer.query.filter_by(is_active=True).all()
         salespersons = User.query.filter(User.role.in_(['salesperson', 'staff', 'agency_admin'])).all()
+        suppliers = Supplier.query.filter_by(is_active=True).all()
     else:
         locations = Location.query.filter_by(agency_id=current_agency_id, is_active=True).all()
         customers = Customer.query.join(Location).filter(Location.agency_id == current_agency_id, Customer.is_active == True).all()
         salespersons = User.query.filter_by(agency_id=current_agency_id).filter(User.role.in_(['salesperson', 'staff', 'agency_admin'])).all()
+        suppliers = Supplier.query.filter_by(agency_id=current_agency_id, is_active=True).all()
     
     return render_template('order/list.html', 
-                         orders=orders,
+                         orders=combined_list,
                          agencies=agencies,
                          locations=locations,
                          customers=customers,
+                         suppliers=suppliers,
                          salespersons=salespersons,
                          filters={
                              'date_from': date_from,
@@ -109,6 +149,7 @@ def list_orders(current_agency_id=None):
                              'agency': agency_filter,
                              'location': location_filter,
                              'customer': customer_filter,
+                             'supplier': supplier_filter,
                              'salesperson': salesperson_filter,
                              'status': status_filter
                          })
@@ -224,7 +265,39 @@ def create_order():
             # order.tax = tax_amount # This is already set
 
             db.session.commit()
-            flash('Order created successfully!', 'success')
+            
+            # Auto-create Job for this Order
+            try:
+                # Generate job number
+                last_job = Job.query.order_by(Job.id.desc()).first()
+                job_number = f"JOB{(last_job.id + 1):05d}" if last_job else "JOB00001"
+                
+                # Create job linked to this order
+                job = Job(
+                    job_number=job_number,
+                    name=f"Order {order_number} - {customer.name}",
+                    description=f"Auto-generated job for order {order_number}. Customer: {customer.name}",
+                    job_type='service',
+                    agency_id=order.agency_id,
+                    customer_id=order.customer_id,
+                    order_id=order.id,  # Link job to order
+                    assigned_to=order.salesperson_id,
+                    status='draft',
+                    budget_amount=order.total_amount,
+                    estimated_cost=0,
+                    start_date=order.order_date,
+                    end_date=order.delivery_date,
+                    created_by=user_id
+                )
+                db.session.add(job)
+                db.session.commit()
+                
+                flash(f'Order created successfully! Job {job_number} has been automatically created.', 'success')
+            except Exception as job_error:
+                # If job creation fails, log it but don't fail the order creation
+                db.session.rollback()
+                flash(f'Order created successfully, but job creation failed: {str(job_error)}', 'warning')
+            
             return jsonify({'success': True, 'order_id': order.id, 'redirect_url': url_for('order.view_order', order_id=order.id)})
 
         except Exception as e:
@@ -235,8 +308,70 @@ def create_order():
     from datetime import date, timedelta
     today = date.today()
     default_delivery_date = today + timedelta(days=10)
+    user_role = session.get('role')
+
+    # Fetch initial customers for the dropdown
+    initial_customers_query = get_customers_for_user_query()
+    initial_customers = initial_customers_query.order_by(Customer.name.asc()).limit(25).all()
+    
+    customer_options = [{
+        'id': c.id,
+        'name': c.name,
+        'phone': c.phone,
+        'email': c.email,
+        'address': c.address,
+        'location_name': c.location.name if c.location else None,
+        'credit_period': c.credit_period,
+        'display_text': f"{c.name} — {c.phone or ''} — {c.city or ''}".strip(' —')
+    } for c in initial_customers]
+
+    # Fetch initial products for the dropdown
+    agency_id = session.get('agency_id')
+    if user_role != 'super_admin' and agency_id:
+        # Non-super-admins: show products actively mapped to their agency
+        initial_products_query = db.session.query(Product).join(
+            ProductAgency,
+            and_(ProductAgency.product_id == Product.id,
+                 ProductAgency.agency_id == agency_id,
+                 ProductAgency.is_active == True)
+        )
+    else:
+        # Super admin: see all master products, with potential price overrides for context agency
+        initial_products_query = db.session.query(Product).outerjoin(
+            ProductAgency,
+            and_(ProductAgency.product_id == Product.id, ProductAgency.agency_id == agency_id))
+    
+    initial_products_query = initial_products_query.add_entity(ProductAgency)
+    initial_products_query = initial_products_query.filter(Product.is_active == True)
+    initial_products_rows = initial_products_query.order_by(Product.name.asc()).limit(25).all()
+
+    product_options = []
+    for prod, pa in initial_products_rows:
+        sell_price = float(pa.sell_price) if pa and pa.sell_price is not None else (float(prod.sell_price) if prod.sell_price is not None else 0)
+        buy_price = float(pa.buy_price) if pa and pa.buy_price is not None else (float(prod.buy_price) if prod.buy_price is not None else 0)
+        mrp_price = float(pa.mrp_price) if pa and pa.mrp_price is not None else (float(prod.mrp_price) if prod.mrp_price is not None else sell_price)
+        uom = (pa.uom_ref.short_name if pa and pa.uom_ref else (prod.uom_ref.short_name if prod.uom_ref else 'pcs'))
+        tax_code = (pa.tax_master_ref.tax_code if pa and pa.tax_master_ref else (prod.tax_master_ref.tax_code if prod.tax_master_ref else 'GST18'))
+        tax_rate = float(pa.tax_master_ref.tax_rate) if pa and pa.tax_master_ref else (float(prod.tax_master_ref.tax_rate) if prod.tax_master_ref else 18.0)
+        display_name = pa.display_name if pa and pa.display_name else prod.name
+        display = f"{display_name} — {prod.sku} — ₹{sell_price:.2f}"
+        product_options.append({
+            'id': prod.id,
+            'name': display_name,
+            'sku': prod.sku,
+            'price': sell_price,
+            'buy_price': buy_price,
+            'mrp_price': mrp_price,
+            'uom': uom,
+            'tax_code': tax_code,
+            'tax_rate': tax_rate,
+            'display_text': display
+        })
+
     return render_template('order/form.html',
-                         default_delivery_date=default_delivery_date)
+                         default_delivery_date=default_delivery_date,
+                         initial_customers=customer_options,
+                         initial_products=product_options)
 
 @order_bp.route('/api/search-customers-v2')
 @login_required
@@ -287,6 +422,18 @@ def search_customers_v2(current_agency_id=None):
         })
     return jsonify(items)
 
+def get_customers_for_user_query():
+    """Returns a query for customers based on current user role"""
+    user_role = session.get('role')
+    
+    if user_role == 'super_admin':
+        return Customer.query.filter_by(is_active=True)
+    else:
+        agency_id = session.get('agency_id')
+        return Customer.query.join(Location).filter(
+            Location.agency_id == agency_id,
+            Customer.is_active == True
+        )
 @order_bp.route('/api/search-products-v2')
 @login_required
 def search_products_v2(current_agency_id=None):
@@ -300,11 +447,13 @@ def search_products_v2(current_agency_id=None):
     # Check if a global search is requested (e.g., from the product creation form)
     is_global_search = request.args.get('scope') == 'global'
 
-    user_role = session.get('role')
-    agency_id = current_agency_id or session.get('agency_id')
+    user_role = session.get('role')    
+    # Prefer agency_id from request, fallback to session, then to what's passed in.
+    agency_id = request.args.get('agency_id', type=int) or current_agency_id or session.get('agency_id')
 
     # Restrict by agency unless it's a super_admin or a global search
-    if user_role != 'super_admin' and not is_global_search:
+    # If an agency_id is provided, we must filter by it.
+    if agency_id and (user_role != 'super_admin' or not is_global_search):
         # For non-super-admins, only show products actively mapped to their agency
         base = db.session.query(Product).join(
             ProductAgency,
@@ -337,6 +486,7 @@ def search_products_v2(current_agency_id=None):
     for prod, pa in rows:
         # Prefer agency override values when present, else fallback to product master
         sell_price = float(pa.sell_price) if pa and pa.sell_price is not None else (float(prod.sell_price) if prod.sell_price is not None else 0)
+        buy_price = float(pa.buy_price) if pa and pa.buy_price is not None else (float(prod.buy_price) if prod.buy_price is not None else 0)
         mrp_price = float(pa.mrp_price) if pa and pa.mrp_price is not None else (float(prod.mrp_price) if prod.mrp_price is not None else sell_price)
         uom = (pa.uom_ref.short_name if pa and pa.uom_ref else (prod.uom_ref.short_name if prod.uom_ref else 'pcs'))
         tax_code = (pa.tax_master_ref.tax_code if pa and pa.tax_master_ref else (prod.tax_master_ref.tax_code if prod.tax_master_ref else 'GST18'))
@@ -348,6 +498,7 @@ def search_products_v2(current_agency_id=None):
             'name': display_name,
             'sku': prod.sku,
             'price': sell_price,
+            'buy_price': buy_price,
             'mrp_price': mrp_price,
             'uom': uom,
             'tax_code': tax_code,
@@ -504,6 +655,8 @@ def update_order_status(order_id):
                 # Create a negative inventory transaction for the sale
                 transaction = InventoryTransaction(
                     product_id=item.product_id,
+                    agency_id=order.agency_id, # Associate transaction with the order's agency
+                    customer_id=order.customer_id, # Associate transaction with the customer
                     transaction_type='sale',
                     quantity_change=-item.quantity,
                     quantity_before=current_stock,
@@ -526,6 +679,8 @@ def update_order_status(order_id):
                 # Create a positive inventory transaction to restock
                 transaction = InventoryTransaction(
                     product_id=item.product_id,
+                    agency_id=order.agency_id, # Associate transaction with the order's agency
+                    customer_id=order.customer_id, # Associate transaction with the customer
                     transaction_type='return',
                     quantity_change=item.quantity,
                     quantity_before=current_stock,
@@ -605,14 +760,7 @@ def export_orders():
 @login_required
 def get_customers_by_location(location_id):
     """API endpoint to get customers by location"""
-    user_role = session.get('role')
-    current_agency_id = session.get('agency_id')
-    
-    # Validate location access
     location = Location.query.get_or_404(location_id)
-    if user_role != 'super_admin' and location.agency_id != current_agency_id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     customers = Customer.query.filter_by(location_id=location_id, is_active=True).all()
     return jsonify([{
         'id': c.id,
@@ -623,16 +771,7 @@ def get_customers_by_location(location_id):
 
 def get_customers_for_user():
     """Get customers based on current user role"""
-    user_role = session.get('role')
-    
-    if user_role == 'super_admin':
-        return Customer.query.filter_by(is_active=True).all()
-    else:
-        agency_id = session.get('agency_id')
-        return Customer.query.join(Location).filter(
-            Location.agency_id == agency_id,
-            Customer.is_active == True
-        ).all()
+    return get_customers_for_user_query().all()
 
 def get_products_for_user():
     """Get products based on current user role"""

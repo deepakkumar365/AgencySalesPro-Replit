@@ -7,16 +7,14 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>
-                <i class="fas fa-receipt me-2"></i>
+                <i class="fas fa-file-invoice-dollar me-2"></i>
                 Subscription Details
             </h1>
             <div>
-                {% if session.role in ['super_admin', 'agency_manager'] %}
-                <a href="{{ url_for('subscription.edit_subscription', subscription_id=subscription.id) }}" class="btn btn-primary">
-                    <i class="fas fa-edit me-2"></i>Edit
+                <a href="{{ url_for('subscription.edit_subscription', subscription_id=subscription.id) }}" class="btn btn-secondary">
+                    <i class="fas fa-edit me-2"></i>Edit Subscription
                 </a>
-                {% endif %}
-                <a href="{{ url_for('subscription.list_subscriptions') }}" class="btn btn-secondary">
+                <a href="{{ url_for('subscription.list_subscriptions') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Back to List
                 </a>
             </div>
@@ -25,135 +23,97 @@
 </div>
 
 <div class="row">
+    <!-- Subscription Details Column -->
     <div class="col-md-8">
-        <div class="card mb-4">
+        <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">Subscription Information</h5>
+                <h5 class="mb-0">Subscription #{{ subscription.id }}</h5>
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="text-muted small">Agency</label>
-                        <p class="mb-0"><strong>{{ subscription.agency_rel.name }}</strong></p>
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Subscribed To:</strong></p>
+                        <p>
+                            {% if subscription.owner %}
+                                <i class="fas fa-{{ 'building' if subscription.agency_rel else 'user' }} me-2 text-muted"></i>
+                                <strong>{{ subscription.owner.name }}</strong>
+                                <br>
+                                <small class="text-muted">Type: {{ 'Agency' if subscription.agency_rel else 'Customer' }}</small>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </p>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="text-muted small">Status</label>
-                        <p class="mb-0">
-                            <span class="badge bg-{{ 'success' if subscription.status == 'active' else 'warning' if subscription.status == 'suspended' else 'danger' }}">
-                                {{ subscription.status|upper }}
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Status:</strong></p>
+                        <p>
+                            <span class="badge fs-6 bg-{{ 'success' if subscription.status == 'active' else 'warning' if subscription.status == 'suspended' else 'danger' }}">
+                                {{ subscription.status|title }}
                             </span>
                         </p>
                     </div>
                 </div>
-                
+
+                <hr>
+
                 <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="text-muted small">Plan</label>
-                        <p class="mb-0">{{ subscription.plan.name }}</p>
+                    <div class="col-md-6">
+                        <p class="mb-1"><small class="text-muted">Plan</small></p>
+                        <p><strong>{{ subscription.plan.name }}</strong> ({{ subscription.plan.billing_cycle|title }})</p>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="text-muted small">Price</label>
-                        <p class="mb-0"><strong>${{ subscription.plan.price }}</strong> / {{ subscription.plan.billing_cycle }}</p>
+                    <div class="col-md-6">
+                        <p class="mb-1"><small class="text-muted">Price</small></p>
+                        <p><strong>${{ "%.2f"|format(subscription.plan.price) }}</strong></p>
                     </div>
                 </div>
-                
+
                 <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="text-muted small">Start Date</label>
-                        <p class="mb-0">{{ subscription.start_date.strftime('%B %d, %Y') if subscription.start_date else 'N/A' }}</p>
+                    <div class="col-md-6">
+                        <p class="mb-1"><small class="text-muted">Start Date</small></p>
+                        <p>{{ subscription.start_date.strftime('%Y-%m-%d') if subscription.start_date else 'N/A' }}</p>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="text-muted small">Next Billing Date</label>
-                        <p class="mb-0">{{ subscription.next_billing_date.strftime('%B %d, %Y') if subscription.next_billing_date else 'N/A' }}</p>
+                    <div class="col-md-6">
+                        <p class="mb-1"><small class="text-muted">Next Billing Date</small></p>
+                        <p>{{ subscription.next_billing_date.strftime('%Y-%m-%d') if subscription.next_billing_date else 'N/A' }}</p>
                     </div>
                 </div>
-                
-                {% if subscription.end_date %}
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="text-muted small">End Date</label>
-                        <p class="mb-0">{{ subscription.end_date.strftime('%B %d, %Y') }}</p>
-                    </div>
-                </div>
-                {% endif %}
-                
+
                 {% if subscription.cancelled_at %}
                 <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="text-muted small">Cancelled At</label>
-                        <p class="mb-0 text-danger">{{ subscription.cancelled_at.strftime('%B %d, %Y %H:%M') }}</p>
+                    <div class="col-12">
+                        <p class="mb-1"><small class="text-muted">Cancelled At</small></p>
+                        <p class="text-danger">{{ subscription.cancelled_at.strftime('%Y-%m-%d %H:%M') }}</p>
                     </div>
                 </div>
                 {% endif %}
-                
-                <hr>
-                
-                <div class="row">
-                    <div class="col-md-6 mb-0">
-                        <label class="text-muted small">Created</label>
-                        <p class="mb-0">{{ subscription.created_at.strftime('%B %d, %Y %H:%M') }}</p>
-                    </div>
-                    {% if subscription.updated_at %}
-                    <div class="col-md-6 mb-0">
-                        <label class="text-muted small">Last Updated</label>
-                        <p class="mb-0">{{ subscription.updated_at.strftime('%B %d, %Y %H:%M') }}</p>
-                    </div>
-                    {% endif %}
-                </div>
+            </div>
+            <div class="card-footer text-muted small">
+                Created on: {{ subscription.created_at.strftime('%Y-%m-%d %H:%M') }} |
+                Last updated: {{ subscription.updated_at.strftime('%Y-%m-%d %H:%M') }}
             </div>
         </div>
-        
-        {% if subscription.plan.features %}
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Plan Features</h5>
-            </div>
-            <div class="card-body">
-                {% set features = subscription.plan.features.split('\n') if '\n' in subscription.plan.features else subscription.plan.features.split(',') %}
-                <ul class="mb-0">
-                    {% for feature in features %}
-                    <li>{{ feature.strip() }}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
-        {% endif %}
-        
-        {% if items %}
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Subscription Items</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Description</th>
-                                <th>Quantity</th>
-                                <th>Unit Price</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in items %}
-                            <tr>
-                                <td>{{ item.description }}</td>
-                                <td>{{ item.quantity }}</td>
-                                <td>${{ item.unit_price }}</td>
-                                <td>${{ item.total_price }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-        
+    </div>
+
+    <!-- Actions/Info Column -->
+    <div class="col-md-4">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">Invoices</h5>
+                <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="#" class="list-group-item list-group-item-action"><i class="fas fa-plus-circle me-2"></i>Generate Invoice</a>
+                <a href="{{ url_for('subscription.edit_subscription', subscription_id=subscription.id) }}" class="list-group-item list-group-item-action"><i class="fas fa-edit me-2"></i>Edit Subscription</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Invoices Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-receipt me-2"></i>Invoices</h5>
             </div>
             <div class="card-body">
                 {% if invoices %}
@@ -162,105 +122,32 @@
                         <thead>
                             <tr>
                                 <th>Invoice #</th>
-                                <th>Date</th>
                                 <th>Amount</th>
                                 <th>Status</th>
+                                <th>Issue Date</th>
                                 <th>Due Date</th>
-                                <th>Paid Date</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for invoice in invoices %}
                             <tr>
                                 <td>{{ invoice.invoice_number }}</td>
-                                <td>{{ invoice.created_at.strftime('%Y-%m-%d') }}</td>
-                                <td>${{ invoice.amount }}</td>
-                                <td>
-                                    <span class="badge bg-{{ 'success' if invoice.status == 'paid' else 'warning' if invoice.status == 'issued' else 'secondary' }}">
-                                        {{ invoice.status|upper }}
-                                    </span>
-                                </td>
-                                <td>{{ invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else 'N/A' }}</td>
-                                <td>{{ invoice.paid_at.strftime('%Y-%m-%d') if invoice.paid_at else '-' }}</td>
+                                <td>${{ "%.2f"|format(invoice.amount) }}</td>
+                                <td><span class="badge bg-{{ 'success' if invoice.status == 'paid' else 'warning' if invoice.status == 'issued' else 'secondary' }}">{{ invoice.status|title }}</span></td>
+                                <td>{{ invoice.issue_date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ invoice.due_date.strftime('%Y-%m-%d') }}</td>
+                                <td><a href="#" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
                 {% else %}
-                <p class="text-muted mb-0">No invoices found for this subscription.</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Actions</h5>
-            </div>
-            <div class="card-body">
-                {% if session.role == 'super_admin' %}
-                    {% if subscription.status == 'active' %}
-                    <form method="POST" action="{{ url_for('subscription.suspend_subscription', subscription_id=subscription.id) }}" class="mb-2">
-                        <button type="submit" class="btn btn-warning w-100" onclick="return confirm('Are you sure you want to suspend this subscription?')">
-                            <i class="fas fa-pause me-2"></i>Suspend
-                        </button>
-                    </form>
-                    {% elif subscription.status == 'suspended' %}
-                    <form method="POST" action="{{ url_for('subscription.activate_subscription', subscription_id=subscription.id) }}" class="mb-2">
-                        <button type="submit" class="btn btn-success w-100">
-                            <i class="fas fa-play me-2"></i>Activate
-                        </button>
-                    </form>
-                    {% endif %}
-                    
-                    {% if subscription.status != 'cancelled' %}
-                    <form method="POST" action="{{ url_for('subscription.cancel_subscription', subscription_id=subscription.id) }}" class="mb-2">
-                        <button type="submit" class="btn btn-danger w-100" onclick="return confirm('Are you sure you want to cancel this subscription? This action cannot be undone.')">
-                            <i class="fas fa-times me-2"></i>Cancel Subscription
-                        </button>
-                    </form>
-                    {% endif %}
-                {% endif %}
-                
-                {% if session.role in ['super_admin', 'agency_manager'] %}
-                <a href="{{ url_for('subscription.edit_subscription', subscription_id=subscription.id) }}" class="btn btn-primary w-100 mb-2">
-                    <i class="fas fa-edit me-2"></i>Edit Subscription
-                </a>
-                {% endif %}
-            </div>
-        </div>
-        
-        <div class="card mb-3">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Statistics</h5>
-            </div>
-            <div class="card-body">
-                <p class="mb-2"><strong>Total Invoices:</strong> {{ invoices|length }}</p>
-                <p class="mb-2"><strong>Paid Invoices:</strong> {{ invoices|selectattr('status', 'equalto', 'paid')|list|length }}</p>
-                <p class="mb-0"><strong>Total Paid:</strong> ${{ invoices|selectattr('status', 'equalto', 'paid')|sum(attribute='amount') }}</p>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-building me-2"></i>Agency Details</h5>
-            </div>
-            <div class="card-body">
-                <p class="mb-2"><strong>Name:</strong> {{ subscription.agency_rel.name }}</p>
-                {% if subscription.agency_rel.email %}
-                <p class="mb-2"><strong>Email:</strong> {{ subscription.agency_rel.email }}</p>
-                {% endif %}
-                {% if subscription.agency_rel.phone %}
-                <p class="mb-2"><strong>Phone:</strong> {{ subscription.agency_rel.phone }}</p>
-                {% endif %}
-                {% if subscription.agency_rel.address %}
-                <p class="mb-0"><strong>Address:</strong> {{ subscription.agency_rel.address }}</p>
+                <div class="alert alert-info mb-0">No invoices found for this subscription.</div>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
-
 {% endblock %}

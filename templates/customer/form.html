@@ -26,9 +26,9 @@
                                    value="{{ customer.email if customer else '' }}">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="phone" class="form-label">Phone</label>
+                            <label for="phone" class="form-label">Phone *</label>
                             <input type="tel" class="form-control" id="phone" name="phone" 
-                                   value="{{ customer.phone if customer else '' }}">
+                                   value="{{ customer.phone if customer else '' }}" required>
                         </div>
                     </div>
                     
@@ -49,6 +49,25 @@
                             {% endfor %}
                         </select>
                     </div>
+
+                    {% if session.get('role') in ['super_admin', 'agency_manager', 'agency_admin'] %}
+                    <hr class="my-4">
+                    <h5 class="mb-3">Portal Access</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password"
+                                   autocomplete="new-password">
+                            {% if customer %}<small class="form-text text-muted">Leave blank to keep the current password.</small>{% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="confirm_password" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password"
+                                   autocomplete="new-password">
+                        </div>
+                    </div>
+                    {% endif %}
                     
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <a href="{{ url_for('customer.list_customers') }}" class="btn btn-secondary">Cancel</a>
@@ -61,4 +80,15 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const phoneInput = document.getElementById('phone');
+    phoneInput.addEventListener('input', function(e) {
+        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    });
+});
+</script>
 {% endblock %}

@@ -15,6 +15,8 @@ from models import (
     Agency,
     User,
     Location,
+    Job,
+    JobExpense,
 )
 from purchase_order import purchase_order_bp
 from auth.utils import login_required, permission_required
@@ -45,6 +47,10 @@ def list_purchase_orders(current_agency_id=None):
     if status_filter:
         query = query.filter(PurchaseOrder.status == status_filter)
 
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+    # Note: date filters are not applied here as the main list is now in `order.list_orders`
+
     if user_role == "super_admin":
         agencies = Agency.query.filter_by(is_active=True).all()
         suppliers = Supplier.query.filter_by(is_active=True).all()
@@ -67,6 +73,8 @@ def list_purchase_orders(current_agency_id=None):
             "agency": request.args.get("agency"),
             "supplier": supplier_filter,
             "status": status_filter,
+            "date_from": date_from,
+            "date_to": date_to,
         },
     )
 
@@ -82,6 +90,7 @@ def create_purchase_order(current_agency_id=None):
         supplier_id = data.get("supplier_id")
         status = data.get("status", "draft")
         notes = data.get("notes")
+        job_id = data.get("job_id")  # Get linked job if provided
 
         if session.get("role") == "super_admin":
             agency_id_raw = data.get("agency_id")
@@ -150,7 +159,40 @@ def create_purchase_order(current_agency_id=None):
         purchase_order.total_amount = subtotal
 
         db.session.commit()
-        flash("Purchase order created successfully.", "success")
+        
+        # Auto-create JobExpense if job is linked
+        if job_id:
+            try:
+                job = Job.query.get(int(job_id))
+                if job and job.agency_id == agency_id:
+                    # Get supplier name
+                    supplier = Supplier.query.get(supplier_id)
+                    supplier_name = supplier.name if supplier else "Unknown Supplier"
+                    
+                    # Create expense entry for this PO
+                    job_expense = JobExpense(
+                        job_id=job.id,
+                        expense_date=datetime.utcnow(),
+                        category='materials',  # Default category for PO
+                        description=f"Purchase Order {po_number} - {supplier_name}",
+                        amount=subtotal,
+                        purchase_order_id=purchase_order.id,
+                        supplier_id=supplier_id,
+                        status='confirmed',
+                        created_by=session.get("user_id")
+                    )
+                    db.session.add(job_expense)
+                    db.session.commit()
+                    
+                    flash(f"Purchase order created successfully and linked to Job {job.job_number}. Expense of ₹{subtotal} added to job.", "success")
+                else:
+                    flash("Purchase order created successfully, but job linking failed (invalid job or agency mismatch).", "warning")
+            except Exception as job_error:
+                db.session.rollback()
+                flash(f"Purchase order created successfully, but job expense creation failed: {str(job_error)}", "warning")
+        else:
+            flash("Purchase order created successfully.", "success")
+            
         return redirect(url_for("purchase_order.list_purchase_orders"))
 
     user_role = session.get("role")
@@ -158,19 +200,23 @@ def create_purchase_order(current_agency_id=None):
         agencies = Agency.query.filter_by(is_active=True).all()
         locations = Location.query.filter_by(is_active=True).all()
         suppliers = Supplier.query.filter_by(is_active=True).all()
+        jobs = Job.query.filter(Job.status.in_(['draft', 'in_progress', 'on_hold'])).order_by(Job.created_at.desc()).all()
     else:
         agency_id = current_agency_id or session.get("agency_id")
         agencies = []
         locations = Location.query.filter_by(agency_id=agency_id, is_active=True).all()
         suppliers = Supplier.query.filter_by(agency_id=agency_id, is_active=True).all()
+        jobs = Job.query.filter_by(agency_id=agency_id).filter(Job.status.in_(['draft', 'in_progress', 'on_hold'])).order_by(Job.created_at.desc()).all()
 
-    product_records = Product.query.filter_by(is_active=True).all()
+    # Pre-load some recent products for the dropdown to have initial options
+    product_records = Product.query.filter_by(is_active=True).order_by(Product.created_at.desc()).limit(20).all()
     products = [
         {
             "id": product.id,
             "name": product.name,
             "sku": product.sku,
-            "sell_price": float(product.sell_price or 0),
+            "buy_price": float(product.buy_price or 0),
+            "display_text": f"{product.name} ({product.sku})"
         }
         for product in product_records
     ]
@@ -181,6 +227,7 @@ def create_purchase_order(current_agency_id=None):
         suppliers=suppliers,
         locations=locations,
         products=products,
+        jobs=jobs,
     )
 
 
@@ -237,6 +284,7 @@ def receive_purchase_order(po_id, current_agency_id=None):
                     # Create inventory transaction
                     transaction = InventoryTransaction(
                         product_id=item.product_id,
+                        agency_id=po.agency_id,
                         transaction_type='purchase',
                         quantity_change=received_qty,
                         quantity_before=current_stock,
@@ -290,6 +338,7 @@ def edit_purchase_order(purchase_order_id, current_agency_id=None):
         supplier_id = data.get("supplier_id")
         status = data.get("status", "draft")
         notes = data.get("notes")
+        job_id = data.get("job_id")  # Get job_id from form
 
         if not supplier_id:
             flash("Supplier is required.", "danger")
@@ -339,16 +388,71 @@ def edit_purchase_order(purchase_order_id, current_agency_id=None):
 
             purchase_order.total_amount = subtotal
             db.session.commit()
-            flash("Purchase order updated successfully.", "success")
+            
+            # Handle job linking - check if job_id changed
+            if job_id:
+                try:
+                    # Check if there's already an expense for this PO
+                    existing_expense = JobExpense.query.filter_by(purchase_order_id=purchase_order.id).first()
+                    
+                    job = Job.query.get(int(job_id))
+                    if job and job.agency_id == purchase_order.agency_id:
+                        supplier = Supplier.query.get(supplier_id)
+                        supplier_name = supplier.name if supplier else "Unknown Supplier"
+                        
+                        if existing_expense:
+                            # Update existing expense if job changed or amount changed
+                            if existing_expense.job_id != job.id or existing_expense.amount != subtotal:
+                                existing_expense.job_id = job.id
+                                existing_expense.amount = subtotal
+                                existing_expense.description = f"Purchase Order {purchase_order.po_number} - {supplier_name}"
+                                existing_expense.supplier_id = supplier_id
+                                db.session.commit()
+                                flash(f"Purchase order updated and expense updated for Job {job.job_number}.", "success")
+                            else:
+                                flash("Purchase order updated successfully.", "success")
+                        else:
+                            # Create new expense entry
+                            job_expense = JobExpense(
+                                job_id=job.id,
+                                expense_date=datetime.utcnow(),
+                                category='materials',
+                                description=f"Purchase Order {purchase_order.po_number} - {supplier_name}",
+                                amount=subtotal,
+                                purchase_order_id=purchase_order.id,
+                                supplier_id=supplier_id,
+                                status='confirmed',
+                                created_by=session.get("user_id")
+                            )
+                            db.session.add(job_expense)
+                            db.session.commit()
+                            flash(f"Purchase order updated and linked to Job {job.job_number}. Expense of ₹{subtotal} added.", "success")
+                    else:
+                        flash("Purchase order updated, but job linking failed (invalid job or agency mismatch).", "warning")
+                except Exception as job_error:
+                    db.session.rollback()
+                    flash(f"Purchase order updated, but job expense operation failed: {str(job_error)}", "warning")
+            else:
+                # If no job selected, remove existing expense link if any
+                existing_expense = JobExpense.query.filter_by(purchase_order_id=purchase_order.id).first()
+                if existing_expense:
+                    db.session.delete(existing_expense)
+                    db.session.commit()
+                    flash("Purchase order updated and unlinked from job.", "success")
+                else:
+                    flash("Purchase order updated successfully.", "success")
+            
             return redirect(url_for("purchase_order.view_purchase_order", purchase_order_id=purchase_order.id))
 
     # For GET request, prepare data for the form
     if user_role == "super_admin":
         agencies = Agency.query.filter_by(is_active=True).all()
         suppliers = Supplier.query.filter_by(is_active=True).all()
+        jobs = Job.query.filter(Job.status.in_(['draft', 'in_progress', 'on_hold'])).order_by(Job.created_at.desc()).all()
     else:
         agencies = []
         suppliers = Supplier.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+        jobs = Job.query.filter_by(agency_id=current_agency_id).filter(Job.status.in_(['draft', 'in_progress', 'on_hold'])).order_by(Job.created_at.desc()).all()
 
     product_records = Product.query.filter_by(is_active=True).all()
     products = [{"id": p.id, "name": p.name, "sku": p.sku, "sell_price": float(p.sell_price or 0)} for p in product_records]
@@ -362,6 +466,10 @@ def edit_purchase_order(purchase_order_id, current_agency_id=None):
         }
         for item in purchase_order.po_items
     ]
+    
+    # Get currently linked job if any
+    current_job_expense = JobExpense.query.filter_by(purchase_order_id=purchase_order.id).first()
+    current_job_id = current_job_expense.job_id if current_job_expense else None
 
     return render_template(
         "purchase_order/edit.html",
@@ -370,6 +478,8 @@ def edit_purchase_order(purchase_order_id, current_agency_id=None):
         suppliers=suppliers,
         products=products,
         po_items_json=po_items_json,
+        jobs=jobs,
+        current_job_id=current_job_id,
     )
 
 @purchase_order_bp.route("/api/search-suppliers")

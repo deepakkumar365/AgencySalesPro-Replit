@@ -1,10 +1,11 @@
 from flask import render_template, redirect, url_for, flash, session, request
 from werkzeug.security import check_password_hash, generate_password_hash
-from models import User, ActivityLog, Agency
+from models import User, ActivityLog, Agency, Subscription
 from app import db
 
 # Use the auth blueprint defined in __init__.py
 from . import auth_bp
+from .utils import login_required
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -111,3 +112,25 @@ def register():
         agencies = Agency.query.filter_by(agency_manager_id=session.get('user_id')).order_by(Agency.name).all()
 
     return render_template('auth/register.html', agencies=agencies)
+
+@auth_bp.route('/profile')
+@login_required
+def profile():
+    """
+    Displays a common user profile page with user details,
+    recent activity, and subscription info for agency admins.
+    """
+    user_id = session.get('user_id')
+    user = User.query.get_or_404(user_id)
+    
+    # Get the agency's subscription if the user belongs to an agency
+    user_subscription = None
+    if user.role == 'customer' and user.customer_rel:
+        # For customers, find subscription via their customer record
+        user_subscription = Subscription.query.filter_by(customer_id=user.customer_rel.id).first()
+    elif user.agency_id:
+        # For agency users, find subscription via their agency
+        user_subscription = Subscription.query.filter_by(agency_id=user.agency_id).first()
+    return render_template('auth/profile.html', 
+                           user=user, 
+                           subscription=user_subscription) # This was the issue, the variable name was correct. Let's check the template.

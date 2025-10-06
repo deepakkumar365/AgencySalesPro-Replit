@@ -246,27 +246,36 @@ def create_sale(current_agency_id=None):
                 return jsonify({'error': 'No active location found'}), 400
             location_id = location.id
         
-        # Create walk-in customer if needed
-        customer = Customer.query.filter_by(
-            phone=customer_info.get('phone'),
-            location_id=location_id
-        ).first()
+        # Get agency_id from location
+        location = Location.query.get(location_id)
+        agency_id = location.agency_id
+
+        # --- Improved Customer Handling ---
+        customer_phone = customer_info.get('phone')
+        customer = None
+        if customer_phone:
+            # Find customer by phone number globally
+            customer = Customer.query.filter_by(phone=customer_phone).first()
         
         if not customer:
+            # If no customer exists with this phone, create a new one
             customer = Customer(
                 name=customer_info.get('name', 'Walk-in Customer'),
                 email=customer_info.get('email'),
-                phone=customer_info.get('phone'),
+                phone=customer_phone,
                 address=customer_info.get('address'),
                 location_id=location_id,
                 is_active=True
             )
             db.session.add(customer)
             db.session.flush()  # Get customer ID
-        
-        # Get agency_id from location
-        location = Location.query.get(location_id)
-        agency_id = location.agency_id
+
+        # Ensure the customer is mapped to the current agency
+        from models import CustomerAgency
+        mapping = CustomerAgency.query.filter_by(customer_id=customer.id, agency_id=agency_id).first()
+        if not mapping:
+            new_mapping = CustomerAgency(customer_id=customer.id, agency_id=agency_id)
+            db.session.add(new_mapping)
         
         # Create order
         order_number = f"POS-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{str(uuid.uuid4())[:8]}"
@@ -316,6 +325,23 @@ def create_sale(current_agency_id=None):
                 total_price=quantity * unit_price, # For backward compatibility if needed
             )
             db.session.add(order_item)
+            
+            # Create inventory transaction for the sale
+            current_stock = db.session.query(func.sum(InventoryTransaction.quantity_change)).filter(
+                InventoryTransaction.product_id == product.id
+            ).scalar() or 0
+            
+            inv_transaction = InventoryTransaction(
+                product_id=product.id,
+                agency_id=agency_id,
+                customer_id=customer.id,
+                transaction_type='sale',
+                quantity_change=-quantity,
+                quantity_before=current_stock,
+                quantity_after=current_stock - quantity,
+                created_by=user_id
+            )
+            db.session.add(inv_transaction)
             
             total_amount += order_item.total_price
         

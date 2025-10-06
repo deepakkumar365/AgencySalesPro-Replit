@@ -110,7 +110,7 @@
                     <table class="table table-hover">
                         <thead>
                             <tr>
-                                <th>Agency</th>
+                                <th>Subscribed To</th>
                                 <th>Plan</th>
                                 <th>Status</th>
                                 <th>Start Date</th>
@@ -121,7 +121,13 @@
                         <tbody>
                             {% for sub in recent_subscriptions %}
                             <tr>
-                                <td>{{ sub.agency_rel.name }}</td>
+                                <td>
+                                    {% if sub.owner %}
+                                        <strong>{{ sub.owner.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ 'Agency' if sub.agency_rel else 'Customer' }}</small>
+                                    {% endif %}
+                                </td>
                                 <td>{{ sub.plan.name }}</td>
                                 <td>
                                     <span class="badge bg-{{ 'success' if sub.status == 'active' else 'warning' if sub.status == 'suspended' else 'danger' }}">

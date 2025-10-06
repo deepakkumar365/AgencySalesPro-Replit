@@ -17,10 +17,10 @@
         <div class="card">
             <div class="card-body">
                 <form method="POST">
+                    <p class="text-muted">Select either an Agency or a Customer to create a subscription for. One is required.</p>
                     <div class="mb-3">
-                        <label for="agency_id" class="form-label">Agency <span class="text-danger">*</span></label>
-                        <select class="form-select" id="agency_id" name="agency_id" required 
-                                {{ 'disabled' if subscription else '' }}>
+                        <label for="agency_id" class="form-label">Agency</label>
+                        <select class="form-select" id="agency_id" name="agency_id" {{ 'disabled' if subscription else '' }}>
                             <option value="">Select an agency...</option>
                             {% for agency in agencies %}
                             <option value="{{ agency.id }}" 
@@ -29,11 +29,27 @@
                             </option>
                             {% endfor %}
                         </select>
-                        {% if subscription %}
-                        <input type="hidden" name="agency_id" value="{{ subscription.agency_id }}">
-                        <small class="text-muted">Agency cannot be changed after subscription is created</small>
-                        {% endif %}
                     </div>
+
+                    <div class="text-center my-2 fw-bold">OR</div>
+
+                    <div class="mb-3">
+                        <label for="customer_id" class="form-label">Customer</label>
+                        <select class="form-select" id="customer_id" name="customer_id" {{ 'disabled' if subscription else '' }}>
+                            <option value="">Select a customer...</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.id }}"
+                                    {{ 'selected' if (subscription and subscription.customer_id == customer.id) or (selected_customer and selected_customer.id == customer.id) else '' }}>
+                                {{ customer.name }} ({{ customer.phone }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    {% if subscription %}
+                        <input type="hidden" name="agency_id" value="{{ subscription.agency_id if subscription.agency_id else '' }}">
+                        <input type="hidden" name="customer_id" value="{{ subscription.customer_id if subscription.customer_id else '' }}">
+                        {% endif %}
                     
                     <div class="mb-3">
                         <label for="plan_id" class="form-label">Subscription Plan <span class="text-danger">*</span></label>
@@ -164,6 +180,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const previewPrice = document.getElementById('preview-price');
     const previewCycle = document.getElementById('preview-cycle');
     const previewTotal = document.getElementById('preview-total');
+    const agencySelect = document.getElementById('agency_id');
+    const customerSelect = document.getElementById('customer_id');
     
     function updatePreview() {
         const selectedOption = planSelect.options[planSelect.selectedIndex];
@@ -185,6 +203,15 @@ document.addEventListener('DOMContentLoaded', function() {
     planSelect.addEventListener('change', updatePreview);
     cycleCountInput.addEventListener('input', updatePreview);
     
+    // Ensure only one of agency or customer is selected
+    agencySelect.addEventListener('change', function() {
+        if (this.value) customerSelect.value = '';
+    });
+
+    customerSelect.addEventListener('change', function() {
+        if (this.value) agencySelect.value = '';
+    });
+
     // Initial update if plan is already selected
     if (planSelect.value) {
         updatePreview();

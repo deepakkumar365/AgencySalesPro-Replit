@@ -63,6 +63,16 @@
                         </select>
                     </div>
                     <div class="col-md-6">
+                        <label for="job_id" class="form-label">Link to Job <span class="text-muted">(Optional)</span></label>
+                        <select class="form-select" id="job_id" name="job_id">
+                            <option value="">No Job Linked</option>
+                            {% for job in jobs %}
+                            <option value="{{ job.id }}">{{ job.job_number }} - {{ job.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">If selected, PO amount will be added as expense to this job</small>
+                    </div>
+                    <div class="col-md-6">
                         <label for="status" class="form-label">Status</label>
                         <select class="form-select" id="status" name="status">
                             <option value="draft" selected>Draft</option>
@@ -171,11 +181,12 @@
 document.addEventListener('DOMContentLoaded', function() {
     const products = {{ products|tojson }};
     let selectedProduct = null;
+    const agencySelect = document.getElementById('agency_id');
 
     const productSelect = new TomSelect('#product-search', {
         valueField: 'id',
-        labelField: 'name',
-        searchField: ['name', 'sku'],
+        labelField: 'display_text',
+        searchField: ['name', 'sku', 'display_text'],
         options: products,
         create: false,
         render: {
@@ -183,15 +194,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 return `<div>
                             <span class="fw-bold">${escape(data.name)}</span>
                             <span class="small text-muted ms-2">(${escape(data.sku)})</span>
+                            <div class="small text-muted">₹${escape(data.buy_price)}</div>
                         </div>`;
             },
             item: function(data, escape) {
                 return `<div>${escape(data.name)}</div>`;
             }
         },
+        load: function(query, callback) {
+            if (!query || query.length < 2) {
+                // Do not load if query is too short, but still allow TomSelect to search the initial options.
+                return callback();
+            }
+
+            let agencyId = agencySelect ? agencySelect.value : '';
+            const url = `{{ url_for('order.search_products_v2') }}?q=${encodeURIComponent(query)}&agency_id=${agencyId}&scope=global`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(json => {
+                    // TomSelect will combine the initial options with the loaded ones.
+                    // The backend should ideally not return duplicates if they were in the initial set.
+                    callback(json);
+                }).catch(()=>{
+                    // Even if fetch fails, callback to not break TomSelect
+                    callback();
+                });
+        },
         onChange: function(value) {
             if (value) {
-                selectedProduct = products.find(p => p.id == value);
+                selectedProduct = this.options[value];
                 if (selectedProduct) {
                     // For PO, we should use buy_price if available, else sell_price as fallback
                     const buyPrice = selectedProduct.buy_price;
@@ -208,6 +240,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    if (agencySelect) {
+        agencySelect.addEventListener('change', function() {
+            productSelect.clear();
+            productSelect.clearOptions();
+        });
+    }
 
     const addItemBtn = document.getElementById('add-item-btn');
     const itemRows = document.getElementById('item-rows');

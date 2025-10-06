@@ -20,9 +20,13 @@
             </div>
             <div class="card-body">
                 <div class="mb-3">
-                    <label class="form-label">Agency</label>
-                    <input type="text" class="form-control" value="{{ subscription.agency_rel.name }}" disabled>
-                    <small class="text-muted">Agency cannot be changed</small>
+                    <label class="form-label">Subscribed To</label>
+                    {% if subscription.agency_rel %}
+                    <input type="text" class="form-control" value="{{ subscription.agency_rel.name }} (Agency)" disabled>
+                    {% elif subscription.customer_rel %}
+                    <input type="text" class="form-control" value="{{ subscription.customer_rel.name }} (Customer)" disabled>
+                    {% endif %}
+                    <small class="text-muted">The subscribed entity cannot be changed.</small>
                 </div>
                 
                 <div class="mb-3">
@@ -89,7 +93,11 @@
                 <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Current Subscription</h5>
             </div>
             <div class="card-body">
-                <p class="mb-2"><strong>Agency:</strong> {{ subscription.agency_rel.name }}</p>
+                <p class="mb-2"><strong>Subscribed To:</strong> 
+                    {% if subscription.agency_rel %}{{ subscription.agency_rel.name }} (Agency)
+                    {% elif subscription.customer_rel %}{{ subscription.customer_rel.name }} (Customer)
+                    {% endif %}
+                </p>
                 <p class="mb-2"><strong>Plan:</strong> {{ subscription.plan.name }}</p>
                 <p class="mb-2"><strong>Price:</strong> ${{ subscription.plan.price }}</p>
                 <p class="mb-2"><strong>Billing Cycle:</strong> {{ subscription.plan.billing_cycle }}</p>

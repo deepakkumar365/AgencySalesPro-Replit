@@ -1,4 +1,5 @@
 from flask import render_template, request, redirect, url_for, flash, session
+import re
 from app import db
 from models import Agency, User
 from . import agency_bp
@@ -37,7 +38,8 @@ def create_agency():
     if request.method == 'POST':
         name = request.form.get('name')
         address = request.form.get('address')
-        phone = request.form.get('phone')
+        # Clean phone number: remove non-numeric characters
+        phone = re.sub(r'[^0-9]', '', request.form.get('phone', ''))
         email = request.form.get('email')
         
         if not name:
@@ -181,7 +183,8 @@ def edit_agency(agency_id):
         agency.name = request.form.get('name')
         agency.code = request.form.get('code')
         agency.address = request.form.get('address')
-        agency.phone = request.form.get('phone')
+        # Clean phone number: remove non-numeric characters
+        agency.phone = re.sub(r'[^0-9]', '', request.form.get('phone', ''))
         agency.email = request.form.get('email')
         manager_id = request.form.get('agency_manager_id')
         

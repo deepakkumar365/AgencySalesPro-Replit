@@ -142,12 +142,20 @@ def toggle_user_status(user_id):
     return redirect(url_for('super_admin.manage_users'))
 
 @super_admin_bp.route('/activities')
-@role_required('super_admin', 'agency_manager')
+@login_required
 def view_activities():
+    """
+    Displays activity logs.
+    - Super Admins see all logs.
+    - Other users see only their own activity logs.
+    """
     page = request.args.get('page', 1, type=int)
-    activities = ActivityLog.query.order_by(ActivityLog.created_at.desc()).paginate(
-        page=page, per_page=50, error_out=False
-    )
+    query = ActivityLog.query.order_by(ActivityLog.created_at.desc())
+
+    if session.get('role') != 'super_admin':
+        query = query.filter_by(user_id=session.get('user_id'))
+
+    activities = query.paginate(page=page, per_page=50, error_out=False)
     return render_template('super_admin/activities.html', activities=activities)
 
 @super_admin_bp.route('/system_config', methods=['GET', 'POST'])
@@ -199,6 +207,16 @@ def edit_user(user_id):
         user.last_name = request.form.get('last_name')
         user.email = request.form.get('email')
         role = request.form.get('role')
+        username = request.form.get('username')
+
+        # If the role is 'customer', the username must be the customer's phone number.
+        if role == 'customer':
+            customer_record = Customer.query.filter_by(email=user.email).first()
+            if not customer_record or not customer_record.phone:
+                flash('A customer record with a valid phone number must exist for this email before assigning the customer role.', 'error')
+                return render_template('super_admin/edit_user.html', user=user, agencies=Agency.query.filter_by(is_active=True).all())
+            user.username = customer_record.phone
+
         agency_id = request.form.get('agency_id')
         
         # Check if email is unique (excluding current user)
@@ -217,16 +235,22 @@ def edit_user(user_id):
                 return render_template('super_admin/edit_user.html', user=user, agencies=agencies)
 
         # Ensure agency-specific roles are assigned to an agency
-        roles_requiring_agency = ['agency_admin', 'staff', 'salesperson', 'pos_user']
+        roles_requiring_agency = ['agency_admin', 'staff', 'salesperson', 'pos_user', 'agency_manager', 'customer']
         if role in roles_requiring_agency and not agency_id:
             flash(f"The role '{role.replace('_', ' ').title()}' requires an agency assignment. Please select an agency.", 'error')
             agencies = Agency.query.filter_by(is_active=True).all()
             # Pass back the attempted form data
             return render_template('super_admin/edit_user.html', user=user, agencies=agencies)
 
+        # Set username only if it's not a customer role
         user.role = role
         user.agency_id = agency_id if agency_id else None
         
+        # Handle subscription status for customers
+        # NOTE: This requires a new `is_subscribed` boolean field on the User model.
+        if user.role == 'customer':
+            user.is_subscribed = 'is_subscribed' in request.form
+
         # Handle password change if provided
         new_password = request.form.get('new_password')
         if new_password:
@@ -301,7 +325,7 @@ def download_user_template():
     writer.writerow(['username', 'email', 'first_name', 'last_name', 'role', 'agency_code', 'password'])
     
     # Write sample data
-    writer.writerow(['sample_user', 'user@example.com', 'John', 'Doe', 'staff', 'AGENCY001', 'password123'])
+    writer.writerow(['sample_user', 'user@example.com', 'John', 'Doe', 'staff', 'AGENCY001', 'password123']) # username can be phone for customer
     writer.writerow(['sample_admin', 'admin@example.com', 'Jane', 'Smith', 'agency_admin', 'AGENCY001', 'admin123'])
     
     # Create response

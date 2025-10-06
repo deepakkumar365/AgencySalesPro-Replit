@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Receipt Details - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-receipt me-2"></i>Receipt Details</h2>
+        <a href="{{ url_for('finance.list_receipts') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to List
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ receipt.receipt_number }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">Receipt Date</label>
+                            <div><strong>{{ receipt.receipt_date.strftime('%d %B %Y') }}</strong></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Status</label>
+                            <div>
+                                {% if receipt.status == 'confirmed' %}
+                                <span class="badge bg-success">Confirmed</span>
+                                {% elif receipt.status == 'pending' %}
+                                <span class="badge bg-warning">Pending</span>
+                                {% else %}
+                                <span class="badge bg-danger">Cancelled</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Customer Name</label>
+                            <div><strong>{{ receipt.customer_name }}</strong></div>
+                        </div>
+                        {% if receipt.customer_ref %}
+                        <div class="col-md-6">
+                            <label class="text-muted small">Customer Phone</label>
+                            <div><strong>{{ receipt.customer_ref.phone }}</strong></div>
+                        </div>
+                        {% endif %}
+                        <div class="col-md-6">
+                            <label class="text-muted small">Amount</label>
+                            <div><h4 class="text-success mb-0">₹{{ "{:,.2f}".format(receipt.amount) }}</h4></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Mode of Receipt</label>
+                            <div><strong>{{ receipt.mode_of_receipt|replace('_', ' ')|title }}</strong></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Account Type</label>
+                            <div>
+                                {% if receipt.account_type == 'cash' %}
+                                <span class="badge bg-success">💰 Cash</span>
+                                {% else %}
+                                <span class="badge bg-info">🏦 Bank</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if receipt.reference_number %}
+                        <div class="col-md-6">
+                            <label class="text-muted small">Reference Number</label>
+                            <div><strong>{{ receipt.reference_number }}</strong></div>
+                        </div>
+                        {% endif %}
+                        {% if receipt.notes %}
+                        <div class="col-12">
+                            <label class="text-muted small">Notes</label>
+                            <div class="border rounded p-3 bg-light">{{ receipt.notes }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if receipt.sales_orders %}
+                    <hr>
+                    <h6 class="mb-3"><i class="fas fa-link me-2"></i>Linked Sales Orders</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Order Number</th>
+                                    <th>Amount Allocated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for so_link in receipt.sales_orders %}
+                                <tr>
+                                    <td>{{ so_link.order_ref.order_number }}</td>
+                                    <td>₹{{ "{:,.2f}".format(so_link.amount) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="text-muted small">Created By</label>
+                            <div>{{ receipt.creator.full_name }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Created At</label>
+                            <div>{{ receipt.created_at.strftime('%d %b %Y %I:%M %p') }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

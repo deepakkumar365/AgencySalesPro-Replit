@@ -1,0 +1,678 @@
+{% extends "base.html" %}
+
+{% block title %}Job Accounting Dashboard - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Job Accounting Dashboard</h2>
+        <div>
+            <a href="{{ url_for('job_accounting.list_jobs') }}" class="btn btn-primary">
+                <i class="fas fa-list me-2"></i>View All Jobs
+            </a>
+        </div>
+    </div>
+
+    <!-- Key Metrics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">Total Jobs</p>
+                            <h3 class="mb-0">{{ total_jobs }}</h3>
+                            <small class="text-success">
+                                <i class="fas fa-check-circle me-1"></i>{{ active_jobs }} Active
+                            </small>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-briefcase fa-2x text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">Total Income</p>
+                            <h3 class="mb-0 text-success">₹{{ "{:,.2f}".format(total_income) }}</h3>
+                            <small class="text-muted">Confirmed</small>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-arrow-down fa-2x text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">Total Expenses</p>
+                            <h3 class="mb-0 text-danger">₹{{ "{:,.2f}".format(total_expenses) }}</h3>
+                            <small class="text-muted">Confirmed</small>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-arrow-up fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">Net Profit</p>
+                            <h3 class="mb-0 {{ 'text-success' if net_profit >= 0 else 'text-danger' }}">
+                                ₹{{ "{:,.2f}".format(net_profit) }}
+                            </h3>
+                            <small class="{{ 'text-success' if avg_profit_margin >= 0 else 'text-danger' }}">
+                                {{ "{:.2f}".format(avg_profit_margin) }}% Margin
+                            </small>
+                        </div>
+                        <div class="bg-{{ 'success' if net_profit >= 0 else 'danger' }} bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-chart-line fa-2x text-{{ 'success' if net_profit >= 0 else 'danger' }}"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-3 mb-4">
+        <!-- Monthly Trend Chart -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-area me-2"></i>Income vs Expenses Trend (Last 6 Months)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="monthlyTrendChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Jobs by Status -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Jobs by Status</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Breakdown Charts Row -->
+    <div class="row g-3 mb-4">
+        <!-- Income Breakdown -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Income by Category</h5>
+                </div>
+                <div class="card-body">
+                    {% if income_breakdown %}
+                    <canvas id="incomeBreakdownChart" height="120"></canvas>
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>No income data available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Expense Breakdown -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-receipt me-2"></i>Expenses by Category</h5>
+                </div>
+                <div class="card-body">
+                    {% if expense_breakdown %}
+                    <canvas id="expenseBreakdownChart" height="120"></canvas>
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>No expense data available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Jobs Row -->
+    <div class="row g-3 mb-4">
+        <!-- Top Profitable Jobs -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-trophy me-2 text-warning"></i>Top 5 Profitable Jobs</h5>
+                </div>
+                <div class="card-body">
+                    {% if profitable_jobs %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Job</th>
+                                    <th>Customer</th>
+                                    <th class="text-end">Income</th>
+                                    <th class="text-end">Profit</th>
+                                    <th class="text-end">Margin</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for job in profitable_jobs %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('job_accounting.view_job', job_id=job.id) }}" class="text-decoration-none">
+                                            <strong>{{ job.job_number }}</strong><br>
+                                            <small class="text-muted">{{ job.name[:30] }}...</small>
+                                        </a>
+                                    </td>
+                                    <td>{{ job.customer_ref.name[:20] if job.customer_ref else 'N/A' }}</td>
+                                    <td class="text-end text-success">₹{{ "{:,.0f}".format(job.total_income) }}</td>
+                                    <td class="text-end">
+                                        <span class="badge bg-success">₹{{ "{:,.0f}".format(job.net_profit) }}</span>
+                                    </td>
+                                    <td class="text-end">{{ "{:.1f}".format(job.profit_margin) }}%</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-chart-line fa-3x mb-3"></i>
+                        <p>No profitable jobs yet</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Income Jobs -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-dollar-sign me-2 text-success"></i>Top 5 Jobs by Income</h5>
+                </div>
+                <div class="card-body">
+                    {% if top_income_jobs %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Job</th>
+                                    <th>Customer</th>
+                                    <th class="text-end">Income</th>
+                                    <th class="text-end">Expenses</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for job in top_income_jobs %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('job_accounting.view_job', job_id=job.id) }}" class="text-decoration-none">
+                                            <strong>{{ job.job_number }}</strong><br>
+                                            <small class="text-muted">{{ job.name[:30] }}...</small>
+                                        </a>
+                                    </td>
+                                    <td>{{ job.customer_ref.name[:20] if job.customer_ref else 'N/A' }}</td>
+                                    <td class="text-end text-success">₹{{ "{:,.0f}".format(job.total_income) }}</td>
+                                    <td class="text-end text-danger">₹{{ "{:,.0f}".format(job.total_expenses) }}</td>
+                                    <td>
+                                        {% if job.status == 'active' %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% elif job.status == 'completed' %}
+                                            <span class="badge bg-primary">Completed</span>
+                                        {% elif job.status == 'on_hold' %}
+                                            <span class="badge bg-warning">On Hold</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ job.status|capitalize }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-briefcase fa-3x mb-3"></i>
+                        <p>No jobs with income yet</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Breakdown Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Jobs by Type -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-layer-group me-2"></i>Jobs by Type</h5>
+                </div>
+                <div class="card-body">
+                    {% if type_breakdown %}
+                    <canvas id="typeChart"></canvas>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <p>No data available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Budget Overview -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-wallet me-2"></i>Budget Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Total Budget</span>
+                            <strong>₹{{ "{:,.2f}".format(total_budget) }}</strong>
+                        </div>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar bg-primary" role="progressbar" 
+                                 style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+                                100%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Actual Expenses</span>
+                            <strong class="text-danger">₹{{ "{:,.2f}".format(total_expenses) }}</strong>
+                        </div>
+                        <div class="progress" style="height: 25px;">
+                            {% set expense_percent = (total_expenses / total_budget * 100) if total_budget > 0 else 0 %}
+                            <div class="progress-bar bg-danger" role="progressbar" 
+                                 style="width: {{ expense_percent }}%;" 
+                                 aria-valuenow="{{ expense_percent }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ "{:.1f}".format(expense_percent) }}%
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Remaining Budget</span>
+                            <strong class="text-success">₹{{ "{:,.2f}".format(total_budget - total_expenses) }}</strong>
+                        </div>
+                        <div class="progress" style="height: 25px;">
+                            {% set remaining_percent = ((total_budget - total_expenses) / total_budget * 100) if total_budget > 0 else 0 %}
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: {{ remaining_percent }}%;" 
+                                 aria-valuenow="{{ remaining_percent }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ "{:.1f}".format(remaining_percent) }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Quick Stats</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span>Completed Jobs</span>
+                            <span class="badge bg-primary rounded-pill">{{ completed_jobs }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span>Active Jobs</span>
+                            <span class="badge bg-success rounded-pill">{{ active_jobs }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span>Average Profit Margin</span>
+                            <span class="badge bg-{{ 'success' if avg_profit_margin >= 0 else 'danger' }} rounded-pill">
+                                {{ "{:.2f}".format(avg_profit_margin) }}%
+                            </span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span>Income Categories</span>
+                            <span class="badge bg-info rounded-pill">{{ income_breakdown|length }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <span>Expense Categories</span>
+                            <span class="badge bg-warning rounded-pill">{{ expense_breakdown|length }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Jobs -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Recent Jobs</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_jobs %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Job Number</th>
+                                    <th>Name</th>
+                                    <th>Customer</th>
+                                    <th>Type</th>
+                                    <th class="text-end">Budget</th>
+                                    <th class="text-end">Income</th>
+                                    <th class="text-end">Expenses</th>
+                                    <th class="text-end">Profit</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for job in recent_jobs %}
+                                <tr>
+                                    <td><strong>{{ job.job_number }}</strong></td>
+                                    <td>{{ job.name[:40] }}{% if job.name|length > 40 %}...{% endif %}</td>
+                                    <td>{{ job.customer_ref.name[:20] if job.customer_ref else 'N/A' }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ job.job_type.replace('_', ' ')|title }}</span>
+                                    </td>
+                                    <td class="text-end">₹{{ "{:,.0f}".format(job.budget_amount or 0) }}</td>
+                                    <td class="text-end text-success">₹{{ "{:,.0f}".format(job.total_income) }}</td>
+                                    <td class="text-end text-danger">₹{{ "{:,.0f}".format(job.total_expenses) }}</td>
+                                    <td class="text-end">
+                                        <span class="badge bg-{{ 'success' if job.net_profit >= 0 else 'danger' }}">
+                                            ₹{{ "{:,.0f}".format(job.net_profit) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if job.status == 'active' %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% elif job.status == 'completed' %}
+                                            <span class="badge bg-primary">Completed</span>
+                                        {% elif job.status == 'on_hold' %}
+                                            <span class="badge bg-warning">On Hold</span>
+                                        {% elif job.status == 'draft' %}
+                                            <span class="badge bg-secondary">Draft</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ job.status|capitalize }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('job_accounting.view_job', job_id=job.id) }}" 
+                                           class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-briefcase fa-3x mb-3"></i>
+                        <p>No jobs found. Create your first job to get started!</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js Scripts -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Monthly Trend Chart
+    const monthlyData = {{ monthly_data | tojson }};
+    const monthlyCtx = document.getElementById('monthlyTrendChart');
+    if (monthlyCtx) {
+        new Chart(monthlyCtx, {
+            type: 'line',
+            data: {
+                labels: monthlyData.map(d => d.month),
+                datasets: [
+                    {
+                        label: 'Income',
+                        data: monthlyData.map(d => d.income),
+                        borderColor: 'rgb(25, 135, 84)',
+                        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Expenses',
+                        data: monthlyData.map(d => d.expenses),
+                        borderColor: 'rgb(220, 53, 69)',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Profit',
+                        data: monthlyData.map(d => d.profit),
+                        borderColor: 'rgb(13, 110, 253)',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ₹' + context.parsed.y.toLocaleString('en-IN', {minimumFractionDigits: 2});
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + value.toLocaleString('en-IN');
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Status Chart
+    const statusData = {{ status_breakdown | tojson }};
+    const statusCtx = document.getElementById('statusChart');
+    if (statusCtx && statusData.length > 0) {
+        new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: statusData.map(d => d[0].replace('_', ' ').toUpperCase()),
+                datasets: [{
+                    data: statusData.map(d => d[1]),
+                    backgroundColor: [
+                        'rgb(25, 135, 84)',   // active - green
+                        'rgb(13, 110, 253)',  // completed - blue
+                        'rgb(255, 193, 7)',   // on_hold - yellow
+                        'rgb(108, 117, 125)', // draft - gray
+                        'rgb(220, 53, 69)',   // cancelled - red
+                        'rgb(13, 202, 240)',  // planning - cyan
+                        'rgb(111, 66, 193)'   // review - purple
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    }
+
+    // Income Breakdown Chart
+    const incomeData = {{ income_breakdown | tojson }};
+    const incomeCtx = document.getElementById('incomeBreakdownChart');
+    if (incomeCtx && incomeData.length > 0) {
+        new Chart(incomeCtx, {
+            type: 'bar',
+            data: {
+                labels: incomeData.map(d => d[0].replace('_', ' ').toUpperCase()),
+                datasets: [{
+                    label: 'Income Amount',
+                    data: incomeData.map(d => parseFloat(d[1])),
+                    backgroundColor: 'rgba(25, 135, 84, 0.7)',
+                    borderColor: 'rgb(25, 135, 84)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '₹' + context.parsed.y.toLocaleString('en-IN', {minimumFractionDigits: 2});
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + value.toLocaleString('en-IN');
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Expense Breakdown Chart
+    const expenseData = {{ expense_breakdown | tojson }};
+    const expenseCtx = document.getElementById('expenseBreakdownChart');
+    if (expenseCtx && expenseData.length > 0) {
+        new Chart(expenseCtx, {
+            type: 'bar',
+            data: {
+                labels: expenseData.map(d => d[0].replace('_', ' ').toUpperCase()),
+                datasets: [{
+                    label: 'Expense Amount',
+                    data: expenseData.map(d => parseFloat(d[1])),
+                    backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                    borderColor: 'rgb(220, 53, 69)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '₹' + context.parsed.y.toLocaleString('en-IN', {minimumFractionDigits: 2});
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + value.toLocaleString('en-IN');
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Type Chart
+    const typeData = {{ type_breakdown | tojson }};
+    const typeCtx = document.getElementById('typeChart');
+    if (typeCtx && typeData.length > 0) {
+        new Chart(typeCtx, {
+            type: 'pie',
+            data: {
+                labels: typeData.map(d => d[0].replace('_', ' ').toUpperCase()),
+                datasets: [{
+                    data: typeData.map(d => d[1]),
+                    backgroundColor: [
+                        'rgb(13, 110, 253)',
+                        'rgb(25, 135, 84)',
+                        'rgb(255, 193, 7)',
+                        'rgb(220, 53, 69)',
+                        'rgb(13, 202, 240)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

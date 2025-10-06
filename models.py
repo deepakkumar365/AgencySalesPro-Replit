@@ -40,6 +40,7 @@ class Agency(db.Model):
     users = db.relationship('User', backref='agency', lazy=True, foreign_keys='User.agency_id')
     locations = db.relationship('Location', backref='agency', lazy=True)
     product_mappings = db.relationship('ProductAgency', backref='agency', lazy=True)
+    customer_mappings = db.relationship('CustomerAgency', backref='agency', lazy=True)
     orders = db.relationship('Order', backref='agency', lazy=True)
     invoices = db.relationship('Invoice', backref='agency', lazy=True)
     suppliers = db.relationship('Supplier', backref='agency', lazy=True)
@@ -88,12 +89,25 @@ class Location(db.Model):
     # Relationships
     customers = db.relationship('Customer', backref='location', lazy=True)
 
+class CustomerAgency(db.Model):
+    """Mapping table for Customer-Agency many-to-many relationship"""
+    __tablename__ = 'ASP_customer_agencies'
+    id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.UniqueConstraint('customer_id', 'agency_id', name='uq_customer_agency'),
+    )
+
 class Customer(db.Model):
     __tablename__ = 'ASP_customers'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120))
-    phone = db.Column(db.String(20))
+    phone = db.Column(db.String(20), nullable=False)
     address = db.Column(db.Text)
     city = db.Column(db.String(50))  # For better search and display
     state = db.Column(db.String(50))  # For regional filtering
@@ -107,6 +121,8 @@ class Customer(db.Model):
     
     # Relationships
     orders = db.relationship('Order', backref='customer', lazy=True)
+    subscription = db.relationship('Subscription', back_populates='customer_rel', uselist=False)
+    agency_mappings = db.relationship('CustomerAgency', backref='customer', lazy=True, cascade='all, delete-orphan')
 
 class Product(db.Model):
     __tablename__ = 'ASP_products'
@@ -367,22 +383,40 @@ class PurchaseOrderItem(db.Model):
 
 class InventoryTransaction(db.Model):
     __tablename__ = 'ASP_inventory_transactions'
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=True, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=True, index=True)
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
-    transaction_type = db.Column(db.String(20), nullable=False)  # sale, purchase, adjustment, return
+    transaction_type = db.Column(db.String(50), nullable=False, index=True)  # e.g., 'purchase', 'sale', 'adjustment', 'return'
     quantity_change = db.Column(db.Integer, nullable=False)  # Positive for increase, negative for decrease
     quantity_before = db.Column(db.Integer, nullable=False)
     quantity_after = db.Column(db.Integer, nullable=False)
     unit_cost = db.Column(db.Numeric(10, 2))
-    reference_id = db.Column(db.Integer, index=True)  # Order ID, PO ID, or Adjustment ID
-    reference_type = db.Column(db.String(20), index=True)  # order, purchase_order, adjustment
+    reference_id = db.Column(db.String(50), index=True)  # Order ID, PO ID, or other reference
+    reference_type = db.Column(db.String(50), index=True)  # e.g., 'order', 'purchase_order', 'manual_adjustment'
     notes = db.Column(db.Text)
-    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
-    product = db.relationship('Product', backref='inventory_transactions', lazy=True)
-    user = db.relationship('User', backref='inventory_transactions', lazy=True)
+    product = db.relationship('Product', backref='inventory_transactions')
+    user = db.relationship('User', backref='inventory_transactions', foreign_keys=[created_by])
+    agency = db.relationship('Agency', backref='inventory_transactions')
+    customer = db.relationship('Customer', backref='inventory_transactions')
+
+    # By removing the custom __init__, we allow SQLAlchemy's default
+    # constructor to handle all model attributes, including the newly
+    # added agency_id and customer_id. This is the key fix.
+    # No __init__ method should be here.
+
+    __table_args__ = (
+        db.CheckConstraint('agency_id IS NOT NULL OR customer_id IS NOT NULL', 
+                           name='chk_inventory_transaction_has_context'),
+    )
+
+    @property
+    def created_by_user(self):
+        return self.user.full_name if self.user else 'System'
 
 class StockAdjustment(db.Model):
     __tablename__ = 'ASP_stock_adjustments'
@@ -492,7 +526,8 @@ class SubscriptionPlan(db.Model):
 class Subscription(db.Model):
     __tablename__ = 'ASP_subscriptions'
     id = db.Column(db.Integer, primary_key=True)
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, unique=True, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=True, unique=True, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=True, unique=True, index=True)
     plan_id = db.Column(db.Integer, db.ForeignKey('ASP_subscription_plans.id'), nullable=False, index=True)
     status = db.Column(db.String(20), nullable=False, default='active', index=True)  # active, suspended, cancelled, expired
     start_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -505,9 +540,24 @@ class Subscription(db.Model):
     
     # Relationships
     agency_rel = db.relationship('Agency', backref='subscription', lazy=True, uselist=False)
+    customer_rel = db.relationship('Customer', back_populates='subscription', lazy=True, uselist=False)
     invoices = db.relationship('SubscriptionInvoice', backref='subscription', lazy=True, cascade='all, delete-orphan')
     items = db.relationship('SubscriptionItem', backref='subscription', lazy=True, cascade='all, delete-orphan')
     
+    __table_args__ = (
+        db.CheckConstraint('num_nonnulls(agency_id, customer_id) = 1', name='chk_subscription_owner'),
+        # num_nonnulls is a postgres function. For other DBs, this might be:
+        # db.CheckConstraint('(agency_id IS NOT NULL AND customer_id IS NULL) OR (agency_id IS NULL AND customer_id IS NOT NULL)', name='chk_subscription_owner'),
+    )
+    @property
+    def owner(self):
+        """Returns the owner (Agency or Customer) of the subscription."""
+        if self.agency_rel:
+            return self.agency_rel
+        elif self.customer_rel:
+            return self.customer_rel
+        return None
+
     @property
     def is_active(self):
         """Check if subscription is currently active"""
@@ -532,7 +582,8 @@ class SubscriptionInvoice(db.Model):
     __tablename__ = 'ASP_subscription_invoices'
     id = db.Column(db.Integer, primary_key=True)
     subscription_id = db.Column(db.Integer, db.ForeignKey('ASP_subscriptions.id'), nullable=False, index=True)
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=True, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=True, index=True)
     invoice_number = db.Column(db.String(50), nullable=False, unique=True, index=True)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     status = db.Column(db.String(20), nullable=False, default='draft', index=True)  # draft, issued, paid, overdue, cancelled
@@ -546,6 +597,7 @@ class SubscriptionInvoice(db.Model):
     
     # Relationships
     agency_rel = db.relationship('Agency', backref='subscription_invoices', lazy=True)
+    customer_rel = db.relationship('Customer', backref='subscription_invoices', lazy=True)
     
     @property
     def is_overdue(self):
@@ -576,3 +628,231 @@ class SubscriptionItem(db.Model):
     def total_price(self):
         """Calculate total price for this item"""
         return self.quantity * self.unit_price
+
+# Job Accounting Module Models
+class Job(db.Model):
+    __tablename__ = 'ASP_jobs'
+    id = db.Column(db.Integer, primary_key=True)
+    job_number = db.Column(db.String(50), unique=True, nullable=False, index=True) # Renamed from job_name to name
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    job_type = db.Column(db.String(50), default='client_project')  # client_project, internal_project, service
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), index=True)  # Optional for internal projects
+    order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), index=True)  # Link to order if auto-created
+    assigned_to = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), index=True)  # Project manager/owner
+    status = db.Column(db.String(20), default='draft', index=True)  # draft, planning, active, on_hold, review, completed, cancelled
+    
+    # Financial tracking
+    budget_amount = db.Column(db.Numeric(12, 2), default=0)
+    estimated_cost = db.Column(db.Numeric(12, 2), default=0)
+    
+    # Dates
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+    completed_date = db.Column(db.DateTime)
+    
+    # Metadata
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    agency_ref = db.relationship('Agency', backref='jobs', lazy=True)
+    customer_ref = db.relationship('Customer', backref='jobs', lazy=True)
+    order_ref = db.relationship('Order', backref='job', uselist=False, lazy=True)
+    assigned_user = db.relationship('User', foreign_keys=[assigned_to], backref='assigned_jobs', lazy=True)
+    creator = db.relationship('User', foreign_keys=[created_by], backref='created_jobs', lazy=True)
+    income_entries = db.relationship('JobIncome', backref='job', lazy=True, cascade='all, delete-orphan')
+    expense_entries = db.relationship('JobExpense', backref='job', lazy=True, cascade='all, delete-orphan')
+    
+    @property
+    def total_income(self):
+        """Calculate total income for this job"""
+        return sum(income.amount for income in self.income_entries if income.status == 'confirmed')
+    
+    @property
+    def total_expenses(self):
+        """Calculate total expenses for this job"""
+        return sum(expense.amount for expense in self.expense_entries if expense.status == 'confirmed')
+    
+    @property
+    def net_profit(self):
+        """Calculate net profit (income - expenses)"""
+        return self.total_income - self.total_expenses
+    
+    @property
+    def profit_margin(self):
+        """Calculate profit margin percentage"""
+        if self.total_income > 0:
+            return round((self.net_profit / self.total_income) * 100, 2)
+        return 0
+    
+    @property
+    def budget_variance(self):
+        """Calculate variance from budget"""
+        if self.budget_amount:
+            return self.budget_amount - self.total_expenses
+        return 0
+
+class JobIncome(db.Model):
+    __tablename__ = 'ASP_job_income'
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('ASP_jobs.id'), nullable=False, index=True)
+    
+    # Income details
+    income_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    category = db.Column(db.String(50), nullable=False)  # deposit, payment, bonus, milestone, other
+    description = db.Column(db.String(255), nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    
+    # Link to existing records (optional)
+    order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), index=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('ASP_invoices.id'), index=True)
+    
+    # Status and metadata
+    status = db.Column(db.String(20), default='confirmed')  # pending, confirmed, cancelled
+    payment_method = db.Column(db.String(50))  # cash, bank_transfer, check, card, etc.
+    reference_number = db.Column(db.String(100))  # Transaction/check/reference number
+    notes = db.Column(db.Text)
+    
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    order_ref = db.relationship('Order', backref='job_income_entries', lazy=True)
+    invoice_ref = db.relationship('Invoice', backref='job_income_entries', lazy=True)
+    creator = db.relationship('User', backref='created_job_income', lazy=True)
+
+class JobExpense(db.Model):
+    __tablename__ = 'ASP_job_expenses'
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey('ASP_jobs.id'), nullable=False, index=True)
+    
+    # Expense details
+    expense_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    category = db.Column(db.String(50), nullable=False)  # materials, labor, overhead, equipment, travel, other
+    description = db.Column(db.String(255), nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    
+    # Link to existing records (optional)
+    purchase_order_id = db.Column(db.Integer, db.ForeignKey('ASP_purchase_orders.id'), index=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('ASP_suppliers.id'), index=True)
+    
+    # Status and metadata
+    status = db.Column(db.String(20), default='confirmed')  # pending, confirmed, cancelled
+    payment_method = db.Column(db.String(50))  # cash, bank_transfer, check, card, etc.
+    receipt_number = db.Column(db.String(100))  # Receipt/invoice number
+    is_billable = db.Column(db.Boolean, default=True)  # Can this be billed to client?
+    notes = db.Column(db.Text)
+    
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    purchase_order_ref = db.relationship('PurchaseOrder', backref='job_expense_entries', lazy=True)
+    supplier_ref = db.relationship('Supplier', backref='job_expense_entries', lazy=True)
+    creator = db.relationship('User', backref='created_job_expenses', lazy=True)
+
+# Finance Module Models
+class FinancePayment(db.Model):
+    __tablename__ = 'ASP_finance_payments'
+    id = db.Column(db.Integer, primary_key=True)
+    payment_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    
+    # Payment details
+    payment_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    payee_type = db.Column(db.String(20), nullable=False)  # supplier, vendor, employee, other
+    payee_id = db.Column(db.Integer, index=True)  # Reference to supplier_id or other entity
+    payee_name = db.Column(db.String(200), nullable=False)  # Name of payee
+    
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    mode_of_payment = db.Column(db.String(50), nullable=False)  # cash, bank_transfer, check, card, upi, etc.
+    account_type = db.Column(db.String(20), default='cash')  # cash, bank
+    
+    # Optional fields
+    reference_number = db.Column(db.String(100))  # Transaction/check/reference number
+    notes = db.Column(db.Text)
+    
+    # Status
+    status = db.Column(db.String(20), default='confirmed', index=True)  # pending, confirmed, cancelled
+    
+    # Metadata
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    agency_ref = db.relationship('Agency', backref='finance_payments', lazy=True)
+    creator = db.relationship('User', backref='created_finance_payments', lazy=True)
+    purchase_orders = db.relationship('PaymentPurchaseOrder', backref='finance_payment', lazy=True, cascade='all, delete-orphan')
+    
+    @property
+    def total_po_amount(self):
+        """Calculate total amount from linked purchase orders"""
+        return sum(po.amount for po in self.purchase_orders)
+
+class PaymentPurchaseOrder(db.Model):
+    """Link table between FinancePayment and Purchase Orders"""
+    __tablename__ = 'ASP_finance_payment_purchase_orders'
+    id = db.Column(db.Integer, primary_key=True)
+    payment_id = db.Column(db.Integer, db.ForeignKey('ASP_finance_payments.id'), nullable=False, index=True)
+    purchase_order_id = db.Column(db.Integer, db.ForeignKey('ASP_purchase_orders.id'), nullable=False, index=True)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)  # Amount allocated to this PO
+    notes = db.Column(db.Text)
+    
+    # Relationships
+    purchase_order_ref = db.relationship('PurchaseOrder', backref='finance_payment_links', lazy=True)
+
+class Receipt(db.Model):
+    __tablename__ = 'ASP_receipts'
+    id = db.Column(db.Integer, primary_key=True)
+    receipt_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    
+    # Receipt details
+    receipt_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), index=True)  # Optional
+    customer_name = db.Column(db.String(200), nullable=False)  # Name of customer/payer
+    
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    mode_of_receipt = db.Column(db.String(50), nullable=False)  # cash, bank_transfer, check, card, upi, etc.
+    account_type = db.Column(db.String(20), default='cash')  # cash, bank
+    
+    # Optional fields
+    reference_number = db.Column(db.String(100))  # Transaction/check/reference number
+    notes = db.Column(db.Text)
+    
+    # Status
+    status = db.Column(db.String(20), default='confirmed', index=True)  # pending, confirmed, cancelled
+    
+    # Metadata
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    agency_ref = db.relationship('Agency', backref='receipts', lazy=True)
+    customer_ref = db.relationship('Customer', backref='receipts', lazy=True)
+    creator = db.relationship('User', backref='created_receipts', lazy=True)
+    sales_orders = db.relationship('ReceiptSalesOrder', backref='receipt', lazy=True, cascade='all, delete-orphan')
+    
+    @property
+    def total_so_amount(self):
+        """Calculate total amount from linked sales orders"""
+        return sum(so.amount for so in self.sales_orders)
+
+class ReceiptSalesOrder(db.Model):
+    """Link table between Receipt and Sales Orders (Orders)"""
+    __tablename__ = 'ASP_receipt_sales_orders'
+    id = db.Column(db.Integer, primary_key=True)
+    receipt_id = db.Column(db.Integer, db.ForeignKey('ASP_receipts.id'), nullable=False, index=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), nullable=False, index=True)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)  # Amount allocated to this order
+    notes = db.Column(db.Text)
+    
+    # Relationships
+    order_ref = db.relationship('Order', backref='receipt_links', lazy=True)

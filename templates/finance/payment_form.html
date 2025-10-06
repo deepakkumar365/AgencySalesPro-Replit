@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Create Payment - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-money-bill-wave me-2"></i>Create Payment</h2>
+        <a href="{{ url_for('finance.list_payments') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to List
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('finance.create_payment') }}" id="paymentForm">
+                        <!-- Basic Information -->
+                        <div class="row g-3 mb-4">
+                            {% if agencies %}
+                            <div class="col-md-6">
+                                <label class="form-label">Agency <span class="text-danger">*</span></label>
+                                <select name="agency_id" class="form-select" required>
+                                    <option value="">Select Agency</option>
+                                    {% for agency in agencies %}
+                                    <option value="{{ agency.id }}">{{ agency.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+
+                            <div class="col-md-6">
+                                <label class="form-label">Payment Date <span class="text-danger">*</span></label>
+                                <input type="date" name="payment_date" class="form-control" 
+                                       value="" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Payee Type <span class="text-danger">*</span></label>
+                                <select name="payee_type" class="form-select" id="payeeType" onchange="togglePayeeFields()" required>
+                                    <option value="supplier">Supplier</option>
+                                    <option value="vendor">Vendor</option>
+                                    <option value="employee">Employee</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6" id="supplierField">
+                                <label class="form-label">Select Supplier</label>
+                                <select name="payee_id" class="form-select" id="supplierSelect" onchange="fillPayeeName()">
+                                    <option value="">Select Supplier</option>
+                                    {% for supplier in suppliers %}
+                                    <option value="{{ supplier.id }}" data-name="{{ supplier.name }}">
+                                        {{ supplier.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Payee Name <span class="text-danger">*</span></label>
+                                <input type="text" name="payee_name" class="form-control" id="payeeName" 
+                                       placeholder="Enter payee name" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Amount <span class="text-danger">*</span></label>
+                                <input type="number" name="amount" class="form-control" step="0.01" 
+                                       placeholder="0.00" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Mode of Payment <span class="text-danger">*</span></label>
+                                <select name="mode_of_payment" class="form-select" required>
+                                    <option value="cash">Cash</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="check">Check</option>
+                                    <option value="card">Card</option>
+                                    <option value="upi">UPI</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Account Type <span class="text-danger">*</span></label>
+                                <select name="account_type" class="form-select" required>
+                                    <option value="cash">Cash</option>
+                                    <option value="bank">Bank</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Reference Number</label>
+                                <input type="text" name="reference_number" class="form-control" 
+                                       placeholder="Transaction/Check number">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <select name="status" class="form-select">
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="pending">Pending</option>
+                                </select>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">Notes</label>
+                                <textarea name="notes" class="form-control" rows="3" 
+                                          placeholder="Additional notes..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Link Purchase Orders (Optional) -->
+                        <div class="card bg-light mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-link me-2"></i>Link Purchase Orders (Optional)
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="poContainer">
+                                    <!-- PO links will be added here -->
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPOLink()">
+                                    <i class="fas fa-plus me-1"></i>Add Purchase Order
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Create Payment
+                            </button>
+                            <a href="{{ url_for('finance.list_payments') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Card -->
+        <div class="col-lg-4">
+            <div class="card bg-info bg-opacity-10">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-info-circle me-2"></i>Payment Entry Guide</h5>
+                    <ul class="small mb-0">
+                        <li>Fill in the required fields marked with <span class="text-danger">*</span></li>
+                        <li>Select payee type and enter payee details</li>
+                        <li>Choose payment mode and account type</li>
+                        <li>Optionally link to existing Purchase Orders</li>
+                        <li>Add notes for future reference</li>
+                        <li>Payment can be created without linking any PO</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const purchaseOrders = {{ purchase_orders|tojson|safe }};
+
+function togglePayeeFields() {
+    const payeeType = document.getElementById('payeeType').value;
+    const supplierField = document.getElementById('supplierField');
+    
+    if (payeeType === 'supplier') {
+        supplierField.style.display = 'block';
+    } else {
+        supplierField.style.display = 'none';
+        document.getElementById('supplierSelect').value = '';
+    }
+}
+
+function fillPayeeName() {
+    const select = document.getElementById('supplierSelect');
+    const selectedOption = select.options[select.selectedIndex];
+    const payeeName = document.getElementById('payeeName');
+    
+    if (selectedOption.value) {
+        payeeName.value = selectedOption.getAttribute('data-name');
+    }
+}
+
+let poLinkCounter = 0;
+
+function addPOLink() {
+    const container = document.getElementById('poContainer');
+    const linkDiv = document.createElement('div');
+    linkDiv.className = 'row g-2 mb-2 po-link';
+    linkDiv.id = `po-link-${poLinkCounter}`;
+    
+    linkDiv.innerHTML = `
+        <div class="col-md-6">
+            <select name="po_ids[]" class="form-select form-select-sm">
+                <option value="">Select Purchase Order</option>
+                ${purchaseOrders.map(po => `
+                    <option value="${po.id}">
+                        ${po.po_number} - ₹${parseFloat(po.total_amount).toFixed(2)}
+                    </option>
+                `).join('')}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <input type="number" name="po_amounts[]" class="form-control form-control-sm" 
+                   placeholder="Amount" step="0.01">
+        </div>
+        <div class="col-md-2">
+            <button type="button" class="btn btn-sm btn-danger w-100" 
+                    onclick="removePOLink(${poLinkCounter})">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(linkDiv);
+    poLinkCounter++;
+}
+
+function removePOLink(id) {
+    const linkDiv = document.getElementById(`po-link-${id}`);
+    if (linkDiv) {
+        linkDiv.remove();
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    togglePayeeFields();
+});
+</script>
+{% endblock %}

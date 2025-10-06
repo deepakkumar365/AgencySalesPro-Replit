@@ -87,25 +87,31 @@
                 <h6 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>30-Day Movement Summary</h6>
             </div>
             <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-6">
-                        <div class="h3 text-success">{{ stats.total_in_30_days }}</div>
-                        <div>Items In</div>
+                {% if stats.total_in_30_days > 0 or stats.total_out_30_days > 0 %}
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="h3 text-success">{{ stats.total_in_30_days }}</div>
+                            <div>Items In</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="h3 text-danger">{{ stats.total_out_30_days }}</div>
+                            <div>Items Out</div>
+                        </div>
                     </div>
-                    <div class="col-6">
-                        <div class="h3 text-danger">{{ stats.total_out_30_days }}</div>
-                        <div>Items Out</div>
+                    <div class="mt-3">
+                        <div class="progress">
+                            {% set total_movement = stats.total_in_30_days + stats.total_out_30_days %}
+                            {% set in_percentage = (stats.total_in_30_days / total_movement * 100) if total_movement > 0 else 0 %}
+                            <div class="progress-bar bg-success" style="width: {{ in_percentage }}%"></div>
+                            <div class="progress-bar bg-danger" style="width: {{ 100 - in_percentage }}%"></div>
+                        </div>
+                        <small>Movement ratio for the last 30 days</small>
                     </div>
-                </div>
-                <div class="mt-3">
-                    <div class="progress">
-                        {% set total_movement = stats.total_in_30_days + stats.total_out_30_days %}
-                        {% set in_percentage = (stats.total_in_30_days / total_movement * 100) if total_movement > 0 else 0 %}
-                        <div class="progress-bar bg-success" style="width: {{ in_percentage }}%"></div>
-                        <div class="progress-bar bg-danger" style="width: {{ 100 - in_percentage }}%"></div>
+                {% else %}
+                    <div class="text-center text-muted py-3">
+                        <p class="mb-0">No inventory movement in the last 30 days.</p>
                     </div>
-                    <small>Movement ratio for the last 30 days</small>
-                </div>
+                {% endif %}
             </div>
         </div>
     </div>

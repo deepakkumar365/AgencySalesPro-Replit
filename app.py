@@ -1,15 +1,30 @@
 import os
 import logging
+import json
 from flask import Flask
+from markupsafe import escape, Markup
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.engine import Row
 from werkzeug.middleware.proxy_fix import ProxyFix
-from datetime import timedelta
+from datetime import timedelta, datetime, date
+from decimal import Decimal
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
+
+# Custom JSON encoder to handle types like datetime, date, and Decimal
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        if isinstance(obj, Decimal):
+            return float(obj)
+        if isinstance(obj, Row):
+            return dict(obj._mapping)
+        return super(CustomJSONEncoder, self).default(obj)
 
 class Base(DeclarativeBase):
     pass
@@ -22,6 +37,9 @@ def create_app():
     load_dotenv()
 
     app = Flask(__name__)
+    
+    # Use the custom JSON encoder for consistent API responses
+    app.json_encoder = CustomJSONEncoder
     
     # Configuration
     app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
@@ -43,53 +61,68 @@ def create_app():
     app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "jwt-secret-string")
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=30)
+
+    # Ensure Jinja's tojson filter uses our custom encoder
+    app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
     
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
     
     # Initialize extensions
+    
+    # Custom Jinja2 filter for nl2br
+    def nl2br_filter(s):
+        if s:
+            return Markup(str(escape(s)).replace('\n', '<br>\n'))
+        return ''
+    app.jinja_env.filters['nl2br'] = nl2br_filter
+
     db.init_app(app)
     jwt.init_app(app)
     
-    # Register blueprints
-    from auth import auth_bp
-    from agency import agency_bp
-    from salesperson import salesperson_bp
-    from location import location_bp
-    from customer import customer_bp
-    from product import product_bp
-    from order import order_bp
-    from purchase_order import purchase_order_bp
-    from super_admin import super_admin_bp
-    from pos import pos_bp
-    from billing import billing_bp
-    from inventory import inventory_bp
-    from reports import reports_bp
-    from agency_manager import agency_manager_bp
-    from api import api_bp
-    from masters.routes import masters_bp
-    from subscription import subscription_bp
-    
-    app.register_blueprint(auth_bp, url_prefix='/auth')
-    app.register_blueprint(agency_bp, url_prefix='/agency')
-    app.register_blueprint(salesperson_bp, url_prefix='/salesperson')
-    app.register_blueprint(location_bp, url_prefix='/location')
-    app.register_blueprint(customer_bp, url_prefix='/customer')
-    app.register_blueprint(product_bp, url_prefix='/product')
-    app.register_blueprint(order_bp, url_prefix='/order')
-    app.register_blueprint(purchase_order_bp, url_prefix='/purchase-order')
-    app.register_blueprint(super_admin_bp, url_prefix='/super_admin')
-    app.register_blueprint(pos_bp, url_prefix='/pos')
-    app.register_blueprint(billing_bp, url_prefix='/billing')
-    app.register_blueprint(inventory_bp, url_prefix='/inventory')
-    app.register_blueprint(reports_bp, url_prefix='/reports')
-    app.register_blueprint(agency_manager_bp, url_prefix='/agency_manager')
-    app.register_blueprint(api_bp, url_prefix='/api/v1')
-    app.register_blueprint(masters_bp, url_prefix='/masters')
-    app.register_blueprint(subscription_bp, url_prefix='/subscription')
+    def register_blueprints(app):
+        from auth import auth_bp
+        from agency import agency_bp
+        from salesperson import salesperson_bp
+        from location import location_bp
+        from customer import customer_bp
+        from product import product_bp
+        from order import order_bp
+        from purchase_order import purchase_order_bp
+        from super_admin import super_admin_bp
+        from pos import pos_bp
+        from billing import billing_bp
+        from inventory import inventory_bp
+        from reports import reports_bp
+        from agency_manager import agency_manager_bp
+        from api import api_bp
+        from masters.routes import masters_bp
+        from subscription import subscription_bp
+        from job_accounting import job_accounting_bp
+        from product_overrides import overrides_bp
+        from finance import finance_bp
 
-    # Product Overrides (Agency-specific)
-    from product_overrides import overrides_bp
-    app.register_blueprint(overrides_bp)
+        app.register_blueprint(auth_bp, url_prefix='/auth')
+        app.register_blueprint(agency_bp, url_prefix='/agency')
+        app.register_blueprint(salesperson_bp, url_prefix='/salesperson')
+        app.register_blueprint(location_bp, url_prefix='/location')
+        app.register_blueprint(customer_bp, url_prefix='/customer')
+        app.register_blueprint(product_bp, url_prefix='/product')
+        app.register_blueprint(order_bp, url_prefix='/order')
+        app.register_blueprint(purchase_order_bp, url_prefix='/purchase-order')
+        app.register_blueprint(super_admin_bp, url_prefix='/super_admin')
+        app.register_blueprint(pos_bp, url_prefix='/pos')
+        app.register_blueprint(billing_bp, url_prefix='/billing')
+        app.register_blueprint(inventory_bp, url_prefix='/inventory')
+        app.register_blueprint(reports_bp, url_prefix='/reports')
+        app.register_blueprint(agency_manager_bp, url_prefix='/agency_manager')
+        app.register_blueprint(api_bp, url_prefix='/api/v1')
+        app.register_blueprint(masters_bp, url_prefix='/masters')
+        app.register_blueprint(subscription_bp, url_prefix='/subscription')
+        app.register_blueprint(job_accounting_bp, url_prefix='/job-accounting')
+        app.register_blueprint(finance_bp, url_prefix='/finance')
+        app.register_blueprint(overrides_bp)
+
+    register_blueprints(app)
     
     # Main routes
     @app.route('/')
