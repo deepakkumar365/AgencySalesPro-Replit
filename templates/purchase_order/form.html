@@ -63,6 +63,16 @@
                         </select>
                     </div>
                     <div class="col-md-6">
+                        <label for="job_id" class="form-label">Link to Job <span class="text-muted">(Optional)</span></label>
+                        <select class="form-select" id="job_id" name="job_id">
+                            <option value="">No Job Linked</option>
+                            {% for job in jobs %}
+                            <option value="{{ job.id }}">{{ job.job_number }} - {{ job.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">If selected, PO amount will be added as expense to this job</small>
+                    </div>
+                    <div class="col-md-6">
                         <label for="status" class="form-label">Status</label>
                         <select class="form-select" id="status" name="status">
                             <option value="draft" selected>Draft</option>

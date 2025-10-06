@@ -251,16 +251,21 @@ def create_payment(current_agency_id=None):
     if user_role == 'super_admin':
         agencies = Agency.query.filter_by(is_active=True).all()
         suppliers = Supplier.query.filter_by(is_active=True).all()
-        purchase_orders = PurchaseOrder.query.filter(
+        purchase_orders_query = PurchaseOrder.query.filter(
             PurchaseOrder.status.in_(['pending', 'approved', 'received'])
         ).all()
     else:
         agencies = None
         suppliers = Supplier.query.filter_by(agency_id=current_agency_id, is_active=True).all()
-        purchase_orders = PurchaseOrder.query.filter(
+        purchase_orders_query = PurchaseOrder.query.filter(
             PurchaseOrder.agency_id == current_agency_id,
             PurchaseOrder.status.in_(['pending', 'approved', 'received'])
         ).all()
+
+    purchase_orders = [
+        {"id": po.id, "po_number": po.po_number, "total_amount": float(po.total_amount)}
+        for po in purchase_orders_query
+    ]
     
     return render_template(
         'finance/payment_form.html',
@@ -405,7 +410,7 @@ def create_receipt(current_agency_id=None):
     if user_role == 'super_admin':
         agencies = Agency.query.filter_by(is_active=True).all()
         customers = Customer.query.filter_by(is_active=True).all()
-        sales_orders = Order.query.filter(
+        sales_orders_query = Order.query.filter(
             Order.status.in_(['pending', 'confirmed', 'shipped'])
         ).all()
     else:
@@ -414,10 +419,15 @@ def create_receipt(current_agency_id=None):
             Customer.location.has(agency_id=current_agency_id),
             Customer.is_active == True
         ).all()
-        sales_orders = Order.query.filter(
+        sales_orders_query = Order.query.filter(
             Order.agency_id == current_agency_id,
             Order.status.in_(['pending', 'confirmed', 'shipped'])
         ).all()
+
+    sales_orders = [
+        {"id": so.id, "order_number": so.order_number, "total_amount": float(so.total_amount)}
+        for so in sales_orders_query
+    ]
     
     return render_template(
         'finance/receipt_form.html',

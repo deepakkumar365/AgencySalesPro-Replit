@@ -1,16 +1,30 @@
 import os
 import logging
+import json
 from flask import Flask
 from markupsafe import escape, Markup
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.engine import Row
 from werkzeug.middleware.proxy_fix import ProxyFix
-from datetime import timedelta
+from datetime import timedelta, datetime, date
+from decimal import Decimal
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
+
+# Custom JSON encoder to handle types like datetime, date, and Decimal
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        if isinstance(obj, Decimal):
+            return float(obj)
+        if isinstance(obj, Row):
+            return dict(obj._mapping)
+        return super(CustomJSONEncoder, self).default(obj)
 
 class Base(DeclarativeBase):
     pass
@@ -23,6 +37,9 @@ def create_app():
     load_dotenv()
 
     app = Flask(__name__)
+    
+    # Use the custom JSON encoder for consistent API responses
+    app.json_encoder = CustomJSONEncoder
     
     # Configuration
     app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
@@ -44,6 +61,9 @@ def create_app():
     app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "jwt-secret-string")
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=30)
+
+    # Ensure Jinja's tojson filter uses our custom encoder
+    app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
     
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
     

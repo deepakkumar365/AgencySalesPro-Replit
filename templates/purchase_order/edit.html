@@ -56,6 +56,16 @@
                     </select>
                 </div>
                 <div class="col-md-6">
+                    <label for="job_id" class="form-label">Link to Job <span class="text-muted">(Optional)</span></label>
+                    <select class="form-select" id="job_id" name="job_id">
+                        <option value="">No Job Linked</option>
+                        {% for job in jobs %}
+                        <option value="{{ job.id }}" {% if current_job_id == job.id %}selected{% endif %}>{{ job.job_number }} - {{ job.job_name }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="form-text text-muted">If selected, PO amount will be added/updated as expense to this job</small>
+                </div>
+                <div class="col-md-6">
                     <label for="status" class="form-label">Status</label>
                     <select class="form-select" id="status" name="status">
                         <option value="draft" {% if purchase_order.status == 'draft' %}selected{% endif %}>Draft</option>
