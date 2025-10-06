@@ -79,6 +79,7 @@ def create_app():
         from subscription import subscription_bp
         from job_accounting import job_accounting_bp
         from product_overrides import overrides_bp
+        from finance import finance_bp
 
         app.register_blueprint(auth_bp, url_prefix='/auth')
         app.register_blueprint(agency_bp, url_prefix='/agency')
@@ -98,6 +99,7 @@ def create_app():
         app.register_blueprint(masters_bp, url_prefix='/masters')
         app.register_blueprint(subscription_bp, url_prefix='/subscription')
         app.register_blueprint(job_accounting_bp, url_prefix='/job-accounting')
+        app.register_blueprint(finance_bp, url_prefix='/finance')
         app.register_blueprint(overrides_bp)
 
     register_blueprints(app)

@@ -204,6 +204,35 @@
                     </li>
                     {% endif %}
 
+                    {% if session.role in ['super_admin', 'agency_admin', 'agency_manager', 'staff'] %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-wallet me-2"></i>Finance
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('finance.dashboard') }}">
+                                <i class="fas fa-chart-line me-1"></i>Finance Dashboard
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('finance.list_payments') }}">
+                                <i class="fas fa-money-bill-wave me-1"></i>Payments
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('finance.list_receipts') }}">
+                                <i class="fas fa-receipt me-1"></i>Receipts
+                            </a></li>
+                            {% if session.role in ['super_admin', 'agency_admin', 'agency_manager'] %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('finance.create_payment') }}">
+                                <i class="fas fa-plus-circle me-1"></i>New Payment
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('finance.create_receipt') }}">
+                                <i class="fas fa-plus-circle me-1"></i>New Receipt
+                            </a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+
                     {% if session.role == 'customer' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('customer.view_products') }}">

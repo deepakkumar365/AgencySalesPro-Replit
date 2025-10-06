@@ -755,3 +755,104 @@ class JobExpense(db.Model):
     purchase_order_ref = db.relationship('PurchaseOrder', backref='job_expense_entries', lazy=True)
     supplier_ref = db.relationship('Supplier', backref='job_expense_entries', lazy=True)
     creator = db.relationship('User', backref='created_job_expenses', lazy=True)
+
+# Finance Module Models
+class FinancePayment(db.Model):
+    __tablename__ = 'ASP_finance_payments'
+    id = db.Column(db.Integer, primary_key=True)
+    payment_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    
+    # Payment details
+    payment_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    payee_type = db.Column(db.String(20), nullable=False)  # supplier, vendor, employee, other
+    payee_id = db.Column(db.Integer, index=True)  # Reference to supplier_id or other entity
+    payee_name = db.Column(db.String(200), nullable=False)  # Name of payee
+    
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    mode_of_payment = db.Column(db.String(50), nullable=False)  # cash, bank_transfer, check, card, upi, etc.
+    account_type = db.Column(db.String(20), default='cash')  # cash, bank
+    
+    # Optional fields
+    reference_number = db.Column(db.String(100))  # Transaction/check/reference number
+    notes = db.Column(db.Text)
+    
+    # Status
+    status = db.Column(db.String(20), default='confirmed', index=True)  # pending, confirmed, cancelled
+    
+    # Metadata
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    agency_ref = db.relationship('Agency', backref='finance_payments', lazy=True)
+    creator = db.relationship('User', backref='created_finance_payments', lazy=True)
+    purchase_orders = db.relationship('PaymentPurchaseOrder', backref='finance_payment', lazy=True, cascade='all, delete-orphan')
+    
+    @property
+    def total_po_amount(self):
+        """Calculate total amount from linked purchase orders"""
+        return sum(po.amount for po in self.purchase_orders)
+
+class PaymentPurchaseOrder(db.Model):
+    """Link table between FinancePayment and Purchase Orders"""
+    __tablename__ = 'ASP_finance_payment_purchase_orders'
+    id = db.Column(db.Integer, primary_key=True)
+    payment_id = db.Column(db.Integer, db.ForeignKey('ASP_finance_payments.id'), nullable=False, index=True)
+    purchase_order_id = db.Column(db.Integer, db.ForeignKey('ASP_purchase_orders.id'), nullable=False, index=True)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)  # Amount allocated to this PO
+    notes = db.Column(db.Text)
+    
+    # Relationships
+    purchase_order_ref = db.relationship('PurchaseOrder', backref='finance_payment_links', lazy=True)
+
+class Receipt(db.Model):
+    __tablename__ = 'ASP_receipts'
+    id = db.Column(db.Integer, primary_key=True)
+    receipt_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    
+    # Receipt details
+    receipt_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), index=True)  # Optional
+    customer_name = db.Column(db.String(200), nullable=False)  # Name of customer/payer
+    
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    mode_of_receipt = db.Column(db.String(50), nullable=False)  # cash, bank_transfer, check, card, upi, etc.
+    account_type = db.Column(db.String(20), default='cash')  # cash, bank
+    
+    # Optional fields
+    reference_number = db.Column(db.String(100))  # Transaction/check/reference number
+    notes = db.Column(db.Text)
+    
+    # Status
+    status = db.Column(db.String(20), default='confirmed', index=True)  # pending, confirmed, cancelled
+    
+    # Metadata
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    agency_ref = db.relationship('Agency', backref='receipts', lazy=True)
+    customer_ref = db.relationship('Customer', backref='receipts', lazy=True)
+    creator = db.relationship('User', backref='created_receipts', lazy=True)
+    sales_orders = db.relationship('ReceiptSalesOrder', backref='receipt', lazy=True, cascade='all, delete-orphan')
+    
+    @property
+    def total_so_amount(self):
+        """Calculate total amount from linked sales orders"""
+        return sum(so.amount for so in self.sales_orders)
+
+class ReceiptSalesOrder(db.Model):
+    """Link table between Receipt and Sales Orders (Orders)"""
+    __tablename__ = 'ASP_receipt_sales_orders'
+    id = db.Column(db.Integer, primary_key=True)
+    receipt_id = db.Column(db.Integer, db.ForeignKey('ASP_receipts.id'), nullable=False, index=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), nullable=False, index=True)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)  # Amount allocated to this order
+    notes = db.Column(db.Text)
+    
+    # Relationships
+    order_ref = db.relationship('Order', backref='receipt_links', lazy=True)
