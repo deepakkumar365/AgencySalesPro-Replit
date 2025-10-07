@@ -438,7 +438,8 @@
                 <thead>
                     <tr>
                         <th>Product Name</th>
-                        <th>Quantity</th>
+                        <th>QTY/Value</th>
+                        <th>UOM</th>
                         <th>Price</th>
                         <th>Total</th>
                         <th>Action</th>
@@ -554,7 +555,7 @@ function updateCartDisplay() {
         // Show empty cart message
         cartContainer.innerHTML = `
             <tr>
-                <td colspan="5" class="empty-cart-message">
+                <td colspan="6" class="empty-cart-message">
                     <i class="fas fa-shopping-cart"></i>
                     <p>No items in order</p>
                 </td>
@@ -570,8 +571,11 @@ function updateCartDisplay() {
             <td data-label="Product">
                 <div class="cart-product-name">${item.name}</div>
             </td>
-            <td data-label="Quantity">
-                <input type="number" class="cart-qty-input" value="${item.quantity}" min="1" onchange="updateQuantity(${item.id}, this.value)">
+            <td data-label="QTY/Value">
+                <input type="number" class="cart-qty-input" value="${item.quantity}" min="0" step="any" onchange="updateQuantity(${item.id}, this.value)">
+            </td>
+            <td data-label="UOM">
+                <div class="cart-uom">${item.uom || 'pcs'}</div>
             </td>
             <td data-label="Price">
                 <div class="cart-price">₹${item.price.toFixed(2)}</div>
