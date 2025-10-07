@@ -373,8 +373,8 @@ class PurchaseOrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     po_id = db.Column(db.Integer, db.ForeignKey('ASP_purchase_orders.id'), nullable=False, index=True)
     product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
-    quantity_ordered = db.Column(db.Integer, nullable=False)
-    quantity_received = db.Column(db.Integer, default=0)
+    quantity_ordered = db.Column(db.Numeric(10, 2), nullable=False)  # Changed from Integer to Numeric to support decimal values
+    quantity_received = db.Column(db.Numeric(10, 2), default=0)  # Changed from Integer to Numeric to support decimal values
     unit_cost = db.Column(db.Numeric(10, 2), nullable=False)
     total_cost = db.Column(db.Numeric(10, 2), nullable=False)
     

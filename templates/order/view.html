@@ -97,7 +97,7 @@
                             <tr>
                                 <td>{{ item.product.name }}</td>
                                 <td><code>{{ item.product.sku }}</code></td>
-                                <td>{{ item.quantity|float }}</td>
+                                <td>{{ "%g"|format(item.quantity|float) }}</td>
                                 <td>{{ item.uom }}</td>
                                 <td>₹{{ "%.2f"|format(item.unit_price) }}</td>
                                 <td>₹{{ "%.2f"|format(item.total_price) }}</td>

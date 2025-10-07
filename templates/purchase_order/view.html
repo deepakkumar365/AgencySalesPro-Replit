@@ -101,7 +101,7 @@
                                     <br><small class="text-muted">SKU: {{ item.product.sku }}</small>
                                     {% endif %}
                                 </td>
-                                <td class="text-end">{{ item.quantity_ordered }}</td>
+                                <td class="text-end">{{ "%g"|format(item.quantity_ordered|float) }}</td>
                                 <td class="text-end">₹{{ '%.2f'|format(item.unit_cost or 0) }}</td>
                                 <td class="text-end">₹{{ '%.2f'|format(item.total_cost or 0) }}</td>
                             </tr>
