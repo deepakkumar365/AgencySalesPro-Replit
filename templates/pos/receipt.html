@@ -9,6 +9,7 @@
         @media print {
             .no-print { display: none !important; }
             .container { max-width: none !important; }
+            body { margin: 0; padding: 10px; }
         }
         .receipt-container {
             max-width: 400px;
@@ -16,122 +17,238 @@
             background: white;
             color: black;
             padding: 20px;
-            font-family: monospace;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .receipt-header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .company-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .receipt-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+        .info-left, .info-right {
+            flex: 1;
+            font-size: 11px;
+        }
+        .info-label {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        .info-value {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+        .items-table {
+            width: 100%;
+            margin: 15px 0;
+            border-collapse: collapse;
+        }
+        .items-table th {
+            border-bottom: 1px dashed #000;
+            padding: 5px 2px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        .items-table td {
+            padding: 5px 2px;
+            font-size: 11px;
+            vertical-align: top;
+        }
+        .items-table .text-right {
+            text-align: right;
+        }
+        .items-table .text-center {
+            text-align: center;
+        }
+        .item-name {
+            font-weight: bold;
+        }
+        .item-sku {
+            font-size: 10px;
+            color: #666;
+        }
+        .totals-section {
+            margin-top: 10px;
+            border-top: 1px dashed #000;
+            padding-top: 10px;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            font-size: 11px;
+        }
+        .total-row.grand-total {
+            font-size: 14px;
+            font-weight: bold;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+            padding: 8px 0;
+            margin-top: 5px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 11px;
+        }
+        .qr-code-section {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed #000;
+        }
+        .qr-code-section img {
+            max-width: 150px;
+            height: auto;
+            margin: 10px auto;
+            display: block;
+        }
+        .qr-code-label {
+            font-size: 10px;
+            color: #666;
+            margin-top: 5px;
+        }
+        hr {
+            border: none;
+            border-top: 1px dashed #000;
+            margin: 10px 0;
         }
     </style>
 </head>
 <body>
     <div class="container mt-4">
         <div class="receipt-container">
-            <!-- Header -->
-            <div class="text-center mb-3">
-                <h4>{{ order.agency.name }}</h4>
-                {% if order.customer.location.address %}
-                <small>{{ order.customer.location.address }}<br>
-                {{ order.customer.location.city }}, {{ order.customer.location.state }} {{ order.customer.location.zip_code }}</small>
-                {% endif %}
-                {% if order.customer.location.phone %}
-                <br><small>Phone: {{ order.customer.location.phone }}</small>
-                {% endif %}
-                <hr>
+            <!-- Header with Company Name -->
+            <div class="receipt-header">
+                <div class="company-name">{{ order.agency.name }}</div>
+                <div class="receipt-title">SALES RECEIPT</div>
             </div>
 
-            <!-- Order Info -->
-            <div class="mb-3">
-                <strong>SALES RECEIPT</strong><br>
-                <div class="row">
-                    <div class="col-6">Receipt #:</div>
-                    <div class="col-6 text-end">{{ order.order_number }}</div>
+            <!-- Two Column Info Section -->
+            <div class="info-section">
+                <!-- Left Side: To Section -->
+                <div class="info-left">
+                    <div class="info-label">To:</div>
+                    <div class="info-value">{{ order.customer.name }}</div>
+                    {% if order.customer.location %}
+                    <div class="info-value">{{ order.customer.location.name }}</div>
+                    {% endif %}
+                    {% if order.customer.phone %}
+                    <div class="info-value">Ph: {{ order.customer.phone }}</div>
+                    {% endif %}
                 </div>
-                <div class="row">
-                    <div class="col-6">Date:</div>
-                    <div class="col-6 text-end">{{ order.order_date.strftime('%Y-%m-%d %H:%M') }}</div>
-                </div>
-                <div class="row">
-                    <div class="col-6">Cashier:</div>
-                    <div class="col-6 text-end">{{ order.salesperson.full_name }}</div>
-                </div>
-                {% if order.customer.name != 'Walk-in Customer' %}
-                <div class="row">
-                    <div class="col-6">Customer:</div>
-                    <div class="col-6 text-end">{{ order.customer.name }}</div>
-                </div>
-                {% endif %}
-                <hr>
-            </div>
-
-            <!-- Items -->
-            <div class="mb-3">
-                <div class="row fw-bold">
-                    <div class="col-6">Item</div>
-                    <div class="col-2 text-end">Qty</div>
-                    <div class="col-2 text-end">Price</div>
-                    <div class="col-2 text-end">Total</div>
-                </div>
-                <hr style="margin: 5px 0;">
                 
-                {% for item in order.order_items %}
-                <div class="row">
-                    <div class="col-6">
-                        <div>{{ item.product.name }}</div>
-                        <small>{{ item.product.sku }}</small>
-                    </div>
-                    <div class="col-2 text-end">{{ item.quantity }}</div>
-                    <div class="col-2 text-end">₹{{ "%.2f"|format(item.unit_price) }}</div>
-                    <div class="col-2 text-end">₹{{ "%.2f"|format(item.total_price) }}</div>
+                <!-- Right Side: Receipt Number, Date, Printed By -->
+                <div class="info-right">
+                    <div class="info-label">Bill No:</div>
+                    <div class="info-value">{{ order.order_number.split('-')[-1] if '-' in order.order_number else order.order_number }}</div>
+                    
+                    <div class="info-label">Date:</div>
+                    <div class="info-value">{{ order.order_date.strftime('%d-%m-%Y %H:%M') }}</div>
+                    
+                    <div class="info-label">Printed by:</div>
+                    <div class="info-value">{{ order.salesperson.first_name if order.salesperson.first_name else order.salesperson.username }}</div>
                 </div>
-                {% endfor %}
-                <hr>
             </div>
 
-            <!-- Totals -->
-            <div class="mb-3">
-                <div class="row">
-                    <div class="col-8">Subtotal:</div>
-                    <div class="col-4 text-end">₹{{ "%.2f"|format(order.total_amount - order.tax + order.discount) }}</div>
+            <hr>
+
+            <!-- Items Table -->
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40%;">Item</th>
+                        <th style="width: 10%;" class="text-center">UOM</th>
+                        <th style="width: 15%;" class="text-right">Qty</th>
+                        <th style="width: 17%;" class="text-right">Price</th>
+                        <th style="width: 18%;" class="text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.order_items %}
+                    <tr>
+                        <td>
+                            <div class="item-name">{{ item.product.name }}</div>
+                            <div class="item-sku">{{ item.product.sku }}</div>
+                        </td>
+                        <td class="text-center">{{ item.uom if item.uom else 'pcs' }}</td>
+                        <td class="text-right">{{ "%.2f"|format(item.quantity) if item.quantity != item.quantity|int else item.quantity|int }}</td>
+                        <td class="text-right">₹{{ "%.2f"|format(item.unit_price) }}</td>
+                        <td class="text-right">₹{{ "%.2f"|format(item.total_price) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Totals Section -->
+            <div class="totals-section">
+                <div class="total-row">
+                    <span>Subtotal:</span>
+                    <span>₹{{ "%.2f"|format(order.total_amount - order.tax + order.discount) }}</span>
                 </div>
                 {% if order.discount > 0 %}
-                <div class="row">
-                    <div class="col-8">Discount:</div>
-                    <div class="col-4 text-end">-₹{{ "%.2f"|format(order.discount) }}</div>
+                <div class="total-row">
+                    <span>Discount:</span>
+                    <span>-₹{{ "%.2f"|format(order.discount) }}</span>
                 </div>
                 {% endif %}
                 {% if order.tax > 0 %}
-                <div class="row">
-                    <div class="col-8">Tax:</div>
-                    <div class="col-4 text-end">₹{{ "%.2f"|format(order.tax) }}</div>
+                <div class="total-row">
+                    <span>Tax:</span>
+                    <span>₹{{ "%.2f"|format(order.tax) }}</span>
                 </div>
                 {% endif %}
-                <hr>
-                <div class="row fw-bold fs-5">
-                    <div class="col-8">TOTAL:</div>
-                    <div class="col-4 text-end">₹{{ "%.2f"|format(order.total_amount) }}</div>
+                <div class="total-row grand-total">
+                    <span>TOTAL:</span>
+                    <span>₹{{ "%.2f"|format(order.total_amount) }}</span>
                 </div>
-                <hr>
             </div>
 
             <!-- Payment Info -->
             {% if order.invoice and order.invoice.payments %}
+                <hr>
                 {% for payment in order.invoice.payments %}
-                <div class="row">
-                    <div class="col-8">{{ payment.payment_method.name }}:</div>
-                    <div class="col-4 text-end">${{ "%.2f"|format(payment.amount) }}</div>
+                <div class="total-row">
+                    <span>{{ payment.payment_method.name }}:</span>
+                    <span>₹{{ "%.2f"|format(payment.amount) }}</span>
                 </div>
                 {% endfor %}
-                <hr>
             {% endif %}
 
             <!-- Footer -->
-            <div class="text-center mt-4">
-                <small>Thank you for your business!<br>
-                Have a great day!</small>
+            <div class="footer">
+                <div style="margin-top: 15px;">Thank you for your business!</div>
+                <div>Have a great day!</div>
                 
                 {% if order.notes %}
-                <div class="mt-2">
-                    <small><strong>Notes:</strong> {{ order.notes }}</small>
+                <div style="margin-top: 10px; text-align: left;">
+                    <strong>Notes:</strong> {{ order.notes }}
                 </div>
                 {% endif %}
             </div>
+
+            <!-- QR Code Section -->
+            {% if qr_code %}
+            <div class="qr-code-section">
+                <img src="data:image/png;base64,{{ qr_code }}" alt="Receipt QR Code">
+                <div class="qr-code-label">Scan for receipt details</div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Print Controls -->

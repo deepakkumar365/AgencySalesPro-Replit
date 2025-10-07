@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, session, jsonify
 from datetime import datetime, timedelta
 from decimal import Decimal
+from sqlalchemy import func
 from app import db
 from models import (
     Product, ProductAgency, Customer, Order, OrderItem, Location, Agency, Category,
@@ -10,6 +11,10 @@ from pos import pos_bp
 from auth.utils import login_required, permission_required, get_role_permissions
 from utils.decorators import log_activity
 import uuid
+import qrcode
+import io
+import base64
+import json
 
 @pos_bp.route('/dashboard')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user'])
@@ -302,8 +307,13 @@ def create_sale(current_agency_id=None):
             if not product:
                 return jsonify({'error': f'Product {item_data["product_id"]} not found'}), 400
             
-            quantity = int(item_data['quantity'])
+            quantity = Decimal(str(item_data['quantity']))  # Support decimal quantities
             unit_price = Decimal(str(item_data['unit_price']))
+            
+            # Get UOM from product or default to 'pcs'
+            uom = 'pcs'  # Default
+            if product.uom_ref:
+                uom = product.uom_ref.short_name
             
             # Stock checking disabled (inventory management removed)
             # Product availability is assumed
@@ -314,6 +324,7 @@ def create_sale(current_agency_id=None):
                 order_id=order.id,
                 product_id=product.id,
                 quantity=quantity,
+                uom=uom,  # Set UOM from product
                 unit_price=unit_price,
                 mrp_price=unit_price, # Assuming unit_price is MRP for POS
                 discount_percentage=0, # No line-item discount in POS UI
@@ -410,7 +421,36 @@ def receipt(order_id, current_agency_id=None):
     else:
         order = Order.query.filter_by(id=order_id, agency_id=current_agency_id).first_or_404()
     
-    return render_template('pos/receipt.html', order=order)
+    # Generate QR code data
+    qr_data = {
+        'receipt_no': order.order_number,
+        'date': order.order_date.strftime('%d-%m-%Y %H:%M'),
+        'customer': order.customer.name,
+        'items': len(order.order_items),
+        'total': float(order.total_amount),
+        'agency': order.agency.name
+    }
+    
+    # Create QR code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(json.dumps(qr_data))
+    qr.make(fit=True)
+    
+    # Generate QR code image
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convert to base64 for embedding in HTML
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    qr_code_base64 = base64.b64encode(buffer.getvalue()).decode()
+    
+    return render_template('pos/receipt.html', order=order, qr_code=qr_code_base64)
 
 @pos_bp.route('/sales_history')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user'])
