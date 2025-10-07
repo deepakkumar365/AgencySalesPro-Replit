@@ -187,7 +187,7 @@
                             <div class="item-sku">{{ item.product.sku }}</div>
                         </td>
                         <td class="text-center">{{ item.uom if item.uom else 'pcs' }}</td>
-                        <td class="text-right">{{ "%.2f"|format(item.quantity) if item.quantity != item.quantity|int else item.quantity|int }}</td>
+                        <td class="text-right">{{ "%.2f"|format(item.quantity) }}</td>
                         <td class="text-right">₹{{ "%.2f"|format(item.unit_price) }}</td>
                         <td class="text-right">₹{{ "%.2f"|format(item.total_price) }}</td>
                     </tr>
