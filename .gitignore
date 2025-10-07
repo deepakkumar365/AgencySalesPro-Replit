@@ -3,3 +3,4 @@
 /.env
 *.sql
 *.md
+/RECEIPT_EXAMPLE.txt

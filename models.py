@@ -217,7 +217,7 @@ class OrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), nullable=False, index=True)
     product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
-    quantity = db.Column(db.Integer, nullable=False)
+    quantity = db.Column(db.Numeric(10, 3), nullable=False)  # Changed from Integer to Numeric to support decimal values (e.g., 1.25, 0.75)
     uom = db.Column(db.String(20), default='pcs')  # Unit of Measure: pcs, kg, ltr, etc.
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)  # Original selling price
     mrp_price = db.Column(db.Numeric(10, 2), nullable=False)  # Maximum Retail Price
