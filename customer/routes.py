@@ -105,16 +105,35 @@ def customer_dashboard():
 def create_customer():
     if request.method == 'POST':
         name = request.form.get('name')
+        customer_code = request.form.get('customer_code', '').strip().upper()
         email = request.form.get('email')
-        # Clean phone number: remove non-numeric characters
-        phone = re.sub(r'[^0-9]', '', request.form.get('phone', ''))
+        # Clean phone number: remove non-numeric characters except +
+        phone_raw = request.form.get('phone', '')
+        phone = re.sub(r'[^0-9+]', '', phone_raw)
         address = request.form.get('address')
         location_id = request.form.get('location_id')
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
         
-        if not all([name, phone, location_id]):
-            flash('Customer name, phone number, and location are required.', 'error')
+        if not all([name, customer_code, phone, location_id]):
+            flash('Customer name, customer code, phone number, and location are required.', 'error')
+            return render_template('customer/form.html', locations=get_locations_for_user())
+        
+        # Validate customer code format (6 alphanumeric characters)
+        if not re.match(r'^[A-Z0-9]{6}$', customer_code):
+            flash('Customer code must be exactly 6 alphanumeric characters (e.g., AB12C3).', 'error')
+            return render_template('customer/form.html', locations=get_locations_for_user())
+        
+        # Check if customer code already exists
+        if Customer.query.filter_by(customer_code=customer_code).first():
+            flash('Customer code already exists. Please use a different code.', 'error')
+            return render_template('customer/form.html', locations=get_locations_for_user())
+        
+        # Validate Indian phone number format
+        indian_phone_pattern = r'^(\+91|91)?[6-9]\d{9}$'
+        phone_clean = phone.replace(' ', '').replace('-', '')
+        if not re.match(indian_phone_pattern, phone_clean):
+            flash('Invalid Indian phone number. Format: +91XXXXXXXXXX or 10-digit number starting with 6-9.', 'error')
             return render_template('customer/form.html', locations=get_locations_for_user())
         
         # Validate location belongs to user's agency
@@ -152,6 +171,7 @@ def create_customer():
         
         customer = Customer(
             name=name,
+            customer_code=customer_code,
             email=email,
             phone=phone,
             address=address,
@@ -218,7 +238,9 @@ def edit_customer(customer_id):
         # Update customer fields from form
         customer.name = request.form.get('name')
         customer.email = request.form.get('email')
-        customer.phone = re.sub(r'[^0-9]', '', request.form.get('phone', ''))
+        # Clean phone number: remove non-numeric characters except +
+        phone_raw = request.form.get('phone', '')
+        customer.phone = re.sub(r'[^0-9+]', '', phone_raw)
         customer.address = request.form.get('address')
         location_id = request.form.get('location_id')
         password = request.form.get('password')
@@ -226,6 +248,13 @@ def edit_customer(customer_id):
         
         if not all([customer.name, customer.phone, location_id]):
             flash('Customer name, phone number, and location are required.', 'error')
+            return render_template('customer/form.html', customer=customer, locations=get_locations_for_user())
+        
+        # Validate Indian phone number format
+        indian_phone_pattern = r'^(\+91|91)?[6-9]\d{9}$'
+        phone_clean = customer.phone.replace(' ', '').replace('-', '')
+        if not re.match(indian_phone_pattern, phone_clean):
+            flash('Invalid Indian phone number. Format: +91XXXXXXXXXX or 10-digit number starting with 6-9.', 'error')
             return render_template('customer/form.html', customer=customer, locations=get_locations_for_user())
         
         # Validate location

@@ -12,11 +12,23 @@
                 </h4>
             </div>
             <div class="card-body">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Customer Name *</label>
-                        <input type="text" class="form-control" id="name" name="name" 
-                               value="{{ customer.name if customer else '' }}" required>
+                <form method="POST" id="customerForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Customer Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ customer.name if customer else '' }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="customer_code" class="form-label">Customer Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="customer_code" name="customer_code" 
+                                   value="{{ customer.customer_code if customer else '' }}" 
+                                   maxlength="6" pattern="[A-Za-z0-9]{6}" 
+                                   placeholder="e.g., AB12C3" required
+                                   {% if customer %}readonly{% endif %}>
+                            <small class="form-text text-muted">6-digit alphanumeric code (e.g., AB12C3)</small>
+                            <div class="invalid-feedback">Customer code must be exactly 6 alphanumeric characters.</div>
+                        </div>
                     </div>
                     
                     <div class="row">
@@ -26,9 +38,12 @@
                                    value="{{ customer.email if customer else '' }}">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="phone" class="form-label">Phone *</label>
+                            <label for="phone" class="form-label">Phone (India) <span class="text-danger">*</span></label>
                             <input type="tel" class="form-control" id="phone" name="phone" 
-                                   value="{{ customer.phone if customer else '' }}" required>
+                                   value="{{ customer.phone if customer else '' }}" 
+                                   placeholder="+91XXXXXXXXXX or 10-digit number" required>
+                            <small class="form-text text-muted">Indian format: +91XXXXXXXXXX or 10-digit number</small>
+                            <div class="invalid-feedback" id="phoneError">Please enter a valid Indian phone number.</div>
                         </div>
                     </div>
                     
@@ -86,8 +101,80 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const phoneInput = document.getElementById('phone');
-    phoneInput.addEventListener('input', function(e) {
-        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    const customerCodeInput = document.getElementById('customer_code');
+    const form = document.getElementById('customerForm');
+    
+    // Indian phone number validation pattern
+    // Accepts: +91XXXXXXXXXX, 91XXXXXXXXXX, or 10-digit number starting with 6-9
+    const indianPhonePattern = /^(\+91|91)?[6-9]\d{9}$/;
+    
+    // Customer code validation (6 alphanumeric characters)
+    const customerCodePattern = /^[A-Za-z0-9]{6}$/;
+    
+    // Validate phone number
+    function validatePhone() {
+        const phoneValue = phoneInput.value.replace(/[\s\-]/g, ''); // Remove spaces and dashes
+        const isValid = indianPhonePattern.test(phoneValue);
+        
+        if (phoneValue && !isValid) {
+            phoneInput.classList.add('is-invalid');
+            phoneInput.classList.remove('is-valid');
+            document.getElementById('phoneError').textContent = 
+                'Invalid Indian phone number. Format: +91XXXXXXXXXX or 10-digit number starting with 6-9';
+            return false;
+        } else if (phoneValue) {
+            phoneInput.classList.remove('is-invalid');
+            phoneInput.classList.add('is-valid');
+            return true;
+        }
+        return true;
+    }
+    
+    // Validate customer code
+    function validateCustomerCode() {
+        const codeValue = customerCodeInput.value.trim();
+        const isValid = customerCodePattern.test(codeValue);
+        
+        if (codeValue && !isValid) {
+            customerCodeInput.classList.add('is-invalid');
+            customerCodeInput.classList.remove('is-valid');
+            return false;
+        } else if (codeValue) {
+            customerCodeInput.classList.remove('is-invalid');
+            customerCodeInput.classList.add('is-valid');
+            return true;
+        }
+        return false;
+    }
+    
+    // Real-time validation
+    phoneInput.addEventListener('input', validatePhone);
+    phoneInput.addEventListener('blur', validatePhone);
+    
+    customerCodeInput.addEventListener('input', function() {
+        // Convert to uppercase for consistency
+        this.value = this.value.toUpperCase();
+        validateCustomerCode();
+    });
+    customerCodeInput.addEventListener('blur', validateCustomerCode);
+    
+    // Form submission validation
+    form.addEventListener('submit', function(e) {
+        const isPhoneValid = validatePhone();
+        const isCodeValid = validateCustomerCode();
+        
+        if (!isPhoneValid || !isCodeValid) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (!isPhoneValid) {
+                phoneInput.focus();
+            } else if (!isCodeValid) {
+                customerCodeInput.focus();
+            }
+            
+            return false;
+        }
     });
 });
 </script>

@@ -29,9 +29,18 @@ class Agency(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     code = db.Column(db.String(20), unique=True, nullable=False)
-    address = db.Column(db.Text)
+    
+    # Address fields (Ticket #12)
+    address = db.Column(db.Text)  # Kept for backward compatibility
+    address1 = db.Column(db.String(255))
+    address2 = db.Column(db.String(255))
+    city = db.Column(db.String(100))
+    state = db.Column(db.String(100))
+    country = db.Column(db.String(100), default='India')
+    
     phone = db.Column(db.String(20))
     email = db.Column(db.String(120))
+    registration_number = db.Column(db.String(50))  # Ticket #12
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     agency_manager_id = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=True, index=True)
@@ -88,6 +97,11 @@ class Location(db.Model):
     
     # Relationships
     customers = db.relationship('Customer', backref='location', lazy=True)
+    
+    # Ticket #16: Unique constraint on location name per agency
+    __table_args__ = (
+        db.UniqueConstraint('name', 'agency_id', name='uq_location_name_agency'),
+    )
 
 class CustomerAgency(db.Model):
     """Mapping table for Customer-Agency many-to-many relationship"""
@@ -106,6 +120,7 @@ class Customer(db.Model):
     __tablename__ = 'ASP_customers'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    customer_code = db.Column(db.String(10), unique=True)  # Ticket #14: 6-digit alphanumeric code
     email = db.Column(db.String(120))
     phone = db.Column(db.String(20), nullable=False)
     address = db.Column(db.Text)
@@ -136,6 +151,10 @@ class Product(db.Model):
     sell_price = db.Column(db.Numeric(10, 2))  # Default selling price
     mrp_price = db.Column(db.Numeric(10, 2))  # Maximum Retail Price
     margin = db.Column(db.Numeric(5, 2))  # Margin percentage
+    
+    # Ticket #18: Additional fields for bulk upload
+    hsn_code = db.Column(db.String(20))  # HSN code for tax purposes
+    item_code = db.Column(db.String(50))  # Item code
     
     # Foreign key relationships to master tables (global defaults)
     category_id = db.Column(db.Integer, db.ForeignKey('ASP_categories.id'), index=True)
@@ -208,6 +227,12 @@ class Order(db.Model):
     order_date = db.Column(db.DateTime, default=datetime.utcnow)
     delivery_date = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Ticket #20, #23, #24: POS-specific fields
+    payment_mode = db.Column(db.String(20))  # cash, credit, credit_sale
+    order_type = db.Column(db.String(20))  # local, others
+    discount_percentage = db.Column(db.Numeric(5, 2), default=0)  # Discount percentage for entire order
+    handling_charges = db.Column(db.Numeric(10, 2), default=0)  # Additional handling charges
     
     # Relationships
     order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')

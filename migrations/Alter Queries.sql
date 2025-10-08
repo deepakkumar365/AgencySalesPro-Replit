@@ -114,3 +114,75 @@ CREATE INDEX ix_ASP_inventory_transactions_agency_id ON "ASP_inventory_transacti
 
 -- Create an index on the new customer_id column for faster lookups
 CREATE INDEX ix_ASP_inventory_transactions_customer_id ON "ASP_inventory_transactions" (customer_id);
+
+-- ============================================
+-- UPGRADE QUERIES (Apply Changes)
+-- ============================================
+
+-- 1. Agency table enhancements (Tickets #12, #13)
+ALTER TABLE "ASP_agencies" 
+ADD COLUMN IF NOT EXISTS address1 VARCHAR(255),
+ADD COLUMN IF NOT EXISTS address2 VARCHAR(255),
+ADD COLUMN IF NOT EXISTS city VARCHAR(100),
+ADD COLUMN IF NOT EXISTS state VARCHAR(100),
+ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'India',
+ADD COLUMN IF NOT EXISTS registration_number VARCHAR(50);
+
+-- Migrate existing address data to address1
+UPDATE "ASP_agencies" 
+SET address1 = address 
+WHERE address IS NOT NULL AND address1 IS NULL;
+
+-- 2. Customer table enhancements (Ticket #14)
+ALTER TABLE "ASP_customers" 
+ADD COLUMN IF NOT EXISTS customer_code VARCHAR(10) UNIQUE;
+
+-- 3. Location table - unique constraint (Ticket #16)
+ALTER TABLE "ASP_locations" 
+ADD CONSTRAINT uq_location_name_agency UNIQUE (name, agency_id);
+
+-- 4. Order table enhancements for POS (Tickets #20, #23, #24)
+ALTER TABLE "ASP_orders" 
+ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(20) DEFAULT 'cash',
+ADD COLUMN IF NOT EXISTS order_type VARCHAR(20) DEFAULT 'local',
+ADD COLUMN IF NOT EXISTS discount_percentage NUMERIC(5, 2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS handling_charges NUMERIC(10, 2) DEFAULT 0;
+
+-- 5. Product table enhancements (Ticket #18)
+ALTER TABLE "ASP_products" 
+ADD COLUMN IF NOT EXISTS hsn_code VARCHAR(20),
+ADD COLUMN IF NOT EXISTS item_code VARCHAR(50);
+
+
+-- ============================================
+-- DOWNGRADE QUERIES (Revert Changes)
+-- ============================================
+
+-- Remove Agency fields
+ALTER TABLE "ASP_agencies" 
+DROP COLUMN IF EXISTS address1,
+DROP COLUMN IF EXISTS address2,
+DROP COLUMN IF EXISTS city,
+DROP COLUMN IF EXISTS state,
+DROP COLUMN IF EXISTS country,
+DROP COLUMN IF EXISTS registration_number;
+
+-- Remove Customer fields
+ALTER TABLE "ASP_customers" 
+DROP COLUMN IF EXISTS customer_code;
+
+-- Remove Location constraint
+ALTER TABLE "ASP_locations" 
+DROP CONSTRAINT IF EXISTS uq_location_name_agency;
+
+-- Remove Order fields
+ALTER TABLE "ASP_orders" 
+DROP COLUMN IF EXISTS payment_mode,
+DROP COLUMN IF EXISTS order_type,
+DROP COLUMN IF EXISTS discount_percentage,
+DROP COLUMN IF EXISTS handling_charges;
+
+-- Remove Product fields
+ALTER TABLE "ASP_products" 
+DROP COLUMN IF EXISTS hsn_code,
+DROP COLUMN IF EXISTS item_code;

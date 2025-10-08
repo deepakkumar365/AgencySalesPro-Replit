@@ -37,13 +37,30 @@ def create_agency():
 
     if request.method == 'POST':
         name = request.form.get('name')
-        address = request.form.get('address')
-        # Clean phone number: remove non-numeric characters
-        phone = re.sub(r'[^0-9]', '', request.form.get('phone', ''))
+        # Get split address fields
+        address1 = request.form.get('address1', '').strip()
+        address2 = request.form.get('address2', '').strip()
+        city = request.form.get('city', '').strip()
+        state = request.form.get('state', '').strip()
+        country = request.form.get('country', '').strip()
+        registration_number = request.form.get('registration_number', '').strip()
+        
+        # Combine address fields for backward compatibility with old 'address' field
+        address_parts = [address1, address2, city, state, country]
+        address = ', '.join([part for part in address_parts if part])
+        
+        # Clean phone number: remove non-numeric characters except +
+        phone_raw = request.form.get('phone', '')
+        phone = re.sub(r'[^0-9+]', '', phone_raw)
         email = request.form.get('email')
         
+        # Validate required fields
         if not name:
             flash('Agency Name is required', 'error')
+            return redirect(url_for('agency.create_agency'))
+        
+        if not address1 or not city or not state or not country:
+            flash('Address Line 1, City, State, and Country are required', 'error')
             return redirect(url_for('agency.create_agency'))
         
         # Auto-generate a unique agency code
@@ -70,6 +87,12 @@ def create_agency():
             name=name,
             code=new_code,
             address=address,
+            address1=address1,
+            address2=address2,
+            city=city,
+            state=state,
+            country=country,
+            registration_number=registration_number,
             phone=phone,
             email=email,
             is_active=True,
@@ -182,14 +205,39 @@ def edit_agency(agency_id):
     if request.method == 'POST':
         agency.name = request.form.get('name')
         agency.code = request.form.get('code')
-        agency.address = request.form.get('address')
-        # Clean phone number: remove non-numeric characters
-        agency.phone = re.sub(r'[^0-9]', '', request.form.get('phone', ''))
+        
+        # Get split address fields
+        address1 = request.form.get('address1', '').strip()
+        address2 = request.form.get('address2', '').strip()
+        city = request.form.get('city', '').strip()
+        state = request.form.get('state', '').strip()
+        country = request.form.get('country', '').strip()
+        registration_number = request.form.get('registration_number', '').strip()
+        
+        # Combine address fields for backward compatibility with old 'address' field
+        address_parts = [address1, address2, city, state, country]
+        agency.address = ', '.join([part for part in address_parts if part])
+        
+        # Update split address fields
+        agency.address1 = address1
+        agency.address2 = address2
+        agency.city = city
+        agency.state = state
+        agency.country = country
+        agency.registration_number = registration_number
+        
+        # Clean phone number: remove non-numeric characters except +
+        phone_raw = request.form.get('phone', '')
+        agency.phone = re.sub(r'[^0-9+]', '', phone_raw)
         agency.email = request.form.get('email')
         manager_id = request.form.get('agency_manager_id')
         
         if not agency.name or not agency.code:
             flash('Name and code are required', 'error')
+            return redirect(url_for('agency.edit_agency', agency_id=agency_id))
+        
+        if not address1 or not city or not state or not country:
+            flash('Address Line 1, City, State, and Country are required', 'error')
             return redirect(url_for('agency.edit_agency', agency_id=agency_id))
         
         # Check if code already exists (excluding current agency)
