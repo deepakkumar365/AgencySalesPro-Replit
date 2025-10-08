@@ -191,6 +191,8 @@ def bulk_upload_overrides(current_agency_id=None):
                         category_name = str(row.get('category_name', '')).strip()
                         uom_name = str(row.get('uom_name', '')).strip()
                         tax_name = str(row.get('tax_name', '')).strip() # Optional
+                        hsn_code = str(row.get('hsn_code', '')).strip() if pd.notna(row.get('hsn_code')) else None
+                        item_code = str(row.get('item_code', '')).strip() if pd.notna(row.get('item_code')) else None
 
                         if not all([category_name, uom_name]):
                             errors.append(f"Row {index+2}: category_name and uom_name are required for new product '{sku}'.")
@@ -212,6 +214,8 @@ def bulk_upload_overrides(current_agency_id=None):
                             category_id=categories.get(category_name.lower()),
                             uom_id=uoms.get(uom_name.lower()),
                             tax_master_id=tax_masters.get(tax_name.lower()) if tax_name else None,
+                            hsn_code=hsn_code,
+                            item_code=item_code,
                             is_active=True
                         )
                         db.session.add(product)
@@ -290,12 +294,12 @@ def download_overrides_template():
     """Provides a CSV template for bulk override uploads."""
     columns = [
         'sku', 'display_name', 'buy_price', 'sell_price', 'mrp_price',
-        'category_name', 'uom_name', 'tax_name', 'is_active'
+        'category_name', 'uom_name', 'tax_name', 'hsn_code', 'item_code', 'is_active'
     ]
     
     example_data = [[
         'PROD-SKU-001', 'Agency Specific Name', 100.00, 150.00, 160.00,
-        'Electronics', 'Pieces', 'GST 18%', True
+        'Electronics', 'Pieces', 'GST 18%', '8517', 'ITEM001', True
     ]]
     
     df = pd.DataFrame(example_data, columns=columns)

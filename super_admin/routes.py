@@ -45,6 +45,22 @@ def dashboard():
         'total_products': product_query.count(),  # Products are global
         'total_customers': customer_query.count()
     }
+    
+    # Enhanced business metrics (Ticket #25)
+    # Calculate total revenue
+    total_revenue_result = db.session.query(func.sum(Order.total_amount)).select_from(order_query).scalar()
+    stats['total_revenue'] = float(total_revenue_result) if total_revenue_result else 0
+    
+    # Calculate revenue for current month
+    current_month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    monthly_revenue_result = db.session.query(func.sum(Order.total_amount)).select_from(order_query).filter(Order.created_at >= current_month_start).scalar()
+    stats['monthly_revenue'] = float(monthly_revenue_result) if monthly_revenue_result else 0
+    
+    # Calculate average order value
+    if stats['total_orders'] > 0:
+        stats['avg_order_value'] = stats['total_revenue'] / stats['total_orders']
+    else:
+        stats['avg_order_value'] = 0
 
     # Recent activities removed as not required
 
@@ -71,12 +87,31 @@ def dashboard():
         top_agencies_query = top_agencies_query.filter(Agency.id.in_(managed_agency_ids))
 
     top_agencies = top_agencies_query.group_by(Agency.id).order_by(func.count(Order.id).desc()).limit(5).all()
+    
+    # Get top products by order count (Ticket #25)
+    from models import OrderItem
+    top_products_query = db.session.query(
+        Product.name,
+        Product.sku,
+        func.count(OrderItem.id).label('order_count'),
+        func.sum(OrderItem.quantity).label('total_quantity')
+    ).join(OrderItem, OrderItem.product_id == Product.id).join(Order, Order.id == OrderItem.order_id)
+    
+    if user_role == 'agency_manager':
+        top_products_query = top_products_query.filter(Order.agency_id.in_(managed_agency_ids))
+    
+    top_products = top_products_query.group_by(Product.id).order_by(func.count(OrderItem.id).desc()).limit(5).all()
+    
+    # Get recent orders (Ticket #25)
+    recent_orders = order_query.order_by(Order.created_at.desc()).limit(10).all()
 
     return render_template('super_admin/dashboard.html',
                          stats=stats,
                          order_stats=order_stats,
                          monthly_orders=monthly_orders,
-                         top_agencies=top_agencies)
+                         top_agencies=top_agencies,
+                         top_products=top_products,
+                         recent_orders=recent_orders)
 
 @super_admin_bp.route('/users')
 @role_required('super_admin', 'agency_manager')

@@ -181,6 +181,12 @@ def create_order():
             items = data.get('items', [])
             tax_amount = float(data.get('tax', 0))
             discount_amount = float(data.get('discount', 0))
+            
+            # POS-specific fields (Tickets #20, #23, #24)
+            payment_mode = data.get('payment_mode', 'cash')
+            order_type = data.get('order_type', 'local')
+            discount_percentage = float(data.get('discount_percentage', 0))
+            handling_charges = float(data.get('handling_charges', 0))
 
             if not customer_id or not items:
                 return jsonify({'error': 'Customer and at least one item are required.'}), 400
@@ -204,7 +210,11 @@ def create_order():
                 notes=data.get('notes'),
                 order_date=datetime.utcnow(),
                 tax=tax_amount,
-                discount=discount_amount
+                discount=discount_amount,
+                payment_mode=payment_mode,
+                order_type=order_type,
+                discount_percentage=discount_percentage,
+                handling_charges=handling_charges
             )
             if data.get('delivery_date'):
                 order.delivery_date = datetime.strptime(data['delivery_date'], '%Y-%m-%d')
@@ -257,7 +267,8 @@ def create_order():
 
             order.subtotal_amount = subtotal
             order.total_tax_amount = tax_amount # From payload
-            order.total_amount = subtotal + tax_amount - discount_amount
+            # Calculate total: subtotal + tax - discount + handling_charges
+            order.total_amount = subtotal + tax_amount - discount_amount + handling_charges
             order.total_items_count = len(items)
             
             # Legacy fields (optional, can be removed if not needed elsewhere)

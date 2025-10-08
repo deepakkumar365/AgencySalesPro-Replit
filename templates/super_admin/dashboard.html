@@ -58,6 +58,42 @@
     </div>
 </div>
 
+<!-- Revenue Metrics (Ticket #25) -->
+<div class="row auto-hide-content">
+    <div class="col-md-4 mb-4">
+        <div class="card text-center bg-success text-white">
+            <div class="card-body">
+                <i class="fas fa-rupee-sign fa-2x mb-2"></i>
+                <h3 class="card-title">₹{{ "{:,.2f}".format(stats.total_revenue) }}</h3>
+                <p class="card-text">Total Revenue</p>
+                <small>All Time</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card text-center bg-info text-white">
+            <div class="card-body">
+                <i class="fas fa-calendar-alt fa-2x mb-2"></i>
+                <h3 class="card-title">₹{{ "{:,.2f}".format(stats.monthly_revenue) }}</h3>
+                <p class="card-text">Monthly Revenue</p>
+                <small>Current Month</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card text-center bg-primary text-white">
+            <div class="card-body">
+                <i class="fas fa-chart-line fa-2x mb-2"></i>
+                <h3 class="card-title">₹{{ "{:,.2f}".format(stats.avg_order_value) }}</h3>
+                <p class="card-text">Avg Order Value</p>
+                <small>Per Order</small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Charts Row -->
 <div class="row auto-hide-content">
     <div class="col-md-6 mb-4">
@@ -117,6 +153,98 @@
         </div>
     </div>
     
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Top Products</h5>
+            </div>
+            <div class="card-body">
+                {% if top_products %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>SKU</th>
+                                <th>Orders</th>
+                                <th>Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product_name, sku, order_count, total_qty in top_products %}
+                            <tr>
+                                <td>{{ product_name }}</td>
+                                <td><small class="text-muted">{{ sku }}</small></td>
+                                <td><span class="badge bg-success">{{ order_count }}</span></td>
+                                <td><span class="badge bg-info">{{ total_qty }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p>No data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Orders (Ticket #25) -->
+<div class="row auto-hide-content">
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Orders</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_orders %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Agency</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in recent_orders %}
+                            <tr>
+                                <td><a href="{{ url_for('order.view_order', order_id=order.id) }}">{{ order.order_number }}</a></td>
+                                <td>{{ order.customer.name if order.customer else 'N/A' }}</td>
+                                <td>{{ order.agency.name if order.agency else 'N/A' }}</td>
+                                <td>₹{{ "{:,.2f}".format(order.total_amount) }}</td>
+                                <td>
+                                    {% if order.status == 'pending' %}
+                                        <span class="badge bg-warning">Pending</span>
+                                    {% elif order.status == 'confirmed' %}
+                                        <span class="badge bg-info">Confirmed</span>
+                                    {% elif order.status == 'shipped' %}
+                                        <span class="badge bg-primary">Shipped</span>
+                                    {% elif order.status == 'delivered' %}
+                                        <span class="badge bg-success">Delivered</span>
+                                    {% elif order.status == 'cancelled' %}
+                                        <span class="badge bg-danger">Cancelled</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ order.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td><small>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p>No orders available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Quick Actions -->

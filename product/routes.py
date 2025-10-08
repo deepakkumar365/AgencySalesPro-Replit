@@ -145,6 +145,8 @@ def create_product(current_agency_id=None):
         category_id = request.form.get('category_id')
         uom_id = request.form.get('uom_id')
         tax_master_id = request.form.get('tax_master_id')
+        hsn_code = request.form.get('hsn_code', '').strip() or None
+        item_code = request.form.get('item_code', '').strip() or None
         agency_id = request.form.get('agency_id')
 
         # Auto-generate SKU if missing
@@ -253,6 +255,8 @@ def create_product(current_agency_id=None):
             category_id=int(category_id) if category_id else None,
             uom_id=int(uom_id) if uom_id else None,
             tax_master_id=int(tax_master_id) if tax_master_id else None,
+            hsn_code=hsn_code,
+            item_code=item_code,
             is_active=True
         )
         
@@ -314,6 +318,8 @@ def edit_product(product_id):
         category_id = request.form.get('category_id')
         uom_id = request.form.get('uom_id')
         tax_master_id = request.form.get('tax_master_id')
+        hsn_code = request.form.get('hsn_code', '').strip() or None
+        item_code = request.form.get('item_code', '').strip() or None
         
         # Auto-generate SKU if missing
         if product.name and not product.sku:
@@ -343,6 +349,8 @@ def edit_product(product_id):
             product.category_id = int(category_id) if category_id else None
             product.uom_id = int(uom_id) if uom_id else None
             product.tax_master_id = int(tax_master_id) if tax_master_id else None
+            product.hsn_code = hsn_code
+            product.item_code = item_code
         except ValueError:
             flash('Invalid price values. Please enter numbers only.', 'error')
             return render_template('product/form.html', product=product, agencies=get_agencies_for_user(), cancel_url=url_for('product.list_products'), **_get_master_data())
