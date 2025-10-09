@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, session
 import re
 from app import db
-from models import Agency, User
+from models import Agency, User, CustomerAgency, Location
 from . import agency_bp
 from auth.utils import login_required, role_required
 from utils.decorators import log_activity
@@ -9,24 +9,48 @@ from utils.decorators import log_activity
 @agency_bp.route('/')
 @role_required('super_admin', 'agency_admin', 'agency_manager')
 def list_agencies():
-    user_role = session.get('role') 
+    user_role = session.get('role')
     user_id = session.get('user_id')
+    search = request.args.get('search')
     
-    if user_role == 'super_admin':
-        agencies = Agency.query.all()
-    elif user_role == 'agency_manager':
-        agencies = Agency.query.filter_by(agency_manager_id=user_id).all()
-    else:
-        # agency_admin can only see their own agency
-        agency_id = session.get('agency_id')
-        agencies = Agency.query.filter_by(id=agency_id).all()
-    
-    # For super_admin, get potential managers to show in the list view
-    managers = []
-    if user_role == 'super_admin':
-        managers = User.query.filter(User.role.in_(['agency_manager', 'super_admin'])).all()
+    # Subquery for user count per agency
+    user_count_subquery = db.session.query(
+        User.agency_id,
+        db.func.count(User.id).label('user_count')
+    ).group_by(User.agency_id).subquery()
 
-    return render_template('agency/list.html', agencies=agencies, managers=managers)
+    # Subquery for customer count per agency using the mapping table
+    customer_count_subquery = db.session.query(
+        CustomerAgency.agency_id,
+        db.func.count(CustomerAgency.customer_id).label('customer_count')
+    ).group_by(CustomerAgency.agency_id).subquery()
+
+    # Main query to fetch agencies with additional data
+    query = db.session.query(
+        Agency,
+        User.username.label('manager_username'),
+        db.func.coalesce(user_count_subquery.c.user_count, 0).label('login_id_count'),
+        db.func.coalesce(customer_count_subquery.c.customer_count, 0).label('customer_count')
+    ).outerjoin(User, Agency.agency_manager_id == User.id) \
+     .outerjoin(user_count_subquery, Agency.id == user_count_subquery.c.agency_id) \
+     .outerjoin(customer_count_subquery, Agency.id == customer_count_subquery.c.agency_id)
+    
+    # Role-based filtering
+    if user_role == 'agency_manager':
+        query = query.filter(Agency.agency_manager_id == user_id)
+    elif user_role == 'agency_admin':
+        agency_id = session.get('agency_id')
+        query = query.filter(Agency.id == agency_id)
+
+    if search:
+        query = query.filter(db.or_(
+            Agency.name.ilike(f'%{search}%'),
+            Agency.code.ilike(f'%{search}%'),
+            User.username.ilike(f'%{search}%')
+        ))
+
+    agencies_data = query.order_by(Agency.name).all()
+    return render_template('agency/list.html', agencies_data=agencies_data, search=search)
 
 @agency_bp.route('/create', methods=['GET', 'POST'])
 @role_required('super_admin', 'agency_manager')

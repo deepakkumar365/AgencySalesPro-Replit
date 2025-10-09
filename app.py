@@ -90,7 +90,6 @@ def create_app():
         from purchase_order import purchase_order_bp
         from super_admin import super_admin_bp
         from pos import pos_bp
-        from billing import billing_bp
         from inventory import inventory_bp
         from reports import reports_bp
         from agency_manager import agency_manager_bp
@@ -111,7 +110,6 @@ def create_app():
         app.register_blueprint(purchase_order_bp, url_prefix='/purchase-order')
         app.register_blueprint(super_admin_bp, url_prefix='/super_admin')
         app.register_blueprint(pos_bp, url_prefix='/pos')
-        app.register_blueprint(billing_bp, url_prefix='/billing')
         app.register_blueprint(inventory_bp, url_prefix='/inventory')
         app.register_blueprint(reports_bp, url_prefix='/reports')
         app.register_blueprint(agency_manager_bp, url_prefix='/agency_manager')
@@ -119,7 +117,7 @@ def create_app():
         app.register_blueprint(masters_bp, url_prefix='/masters')
         app.register_blueprint(subscription_bp, url_prefix='/subscription')
         app.register_blueprint(job_accounting_bp, url_prefix='/job-accounting')
-        app.register_blueprint(finance_bp, url_prefix='/finance')
+        app.register_blueprint(finance_bp, url_prefix='/billing') # Changed from /finance to /billing
         app.register_blueprint(overrides_bp)
 
     register_blueprints(app)

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import csv, io
 from app import db
 from models import Agency, User, Order, Product, Customer, ActivityLog, Location
-from super_admin import super_admin_bp
+from . import super_admin_bp
 from auth.utils import login_required, role_required, get_role_permissions
 from utils.decorators import log_activity
 
@@ -39,11 +39,12 @@ def dashboard():
         'total_agencies': agency_query.count(),
         'active_agencies': agency_query.filter(Agency.is_active == True).count(),
         'total_users': user_query.count(),
+        'total_agency_managers': user_query.filter(User.role == 'agency_manager').count(),
         'active_users': user_query.filter(User.is_active == True).count(),
         'total_orders': order_query.count(),
         'pending_orders': order_query.filter(Order.status == 'pending').count(),
         'total_products': product_query.count(),  # Products are global
-        'total_customers': customer_query.count()
+        'total_customers': customer_query.count(),
     }
     
     # Enhanced business metrics (Ticket #25)
@@ -527,3 +528,31 @@ def export_data():
     # This would be implemented with pandas/Excel export functionality
     flash('Data export functionality will be implemented', 'info')
     return redirect(url_for('super_admin.dashboard'))
+
+@super_admin_bp.route('/agency/<int:agency_id>/reset_manager_password', methods=['POST'])
+@role_required('super_admin')
+@log_activity('reset_agency_manager_password')
+def reset_agency_manager_password(agency_id):
+    """
+    Resets the password for an agency's manager to a default value.
+    """
+    agency = Agency.query.get_or_404(agency_id)
+    
+    if not agency.agency_manager_id:
+        flash(f"Agency '{agency.name}' does not have a manager assigned.", "warning")
+        return redirect(url_for('agency.list_agencies'))
+        
+    manager = User.query.get(agency.agency_manager_id)
+    if not manager:
+        flash(f"Manager for agency '{agency.name}' not found.", "danger")
+        return redirect(url_for('agency.list_agencies'))
+
+    try:
+        manager.set_password('Welcome@123')
+        db.session.commit()
+        flash(f"Password for manager '{manager.username}' of agency '{agency.name}' has been reset to 'Welcome@123'.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while resetting the password: {str(e)}", "danger")
+
+    return redirect(url_for('agency.list_agencies'))

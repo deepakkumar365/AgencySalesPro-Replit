@@ -115,6 +115,7 @@ def unified_dashboard(current_agency_id=None):
     
     daily_sales.reverse()  # Show oldest to newest
     
+    # Render the unified dashboard for all permitted roles.
     return render_template('reports/dashboard.html',
                          sales_stats=sales_stats,
                          billing_stats=billing_stats,

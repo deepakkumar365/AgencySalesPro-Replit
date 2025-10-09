@@ -78,15 +78,12 @@
                         </a>
                         <ul class="dropdown-menu">
                             {% if session.role == 'agency_manager' %}
-                            <li><a class="dropdown-item" href="{{ url_for('agency_manager.manage_users') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('agency_manager.manage_users') }}" title="Manage all users in your agency">
                                 <i class="fas fa-users-cog me-1"></i>All Users
                             </a></li>
                             {% endif %}
-                            <li><a class="dropdown-item" href="{{ url_for('salesperson.list_salespersons') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('salesperson.list_salespersons') }}" title="View and manage salespersons">
                                 <i class="fas fa-user-tie me-1"></i>Salespersons
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('customer.list_customers') }}">
-                                <i class="fas fa-user-friends me-1"></i>Customers
                             </a></li>
                         </ul>
                     </li>
@@ -115,8 +112,8 @@
                             <li><a class="dropdown-item" href="{{ url_for('masters.tax_masters') }}">
                                 <i class="fas fa-percent me-1"></i>Tax Masters
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('billing.list_payment_methods') }}">
-                                <i class="fas fa-credit-card me-1"></i>Payment Methods
+                            <li><a class="dropdown-item" href="{{ url_for('customer.list_customers') }}">
+                                <i class="fas fa-user-friends me-1"></i>Customers
                             </a></li>
                         </ul>
                     </li>
@@ -138,9 +135,6 @@
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('inventory.stock_levels') }}">
                                 <i class="fas fa-layer-group me-1"></i>Stock Levels
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('inventory.list_suppliers') }}">
-                                <i class="fas fa-truck me-1"></i>Suppliers
                             </a></li>
                         </ul>
                     </li>
@@ -196,22 +190,24 @@
                     -->
 
                     <!-- Accounting Menu (Tenant, Agency - Not Customer) -->
-                    {% if session.role in ['agency_admin', 'agency_manager', 'staff'] %}
+                    {% if session.role in ['super_admin', 'agency_admin', 'agency_manager', 'staff'] %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-file-invoice-dollar me-1"></i>Accounting
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('billing.dashboard') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('finance.dashboard') }}">
                                 <i class="fas fa-tachometer-alt me-1"></i>Accounting Dashboard
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('billing.list_invoices') }}">
-                                <i class="fas fa-file-invoice me-1"></i>Invoices
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('billing.reports') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('finance.dashboard') }}">
                                 <i class="fas fa-chart-bar me-1"></i>Accounting Reports
                             </a></li>
+                            {% if session.role == 'agency_manager' %}
+                            <li><a class="dropdown-item" href="{{ url_for('inventory.reports') }}">
+                                <i class="fas fa-boxes me-1"></i>Inventory Reports
+                            </a></li>
+                            {% endif %}
                         </ul>
                     </li>
                     {% endif %}
@@ -260,6 +256,10 @@
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('finance.create_receipt') }}">
                                 <i class="fas fa-plus-circle me-1"></i>New Receipt
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('finance.payment_configurations') }}">
+                                <i class="fas fa-cogs me-1"></i>Payment Configurations
                             </a></li>
                         </ul>
                     </li>
@@ -325,18 +325,15 @@
                             <i class="fas fa-chart-bar me-1"></i>Reports
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('reports.unified_dashboard') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('super_admin.dashboard') }}" title="The main dashboard with all system-wide stats.">
                                 <i class="fas fa-tachometer-alt me-1"></i>Analytics Dashboard
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('reports.sales_analytics') }}">
                                 <i class="fas fa-chart-line me-1"></i>Sales Analytics
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('billing.reports') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('reports.unified_dashboard') }}" title="A focused view on sales and billing performance.">
                                 <i class="fas fa-file-invoice-dollar me-1"></i>Accounting Reports
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('inventory.reports') }}">
-                                <i class="fas fa-boxes me-1"></i>Inventory Reports
                             </a></li>
                         </ul>
                     </li>
@@ -345,24 +342,7 @@
                     <!-- Reports Menu (Tenant, Agency) -->
                     {% if session.role in ['agency_admin', 'agency_manager', 'staff'] %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-chart-bar me-1"></i>Reports
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('reports.unified_dashboard') }}">
-                                <i class="fas fa-tachometer-alt me-1"></i>Analytics Dashboard
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.sales_analytics') }}">
-                                <i class="fas fa-chart-line me-1"></i>Sales Analytics
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('billing.reports') }}">
-                                <i class="fas fa-file-invoice-dollar me-1"></i>Accounting Reports
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('inventory.reports') }}">
-                                <i class="fas fa-boxes me-1"></i>Inventory Reports
-                            </a></li>
-                        </ul>
+                        <!-- Reports menu removed for Agency Manager as per requirements -->
                     </li>
                     {% endif %}
                     

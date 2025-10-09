@@ -881,3 +881,25 @@ class ReceiptSalesOrder(db.Model):
     
     # Relationships
     order_ref = db.relationship('Order', backref='receipt_links', lazy=True)
+
+class PaymentConfiguration(db.Model):
+    __tablename__ = 'ASP_payment_configurations'
+    id = db.Column(db.Integer, primary_key=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, unique=True)
+    billing_type = db.Column(db.String(50), nullable=False)  # 'fixed' or 'variable'
+
+    # Fields for 'fixed' type
+    fixed_period = db.Column(db.String(50))  # 'monthly', 'quarterly', 'half_yearly', 'yearly'
+    fixed_value = db.Column(db.Numeric(10, 2))
+    currency_code = db.Column(db.String(10))
+
+    # Fields for 'variable' type
+    variable_type = db.Column(db.String(50))  # 'user_based', 'order_based', 'invoice_value_percentage'
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    agency = db.relationship('Agency', backref=db.backref('payment_configuration', uselist=False), lazy=True)
+
+    def __repr__(self):
+        return f'<PaymentConfiguration {self.id} for Agency {self.agency_id}>'

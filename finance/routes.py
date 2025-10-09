@@ -7,7 +7,7 @@ import calendar
 from app import db
 from models import (
     FinancePayment, Receipt, PaymentPurchaseOrder, ReceiptSalesOrder,
-    PurchaseOrder, Order, Customer, Supplier, Agency, User
+    PurchaseOrder, Order, Customer, Supplier, Agency, User, PaymentConfiguration
 )
 from . import finance_bp
 from auth.utils import login_required, permission_required
@@ -504,3 +504,82 @@ def get_customer_details(customer_id):
         'email': customer.email,
         'phone': customer.phone
     })
+
+
+# ==================== PAYMENT CONFIGURATION ====================
+@finance_bp.route('/payment_configurations', methods=['GET', 'POST'])
+@login_required
+@permission_required(roles=['super_admin', 'agency_manager'])
+@log_activity('manage_payment_configuration')
+def payment_configurations():
+    """
+    Create or update payment configurations for tenants (agencies).
+    Super Admin and Agency Manager can define billing rules.
+    """
+    user_role = session.get('role')
+
+    if request.method == 'POST':
+        try:
+            form_data = request.form
+            agency_id = form_data.get('agency_id')
+            billing_type = form_data.get('billing_type')
+
+            # --- Permission Check ---
+            if user_role == 'agency_manager':
+                managed_agencies = Agency.query.filter_by(agency_manager_id=session.get('user_id')).all()
+                managed_agency_ids = [str(a.id) for a in managed_agencies]
+                if agency_id not in managed_agency_ids:
+                    flash("You do not have permission to configure this agency.", "danger")
+                    return redirect(url_for('finance.payment_configurations'))
+            
+            agency = Agency.query.get_or_404(agency_id)
+            config = agency.payment_configuration or PaymentConfiguration(agency_id=agency.id)
+
+            config.billing_type = billing_type
+
+            if billing_type == 'fixed':
+                config.fixed_period = form_data.get('fixed_period')
+                config.fixed_value = Decimal(form_data.get('fixed_value'))
+                config.currency_code = agency.country.currency_code if agency.country else 'USD'
+                # Clear variable fields
+                config.variable_type = None
+            elif billing_type == 'variable':
+                config.variable_type = form_data.get('variable_type')
+                # Clear fixed fields
+                config.fixed_period = None
+                config.fixed_value = None
+                config.currency_code = None
+            
+            db.session.add(config)
+            db.session.commit()
+
+            flash(f"Payment configuration for '{agency.name}' saved successfully!", "success")
+            return redirect(url_for('finance.payment_configurations'))
+
+        except (InvalidOperation, ValueError):
+            db.session.rollback()
+            flash("Invalid value provided. Please check the numbers and try again.", "danger")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"An error occurred: {str(e)}", "danger")
+
+    # --- GET Request ---
+    # Fetch agencies that can be configured
+    if user_role == 'super_admin':
+        agencies = Agency.query.options(db.joinedload(Agency.payment_configuration), db.joinedload(Agency.country)).filter_by(is_active=True).order_by(Agency.name).all()
+    elif user_role == 'agency_manager':
+        agencies = Agency.query.options(db.joinedload(Agency.payment_configuration), db.joinedload(Agency.country)).filter(
+            Agency.agency_manager_id == session.get('user_id'),
+            Agency.is_active == True
+        ).order_by(Agency.name).all()
+    else:
+        agencies = []
+
+    # Prepare data for the template
+    configs = {agency.id: agency.payment_configuration for agency in agencies}
+
+    return render_template(
+        'finance/payment_configurations.html',
+        agencies=agencies,
+        configs=configs
+    )

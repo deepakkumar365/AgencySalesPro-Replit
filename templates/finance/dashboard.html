@@ -40,8 +40,175 @@
         </div>
     </div>
 
+    <!-- Payment Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 class="mb-0"><i class="fas fa-money-bill-wave text-danger me-2"></i>Payment</h4>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="text-muted mb-2">Total Payment</h6>
+                                    <h3 class="mb-0 text-danger">₹{{ "{:,.2f}".format(total_payment) }}</h3>
+                                    <small class="text-muted">For selected period</small>
+                                </div>
+                                <div class="bg-danger bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-arrow-up fa-2x text-danger"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="text-muted mb-2">Pending Payment</h6>
+                                    <h3 class="mb-0 text-warning">₹{{ "{:,.2f}".format(pending_payment) }}</h3>
+                                    <small class="text-muted">Yet to be paid</small>
+                                </div>
+                                <div class="bg-warning bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-hourglass-half fa-2x text-warning"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 class="mb-0"><i class="fas fa-receipt text-success me-2"></i>Receipt</h4>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="text-muted mb-2">Total Receipt</h6>
+                                    <h3 class="mb-0 text-success">₹{{ "{:,.2f}".format(total_receipt) }}</h3>
+                                    <small class="text-muted">For selected period</small>
+                                </div>
+                                <div class="bg-success bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-arrow-down fa-2x text-success"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="text-muted mb-2">Pending Receipt</h6>
+                                    <h3 class="mb-0 text-primary">₹{{ "{:,.2f}".format(pending_receipt) }}</h3>
+                                    <small class="text-muted">Yet to be received</small>
+                                </div>
+                                <div class="bg-primary bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-hourglass-half fa-2x text-primary"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fund Management Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 class="mb-0"><i class="fas fa-wallet me-2"></i>Fund Management</h4>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="text-muted mb-2">Net Cash Flow</h6>
+                                    <h3 class="mb-0 {% if total_receipt - total_payment >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        ₹{{ "{:,.2f}".format(total_receipt - total_payment) }}
+                                    </h3>
+                                    <small class="text-muted">Receipt - Payment</small>
+                                </div>
+                                <div class="bg-info bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-balance-scale fa-2x text-info"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="text-muted mb-2">💰 Cash on Hand</h6>
+                                    <h3 class="mb-0 {% if cash_on_hand >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        ₹{{ "{:,.2f}".format(cash_on_hand) }}
+                                    </h3>
+                                    <small class="text-muted">Available cash balance</small>
+                                </div>
+                                <div class="bg-secondary bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-wallet fa-2x text-secondary"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="text-muted mb-2">🏦 Cash in Bank</h6>
+                                    <h3 class="mb-0 {% if cash_in_bank >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        ₹{{ "{:,.2f}".format(cash_in_bank) }}
+                                    </h3>
+                                    <small class="text-muted">Bank account balance</small>
+                                </div>
+                                <div class="bg-info bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-university fa-2x text-info"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 border-primary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="text-muted mb-2">Total Available</h6>
+                                    <h3 class="mb-0 text-success">₹{{ "{:,.2f}".format(cash_on_hand + cash_in_bank) }}</h3>
+                                    <small class="text-muted">Cash + Bank</small>
+                                </div>
+                                <div class="bg-success bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-piggy-bank fa-2x text-success"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Dashboard Tiles -->
-    <div class="row g-4 mb-4">
+    <div class="row g-4 mb-4 d-none">
         <!-- Total Payment -->
         <div class="col-md-6 col-lg-4">
             <div class="card border-0 shadow-sm h-100">
@@ -211,7 +378,7 @@
 
     <!-- Quick Actions -->
     <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card">
                 <div class="card-body text-center">
                     <i class="fas fa-money-bill-wave fa-3x text-danger mb-3"></i>
@@ -223,7 +390,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="card">
                 <div class="card-body text-center">
                     <i class="fas fa-receipt fa-3x text-success mb-3"></i>
@@ -231,6 +398,18 @@
                     <p class="text-muted">Create a new receipt entry</p>
                     <a href="{{ url_for('finance.create_receipt') }}" class="btn btn-success">
                         <i class="fas fa-plus me-1"></i>New Receipt
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-cogs fa-3x text-primary mb-3"></i>
+                    <h5>Configure Payments</h5>
+                    <p class="text-muted">Set up tenant billing rules</p>
+                    <a href="{{ url_for('finance.payment_configurations') }}" class="btn btn-primary">
+                        <i class="fas fa-cog me-1"></i>Configure
                     </a>
                 </div>
             </div>
