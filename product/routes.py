@@ -3,7 +3,7 @@ from werkzeug.utils import secure_filename
 import pandas as pd
 import io
 import os
-from app import db
+from extensions import db
 from sqlalchemy import func, or_, and_, literal_column
 from models import Product, Agency, ProductAgency, Category, UOM, TaxMaster
 from product import product_bp

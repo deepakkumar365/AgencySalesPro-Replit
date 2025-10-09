@@ -1,4 +1,4 @@
-from app import db
+from extensions import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -266,6 +266,38 @@ class OrderItem(db.Model):
             self.line_total = (self.discounted_price * self.quantity) + self.tax_amount
             # For backward compatibility
             self.total_price = self.line_total
+
+class DeliveryChallan(db.Model):
+    """Delivery Challan for tracking shipments"""
+    __tablename__ = 'ASP_delivery_challans'
+    id = db.Column(db.Integer, primary_key=True)
+    challan_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False, index=True)
+    
+    # Delivery details
+    delivery_date = db.Column(db.DateTime)
+    delivery_address = db.Column(db.Text)
+    transporter_name = db.Column(db.String(100))
+    vehicle_number = db.Column(db.String(50))
+    lr_number = db.Column(db.String(50))  # Lorry Receipt Number
+    e_way_bill_number = db.Column(db.String(50))
+    
+    # Status
+    status = db.Column(db.String(20), default='pending', index=True)  # pending, in_transit, delivered, cancelled
+    
+    # Additional info
+    notes = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    order = db.relationship('Order', backref='delivery_challans', lazy=True)
+    agency = db.relationship('Agency', backref='delivery_challans', lazy=True)
+    customer = db.relationship('Customer', backref='delivery_challans', lazy=True)
+    creator = db.relationship('User', backref='created_challans', lazy=True)
 
 class ActivityLog(db.Model):
     __tablename__ = 'ASP_activity_logs'

@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, flash, session, j
 from datetime import datetime, timedelta
 from decimal import Decimal
 from sqlalchemy import func
-from app import db
+from extensions import db
 from models import (
     Product, ProductAgency, Customer, Order, OrderItem, Location, Agency, Category,
     Invoice, Payment, PaymentMethod, TaxRule, InventoryTransaction

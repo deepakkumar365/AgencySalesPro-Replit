@@ -39,7 +39,7 @@
                                 </td>
                                 <td>{{ activity.description or '-' }}</td>
                                 <td><code>{{ activity.ip_address or '-' }}</code></td>
-                                <td>{{ activity.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>{{ activity.created_at.strftime('%Y-%m-%d %H:%M:%S') if activity.created_at else '-' }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>

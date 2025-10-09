@@ -4,7 +4,7 @@ from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Font, PatternFill
-from app import db
+from extensions import db
 from models import Product, Order, OrderItem, ProductAgency, Agency
 
 def export_products_to_excel(products):

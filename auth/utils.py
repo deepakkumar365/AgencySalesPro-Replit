@@ -117,7 +117,7 @@ def get_role_permissions(role):
         },
         'agency_admin': {
             'can_manage_agencies': False,
-            'can_manage_all_users': False,
+            'can_manage_all_users': True,
             'can_view_all_data': False,
             'can_access_pos': True,
             'can_manage_inventory': True,

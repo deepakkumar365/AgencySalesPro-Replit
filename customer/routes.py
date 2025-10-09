@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 from sqlalchemy import func, and_
 from werkzeug.security import generate_password_hash
-from app import db
+from extensions import db
 from models import Customer, Location, Agency, User, Product, ProductAgency, Order, CustomerAgency
 from customer import customer_bp
 from auth.utils import login_required, permission_required, role_required

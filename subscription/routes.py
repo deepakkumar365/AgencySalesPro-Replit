@@ -3,7 +3,7 @@ from sqlalchemy import func, extract, and_, or_, case
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from app import db
+from extensions import db
 from models import ( Customer,
     Agency, User, Subscription, SubscriptionPlan, 
     SubscriptionInvoice, SubscriptionItem, ActivityLog

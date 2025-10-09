@@ -1,7 +1,7 @@
 from flask import render_template, request, session, jsonify
 from datetime import datetime, timedelta
 from decimal import Decimal
-from app import db
+from extensions import db
 from models import (
     Order, Product, ProductAgency, Customer, Invoice, Payment, InventoryTransaction,
     User, Agency, Location
@@ -62,6 +62,14 @@ def unified_dashboard(current_agency_id=None):
                           sum(inv.total_amount for inv in period_invoices) * 100) if period_invoices else 0
     }
     
+    # Calculate pending payments from invoices in the period
+    pending_payment = sum(inv.total_amount for inv in period_invoices if inv.status != 'paid')
+    # Placeholder values for other finance metrics
+    total_receipt = 0
+    pending_receipt = 0
+    cash_on_hand = 0
+    cash_in_bank = 0
+    
     # Inventory Status (simplified - stock tracking removed)
     active_products = product_query.filter_by(is_active=True).all()
     inventory_stats = {
@@ -93,6 +101,13 @@ def unified_dashboard(current_agency_id=None):
     # Recent activity summary
     recent_orders = order_query.order_by(Order.order_date.desc()).limit(5).all()
     recent_payments = payment_query.order_by(Payment.payment_date.desc()).limit(5).all()
+
+    # Calculate total payments for the period
+    period_payments = payment_query.filter(
+        Payment.payment_date >= start_date,
+        Payment.payment_date <= end_date
+    ).all()
+    total_payment = sum(p.amount for p in period_payments)
     
     # Daily sales trend (last 7 days)
     daily_sales = []
@@ -116,16 +131,22 @@ def unified_dashboard(current_agency_id=None):
     daily_sales.reverse()  # Show oldest to newest
     
     # Render the unified dashboard for all permitted roles.
-    return render_template('reports/dashboard.html',
+    return render_template('finance/dashboard.html',
                          sales_stats=sales_stats,
                          billing_stats=billing_stats,
                          inventory_stats=inventory_stats,
                          top_products=top_products,
                          recent_orders=recent_orders,
                          recent_payments=recent_payments,
+                         pending_payment=pending_payment,
+                         total_receipt=total_receipt,
+                         pending_receipt=pending_receipt,
+                         cash_on_hand=cash_on_hand,
+                         cash_in_bank=cash_in_bank,
+                         total_payment=total_payment,
                          daily_sales=daily_sales,
-                         period_start=start_date.strftime('%Y-%m-%d'),
-                         period_end=end_date.strftime('%Y-%m-%d'))
+                         start_date=start_date,
+                         end_date=end_date)
 
 @reports_bp.route('/sales_analytics')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
@@ -307,7 +328,9 @@ def export_report(report_type, current_agency_id=None):
         # Generate CSV content
         csv_content = "Order Number,Date,Customer,Salesperson,Total Amount,Status\n"
         for order in orders:
-            csv_content += f'"{order.order_number}","{order.order_date.strftime("%Y-%m-%d")}","{order.customer.name}","{order.salesperson.full_name if order.salesperson else ""}","{order.total_amount}","{order.status}"\n'
+            order_date_str = order.order_date.strftime("%Y-%m-%d") if order.order_date else ""
+            customer_name = order.customer.name if order.customer else "N/A"
+            csv_content += f'"{order.order_number}","{order_date_str}","{customer_name}","{order.salesperson.full_name if order.salesperson else ""}","{order.total_amount}","{order.status}"\n'
         
         from flask import Response
         return Response(

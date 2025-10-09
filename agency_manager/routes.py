@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, flash, session
 from sqlalchemy import func
 
 from werkzeug.security import generate_password_hash
-from app import db
+from extensions import db
 from models import Agency, User, Order, ActivityLog
 from auth.utils import role_required
 from . import agency_manager_bp

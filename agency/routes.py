@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash, session
 import re
-from app import db
+from extensions import db
 from models import Agency, User, CustomerAgency, Location
 from . import agency_bp
 from auth.utils import login_required, role_required

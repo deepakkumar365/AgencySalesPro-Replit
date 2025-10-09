@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, flash, session, m
 from sqlalchemy import func
 from datetime import datetime, timedelta
 import csv, io
-from app import db
+from extensions import db
 from models import Agency, User, Order, Product, Customer, ActivityLog, Location
 from . import super_admin_bp
 from auth.utils import login_required, role_required, get_role_permissions

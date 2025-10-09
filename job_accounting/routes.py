@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, flash, session
 from sqlalchemy import or_, func
 from decimal import Decimal, InvalidOperation
 
-from app import db
+from extensions import db
 from models import Job, Customer, User, Agency, JobIncome, JobExpense, PurchaseOrder
 from . import job_accounting_bp
 from auth.utils import login_required, permission_required

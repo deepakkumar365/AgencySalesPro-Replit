@@ -4,13 +4,11 @@ import json
 from flask import Flask
 from markupsafe import escape, Markup
 from dotenv import load_dotenv
-from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager
-from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.engine import Row
 from werkzeug.middleware.proxy_fix import ProxyFix
 from datetime import timedelta, datetime, date
 from decimal import Decimal
+from extensions import db, jwt
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -25,12 +23,6 @@ class CustomJSONEncoder(json.JSONEncoder):
         if isinstance(obj, Row):
             return dict(obj._mapping)
         return super(CustomJSONEncoder, self).default(obj)
-
-class Base(DeclarativeBase):
-    pass
-
-db = SQLAlchemy(model_class=Base)
-jwt = JWTManager()
 
 def create_app():
     # Load environment variables from .env file

@@ -1,7 +1,11 @@
 from flask import render_template, redirect, url_for, flash, session, request
 from werkzeug.security import check_password_hash, generate_password_hash
 from models import User, ActivityLog, Agency, Subscription
-from app import db
+from extensions import db
+from utils.email_service import email_service
+import random
+import string
+from datetime import datetime, timedelta
 
 # Use the auth blueprint defined in __init__.py
 from . import auth_bp
@@ -54,8 +58,8 @@ def logout():
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     # Only super_admin and agency_manager can register new users
-    if session.get('role') not in ['super_admin', 'agency_manager']:
-        flash('You do not have permission to register new users.', 'error')
+    if session.get('role') not in ['super_admin', 'agency_manager', 'agency_admin']:
+        flash('You do not have permission to perform this action.', 'error')
         return redirect(url_for('index'))
 
     if request.method == 'POST':
@@ -109,7 +113,9 @@ def register():
     if session.get('role') == 'super_admin':
         agencies = Agency.query.order_by(Agency.name).all()
     elif session.get('role') == 'agency_manager':
-        agencies = Agency.query.filter_by(agency_manager_id=session.get('user_id')).order_by(Agency.name).all()
+        agencies = Agency.query.filter_by(manager_id=session.get('user_id')).order_by(Agency.name).all()
+    elif session.get('role') == 'agency_admin':
+        agencies = Agency.query.filter_by(id=session.get('agency_id')).all()
 
     return render_template('auth/register.html', agencies=agencies)
 
@@ -134,3 +140,108 @@ def profile():
     return render_template('auth/profile.html', 
                            user=user, 
                            subscription=user_subscription) # This was the issue, the variable name was correct. Let's check the template.
+
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """
+    Forgot password page - sends OTP to user's email
+    """
+    if request.method == 'POST':
+        email = request.form.get('email')
+        
+        if not email:
+            flash('Email is required', 'error')
+            return redirect(url_for('auth.forgot_password'))
+        
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            # Generate 6-digit OTP
+            otp = ''.join(random.choices(string.digits, k=6))
+            
+            # Store OTP in session with expiry (10 minutes)
+            session['reset_otp'] = otp
+            session['reset_email'] = email
+            session['otp_expiry'] = (datetime.now() + timedelta(minutes=10)).isoformat()
+            
+            # Send OTP via email
+            email_sent = email_service.send_otp_email(
+                to_email=email,
+                otp=otp,
+                user_name=user.full_name or user.username
+            )
+            
+            if email_sent:
+                flash('OTP has been sent to your email address.', 'success')
+            else:
+                # Fallback for development/testing when email is disabled
+                flash(f'Email service not configured. OTP: {otp} (Valid for 10 minutes)', 'warning')
+            
+            return redirect(url_for('auth.reset_password'))
+        else:
+            # Don't reveal if email exists or not for security
+            flash('If the email exists, an OTP has been sent.', 'info')
+            return redirect(url_for('auth.forgot_password'))
+    
+    return render_template('auth/forgot_password.html')
+
+
+@auth_bp.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    """
+    Reset password page - verifies OTP and allows password reset
+    """
+    if 'reset_email' not in session:
+        flash('Please request a password reset first.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+    
+    # Check if OTP has expired
+    if 'otp_expiry' in session:
+        expiry = datetime.fromisoformat(session['otp_expiry'])
+        if datetime.now() > expiry:
+            session.pop('reset_otp', None)
+            session.pop('reset_email', None)
+            session.pop('otp_expiry', None)
+            flash('OTP has expired. Please request a new one.', 'error')
+            return redirect(url_for('auth.forgot_password'))
+    
+    if request.method == 'POST':
+        otp = request.form.get('otp')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if not otp or not new_password or not confirm_password:
+            flash('All fields are required', 'error')
+            return redirect(url_for('auth.reset_password'))
+        
+        if otp != session.get('reset_otp'):
+            flash('Invalid OTP', 'error')
+            return redirect(url_for('auth.reset_password'))
+        
+        if new_password != confirm_password:
+            flash('Passwords do not match', 'error')
+            return redirect(url_for('auth.reset_password'))
+        
+        if len(new_password) < 6:
+            flash('Password must be at least 6 characters long', 'error')
+            return redirect(url_for('auth.reset_password'))
+        
+        # Update password
+        user = User.query.filter_by(email=session['reset_email']).first()
+        if user:
+            user.set_password(new_password)
+            db.session.commit()
+            
+            # Clear session data
+            session.pop('reset_otp', None)
+            session.pop('reset_email', None)
+            session.pop('otp_expiry', None)
+            
+            flash('Password reset successfully! Please login with your new password.', 'success')
+            return redirect(url_for('auth.login'))
+        else:
+            flash('User not found', 'error')
+            return redirect(url_for('auth.forgot_password'))
+    
+    return render_template('auth/reset_password.html', email=session.get('reset_email'))

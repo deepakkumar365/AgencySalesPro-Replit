@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, session, send_file
 import pandas as pd
 import io
-from app import db
+from extensions import db
 from auth.utils import login_required, permission_required
 from utils.decorators import log_activity
 from product_overrides import overrides_bp

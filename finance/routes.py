@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta
 import calendar
 
-from app import db
+from extensions import db
 from models import (
     FinancePayment, Receipt, PaymentPurchaseOrder, ReceiptSalesOrder,
     PurchaseOrder, Order, Customer, Supplier, Agency, User, PaymentConfiguration
@@ -582,4 +582,159 @@ def payment_configurations():
         'finance/payment_configurations.html',
         agencies=agencies,
         configs=configs
+    )
+
+
+# ==================== AR/AP AGING REPORTS ====================
+@finance_bp.route('/ar_aging')
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def ar_aging_report(current_agency_id=None):
+    """Accounts Receivable Aging Report - Track customer outstanding invoices"""
+    user_role = session.get('role')
+    
+    # Base query for orders (sales orders)
+    orders_query = Order.query.filter(Order.status.in_(['pending', 'confirmed', 'delivered']))
+    
+    if user_role != 'super_admin':
+        orders_query = orders_query.filter(Order.agency_id == current_agency_id)
+    
+    # Get all orders with their receipt allocations
+    orders = orders_query.all()
+    
+    # Calculate aging buckets
+    today = datetime.utcnow()
+    aging_data = []
+    
+    for order in orders:
+        # Calculate total received amount for this order
+        total_received = sum(
+            receipt_link.amount 
+            for receipt_link in order.receipt_links 
+            if receipt_link.receipt.status == 'confirmed'
+        )
+        
+        # Calculate outstanding amount
+        outstanding = float(order.total_amount or 0) - float(total_received or 0)
+        
+        if outstanding > 0.01:  # Only include if there's outstanding amount
+            # Calculate days overdue based on order date
+            days_overdue = (today - order.order_date).days if order.order_date else 0
+            
+            # Determine aging bucket
+            if days_overdue <= 30:
+                bucket = 'current'
+            elif days_overdue <= 60:
+                bucket = '31-60'
+            elif days_overdue <= 90:
+                bucket = '61-90'
+            else:
+                bucket = '90+'
+            
+            aging_data.append({
+                'order_number': order.order_number,
+                'customer_name': order.customer.name if order.customer else 'N/A',
+                'order_date': order.order_date,
+                'total_amount': float(order.total_amount or 0),
+                'received_amount': float(total_received or 0),
+                'outstanding': outstanding,
+                'days_overdue': days_overdue,
+                'bucket': bucket,
+                'agency_name': order.agency.name if order.agency else 'N/A'
+            })
+    
+    # Calculate summary by bucket
+    summary = {
+        'current': sum(item['outstanding'] for item in aging_data if item['bucket'] == 'current'),
+        '31-60': sum(item['outstanding'] for item in aging_data if item['bucket'] == '31-60'),
+        '61-90': sum(item['outstanding'] for item in aging_data if item['bucket'] == '61-90'),
+        '90+': sum(item['outstanding'] for item in aging_data if item['bucket'] == '90+'),
+    }
+    summary['total'] = sum(summary.values())
+    
+    # Sort by days overdue (descending)
+    aging_data.sort(key=lambda x: x['days_overdue'], reverse=True)
+    
+    return render_template(
+        'finance/ar_aging.html',
+        aging_data=aging_data,
+        summary=summary,
+        report_date=today
+    )
+
+
+@finance_bp.route('/ap_aging')
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def ap_aging_report(current_agency_id=None):
+    """Accounts Payable Aging Report - Track supplier outstanding bills"""
+    user_role = session.get('role')
+    
+    # Base query for purchase orders
+    po_query = PurchaseOrder.query.filter(PurchaseOrder.status.in_(['pending', 'confirmed', 'received']))
+    
+    if user_role != 'super_admin':
+        po_query = po_query.filter(PurchaseOrder.agency_id == current_agency_id)
+    
+    # Get all purchase orders with their payment allocations
+    purchase_orders = po_query.all()
+    
+    # Calculate aging buckets
+    today = datetime.utcnow()
+    aging_data = []
+    
+    for po in purchase_orders:
+        # Calculate total paid amount for this PO
+        total_paid = sum(
+            payment_link.amount 
+            for payment_link in po.finance_payment_links 
+            if payment_link.finance_payment.status == 'confirmed'
+        )
+        
+        # Calculate outstanding amount
+        outstanding = float(po.total_amount or 0) - float(total_paid or 0)
+        
+        if outstanding > 0.01:  # Only include if there's outstanding amount
+            # Calculate days overdue based on PO date
+            days_overdue = (today - po.order_date).days if po.order_date else 0
+            
+            # Determine aging bucket
+            if days_overdue <= 30:
+                bucket = 'current'
+            elif days_overdue <= 60:
+                bucket = '31-60'
+            elif days_overdue <= 90:
+                bucket = '61-90'
+            else:
+                bucket = '90+'
+            
+            aging_data.append({
+                'po_number': po.po_number,
+                'supplier_name': po.supplier.name if po.supplier else 'N/A',
+                'order_date': po.order_date,
+                'total_amount': float(po.total_amount or 0),
+                'paid_amount': float(total_paid or 0),
+                'outstanding': outstanding,
+                'days_overdue': days_overdue,
+                'bucket': bucket,
+                'agency_name': po.agency.name if po.agency else 'N/A'
+            })
+    
+    # Calculate summary by bucket
+    summary = {
+        'current': sum(item['outstanding'] for item in aging_data if item['bucket'] == 'current'),
+        '31-60': sum(item['outstanding'] for item in aging_data if item['bucket'] == '31-60'),
+        '61-90': sum(item['outstanding'] for item in aging_data if item['bucket'] == '61-90'),
+        '90+': sum(item['outstanding'] for item in aging_data if item['bucket'] == '90+'),
+    }
+    summary['total'] = sum(summary.values())
+    
+    # Sort by days overdue (descending)
+    aging_data.sort(key=lambda x: x['days_overdue'], reverse=True)
+    
+    return render_template(
+        'finance/ap_aging.html',
+        aging_data=aging_data,
+        summary=summary,
+        report_date=today
     )

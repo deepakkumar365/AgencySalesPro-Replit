@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import io
 from decimal import Decimal
-from app import db
+from extensions import db
 from models import (
     Product, Agency, Location, User, ProductAgency, Category,
     InventoryTransaction, Supplier, PurchaseOrder

@@ -1,6 +1,6 @@
 from flask import jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app import db
+from extensions import db
 from models import User, Agency, Product, ProductAgency, Order, Customer, Location
 from api import api_bp
 

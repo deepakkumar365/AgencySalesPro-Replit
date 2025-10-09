@@ -1,5 +1,5 @@
 from flask import render_template, request, redirect, url_for, flash, session
-from app import db
+from extensions import db
 from models import User, Agency
 from salesperson import salesperson_bp
 from auth.utils import login_required, role_required, permission_required

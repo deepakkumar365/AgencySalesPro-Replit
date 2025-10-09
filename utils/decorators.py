@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import session, request
-from app import db
+from extensions import db
 from models import ActivityLog
 
 def log_activity(action):

@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Delivery Challan {{ challan.challan_number }} - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-truck me-2"></i>Delivery Challan {{ challan.challan_number }}
+            </h1>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('order.view_order', order_id=challan.order_id) }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Order
+                </a>
+                <button onclick="window.print()" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-print me-1"></i>Print
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Challan Details -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Delivery Challan Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>Challan Number:</strong></td>
+                            <td>{{ challan.challan_number }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Order Number:</strong></td>
+                            <td>
+                                <a href="{{ url_for('order.view_order', order_id=challan.order_id) }}">
+                                    {{ challan.order.order_number }}
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Customer:</strong></td>
+                            <td>{{ challan.customer.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Agency:</strong></td>
+                            <td>{{ challan.agency.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Status:</strong></td>
+                            <td>
+                                {% set status_class = {
+                                    'pending': 'warning',
+                                    'in_transit': 'primary',
+                                    'delivered': 'success',
+                                    'cancelled': 'danger'
+                                } %}
+                                <span class="badge bg-{{ status_class.get(challan.status, 'secondary') }}">
+                                    {{ challan.status.replace('_', ' ').title() }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% if challan.delivery_date %}
+                        <tr>
+                            <td><strong>Delivery Date:</strong></td>
+                            <td>{{ challan.delivery_date.strftime('%Y-%m-%d') }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if challan.delivery_address %}
+                        <tr>
+                            <td><strong>Delivery Address:</strong></td>
+                            <td>{{ challan.delivery_address|nl2br }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if challan.transporter_name %}
+                        <tr>
+                            <td><strong>Transporter Name:</strong></td>
+                            <td>{{ challan.transporter_name }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if challan.vehicle_number %}
+                        <tr>
+                            <td><strong>Vehicle Number:</strong></td>
+                            <td>{{ challan.vehicle_number }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if challan.lr_number %}
+                        <tr>
+                            <td><strong>LR Number:</strong></td>
+                            <td>{{ challan.lr_number }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if challan.e_way_bill_number %}
+                        <tr>
+                            <td><strong>E-Way Bill Number:</strong></td>
+                            <td>{{ challan.e_way_bill_number }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if challan.notes %}
+                        <tr>
+                            <td><strong>Notes:</strong></td>
+                            <td>{{ challan.notes|nl2br }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <td><strong>Created By:</strong></td>
+                            <td>{{ challan.creator.full_name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Created At:</strong></td>
+                            <td>{{ challan.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Items -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Items to be Delivered</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>SKU</th>
+                                <th>Quantity</th>
+                                <th>UOM</th>
+                                <th>Unit Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in challan.order.order_items %}
+                            <tr>
+                                <td>{{ item.product.name }}</td>
+                                <td><code>{{ item.product.sku }}</code></td>
+                                <td>{{ "%g"|format(item.quantity|float) }}</td>
+                                <td>{{ item.uom }}</td>
+                                <td>₹{{ "%.2f"|format(item.unit_price|float) }}</td>
+                                <td>₹{{ "%.2f"|format(item.line_total|float) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="5" class="text-end">Subtotal:</th>
+                                <th>₹{{ "%.2f"|format(challan.order.subtotal_amount|float) }}</th>
+                            </tr>
+                            {% if challan.order.total_tax_amount > 0 %}
+                            <tr>
+                                <th colspan="5" class="text-end">Tax:</th>
+                                <th>₹{{ "%.2f"|format(challan.order.total_tax_amount|float) }}</th>
+                            </tr>
+                            {% endif %}
+                            {% if challan.order.discount > 0 %}
+                            <tr>
+                                <th colspan="5" class="text-end">Discount:</th>
+                                <th>-₹{{ "%.2f"|format(challan.order.discount|float) }}</th>
+                            </tr>
+                            {% endif %}
+                            <tr class="table-primary">
+                                <th colspan="5" class="text-end">Total Amount:</th>
+                                <th>₹{{ "%.2f"|format(challan.order.total_amount|float) }}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Update -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Update Status</h5>
+            </div>
+            <div class="card-body">
+                {% if session.role in ['agency_admin', 'agency_manager'] %}
+                <form method="POST" action="{{ url_for('order.update_delivery_challan_status', challan_id=challan.id) }}">
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Challan Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="pending" {{ 'selected' if challan.status == 'pending' else '' }}>Pending</option>
+                            <option value="in_transit" {{ 'selected' if challan.status == 'in_transit' else '' }}>In Transit</option>
+                            <option value="delivered" {{ 'selected' if challan.status == 'delivered' else '' }}>Delivered</option>
+                            <option value="cancelled" {{ 'selected' if challan.status == 'cancelled' else '' }}>Cancelled</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-save me-2"></i>Update Status
+                    </button>
+                </form>
+                {% else %}
+                <p class="text-muted">You don't have permission to update the status.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Info -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Info</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">
+                    <i class="fas fa-box me-2 text-primary"></i>
+                    <strong>{{ challan.order.total_items_count }}</strong> items
+                </p>
+                <p class="mb-2">
+                    <i class="fas fa-rupee-sign me-2 text-success"></i>
+                    <strong>₹{{ "%.2f"|format(challan.order.total_amount|float) }}</strong>
+                </p>
+                <p class="mb-0">
+                    <i class="fas fa-calendar me-2 text-info"></i>
+                    Order Date: {{ challan.order.order_date.strftime('%Y-%m-%d') }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+        .btn, .card-header, nav, .no-print {
+            display: none !important;
+        }
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+    }
+</style>
+{% endblock %}

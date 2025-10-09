@@ -5,7 +5,7 @@ import uuid
 from flask import render_template, request, redirect, url_for, flash, session, jsonify
 from sqlalchemy import or_, func
 
-from app import db
+from extensions import db
 from models import (
     PurchaseOrder,
     PurchaseOrderItem,
