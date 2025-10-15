@@ -155,6 +155,27 @@
                     </li>
                     {% endif %}
                     
+                    <!-- Forecasting Menu (Agency Admin, Manager, Staff) -->
+                    {% if session.role in ['super_admin', 'agency_admin', 'agency_manager', 'staff'] %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-chart-line me-1"></i>Forecasting
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('forecasting.dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-1"></i>Forecast Dashboard
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('forecasting.report') }}">
+                                <i class="fas fa-file-alt me-1"></i>Forecast Report
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('forecasting.alert_config') }}">
+                                <i class="fas fa-cog me-1"></i>Alert Configuration
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                    
                     <!-- Sales Menu (Tenant, Agency - Not Customer) -->
                     {% if session.role in ['agency_admin', 'agency_manager', 'staff', 'salesperson', 'pos_user'] %}
                     <li class="nav-item dropdown">

@@ -67,6 +67,9 @@ def create_app():
             return Markup(str(escape(s)).replace('\n', '<br>\n'))
         return ''
     app.jinja_env.filters['nl2br'] = nl2br_filter
+    
+    # Add abs function to Jinja2 globals
+    app.jinja_env.globals['abs'] = abs
 
     db.init_app(app)
     jwt.init_app(app)
@@ -91,6 +94,7 @@ def create_app():
         from job_accounting import job_accounting_bp
         from product_overrides import overrides_bp
         from finance import finance_bp
+        from forecasting import forecasting_bp
 
         app.register_blueprint(auth_bp, url_prefix='/auth')
         app.register_blueprint(agency_bp, url_prefix='/agency')
@@ -111,6 +115,7 @@ def create_app():
         app.register_blueprint(job_accounting_bp, url_prefix='/job-accounting')
         app.register_blueprint(finance_bp, url_prefix='/billing') # Changed from /finance to /billing
         app.register_blueprint(overrides_bp)
+        app.register_blueprint(forecasting_bp, url_prefix='/forecasting')
 
     register_blueprints(app)
     

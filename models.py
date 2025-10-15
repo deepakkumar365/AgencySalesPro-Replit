@@ -935,3 +935,109 @@ class PaymentConfiguration(db.Model):
 
     def __repr__(self):
         return f'<PaymentConfiguration {self.id} for Agency {self.agency_id}>'
+
+# Stock Forecasting & Profit Impact Analytics Models
+class StockForecast(db.Model):
+    """Stores weekly demand forecasts and shortage predictions"""
+    __tablename__ = 'ASP_stock_forecasts'
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    
+    # Forecast period
+    week_start_date = db.Column(db.Date, nullable=False, index=True)
+    week_end_date = db.Column(db.Date, nullable=False)
+    
+    # Forecast data
+    forecast_qty = db.Column(db.Numeric(10, 2), nullable=False)  # Predicted demand
+    actual_stock = db.Column(db.Numeric(10, 2), nullable=False)  # Current available stock
+    shortage_qty = db.Column(db.Numeric(10, 2), default=0)  # Shortage if forecast_qty > actual_stock
+    excess_qty = db.Column(db.Numeric(10, 2), default=0)  # Excess if actual_stock > forecast_qty
+    
+    # Profit impact analysis
+    profit_impact = db.Column(db.Numeric(12, 2), default=0)  # Estimated profit loss/gain
+    holding_cost = db.Column(db.Numeric(10, 2), default=0)  # Cost of holding excess inventory
+    opportunity_cost = db.Column(db.Numeric(10, 2), default=0)  # Lost sales due to shortage
+    
+    # Historical accuracy tracking
+    actual_sales_qty = db.Column(db.Numeric(10, 2))  # Actual sales during the week (updated after week ends)
+    forecast_accuracy = db.Column(db.Numeric(5, 2))  # Percentage accuracy (0-100)
+    
+    # Alert status
+    alert_triggered = db.Column(db.Boolean, default=False)
+    alert_sent_at = db.Column(db.DateTime)
+    
+    # Metadata
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    product = db.relationship('Product', backref='forecasts', lazy=True)
+    agency = db.relationship('Agency', backref='forecasts', lazy=True)
+    
+    __table_args__ = (
+        db.UniqueConstraint('product_id', 'agency_id', 'week_start_date', name='uq_forecast_product_agency_week'),
+        db.Index('idx_forecast_week_agency', 'week_start_date', 'agency_id'),
+    )
+
+class ForecastAlertConfig(db.Model):
+    """Configuration for forecast alert thresholds per agency"""
+    __tablename__ = 'ASP_forecast_alert_configs'
+    id = db.Column(db.Integer, primary_key=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    
+    # Alert thresholds
+    shortage_threshold_qty = db.Column(db.Numeric(10, 2), default=10)  # Trigger alert if shortage > this
+    shortage_threshold_percentage = db.Column(db.Numeric(5, 2), default=20)  # Or if shortage > X% of forecast
+    excess_threshold_qty = db.Column(db.Numeric(10, 2), default=50)  # Trigger alert if excess > this
+    excess_threshold_percentage = db.Column(db.Numeric(5, 2), default=30)  # Or if excess > X% of forecast
+    
+    # Category-specific thresholds (optional)
+    category_id = db.Column(db.Integer, db.ForeignKey('ASP_categories.id'), index=True)
+    
+    # Alert delivery preferences
+    email_alerts_enabled = db.Column(db.Boolean, default=True)
+    dashboard_alerts_enabled = db.Column(db.Boolean, default=True)
+    alert_recipients = db.Column(db.Text)  # Comma-separated email addresses
+    
+    # Metadata
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    agency = db.relationship('Agency', backref='forecast_alert_configs', lazy=True)
+    category = db.relationship('Category', backref='forecast_alert_configs', lazy=True)
+    
+    __table_args__ = (
+        db.UniqueConstraint('agency_id', 'category_id', name='uq_alert_config_agency_category'),
+    )
+
+class ForecastRefreshLog(db.Model):
+    """Logs forecast refresh operations"""
+    __tablename__ = 'ASP_forecast_refresh_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), index=True)
+    
+    # Refresh details
+    refresh_type = db.Column(db.String(20), nullable=False)  # 'manual', 'scheduled'
+    triggered_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), index=True)
+    
+    # Results
+    products_processed = db.Column(db.Integer, default=0)
+    forecasts_created = db.Column(db.Integer, default=0)
+    forecasts_updated = db.Column(db.Integer, default=0)
+    alerts_triggered = db.Column(db.Integer, default=0)
+    
+    # Status
+    status = db.Column(db.String(20), default='pending')  # pending, running, completed, failed
+    error_message = db.Column(db.Text)
+    
+    # Timing
+    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime)
+    duration_seconds = db.Column(db.Integer)
+    
+    # Relationships
+    agency = db.relationship('Agency', backref='forecast_refresh_logs', lazy=True)
+    user = db.relationship('User', backref='forecast_refresh_logs', lazy=True)

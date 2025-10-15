@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Forecasting Dashboard - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-chart-line"></i> Stock Forecasting & Profit Impact Analytics
+        </h1>
+        <div>
+            <form method="POST" action="{{ url_for('forecasting.refresh_forecasts') }}" style="display: inline;">
+                {% if selected_agency_id %}
+                <input type="hidden" name="agency_id" value="{{ selected_agency_id }}">
+                {% endif %}
+                <button type="submit" class="btn btn-sm btn-primary shadow-sm">
+                    <i class="fas fa-sync fa-sm text-white-50"></i> Refresh Forecasts
+                </button>
+            </form>
+            <a href="{{ url_for('forecasting.report') }}{% if selected_agency_id %}?agency_id={{ selected_agency_id }}{% endif %}" class="btn btn-sm btn-info shadow-sm">
+                <i class="fas fa-file-alt fa-sm text-white-50"></i> View Report
+            </a>
+            <a href="{{ url_for('forecasting.export') }}{% if selected_agency_id %}?agency_id={{ selected_agency_id }}{% endif %}" class="btn btn-sm btn-success shadow-sm">
+                <i class="fas fa-download fa-sm text-white-50"></i> Export Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- Agency Selection (for managers) -->
+    {% if agencies and agencies|length > 1 %}
+    <div class="row mb-3">
+        <div class="col-lg-12">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('forecasting.dashboard') }}">
+                        <div class="form-row align-items-center">
+                            <div class="col-auto">
+                                <label for="agency_id">Select Agency:</label>
+                            </div>
+                            <div class="col-auto">
+                                <select name="agency_id" id="agency_id" class="form-control" onchange="this.form.submit()">
+                                    <option value="">-- All Agencies --</option>
+                                    {% for agency in agencies %}
+                                    <option value="{{ agency.id }}" {% if agency.id == selected_agency_id %}selected{% endif %}>
+                                        {{ agency.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Week Info & Last Refresh -->
+    <div class="row mb-3">
+        <div class="col-lg-12">
+            <div class="alert alert-info">
+                <strong>Forecast Period:</strong> {{ week_start.strftime('%B %d, %Y') }} to {{ week_end.strftime('%B %d, %Y') }}
+                {% if last_refresh %}
+                | <strong>Last Refresh:</strong> {{ last_refresh.completed_at.strftime('%Y-%m-%d %H:%M') if last_refresh.completed_at else 'In Progress' }}
+                ({{ last_refresh.products_processed }} products processed, {{ last_refresh.alerts_triggered }} alerts triggered)
+                {% else %}
+                | <strong>No refresh data available</strong> - Click "Refresh Forecasts" to generate predictions
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row">
+        <!-- Total Products -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Products
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_products }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shortage Alerts -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Shortage Alerts
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ shortage_count }}</div>
+                            <div class="text-xs text-muted">Total Shortage: {{ "%.2f"|format(total_shortage_qty) }} units</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Excess Stock -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Excess Stock
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ excess_count }}</div>
+                            <div class="text-xs text-muted">Total Excess: {{ "%.2f"|format(total_excess_qty) }} units</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-warehouse fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profit Impact -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-{% if total_profit_impact < 0 %}danger{% else %}success{% endif %} shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-{% if total_profit_impact < 0 %}danger{% else %}success{% endif %} text-uppercase mb-1">
+                                Total Profit Impact
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ₹{{ "%.2f"|format(abs(total_profit_impact)) }}
+                                {% if total_profit_impact < 0 %}<span class="text-danger">(Loss)</span>{% endif %}
+                            </div>
+                            <div class="text-xs text-muted">
+                                Holding: ₹{{ "%.2f"|format(total_holding_cost) }} | 
+                                Opportunity: ₹{{ "%.2f"|format(total_opportunity_cost) }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-rupee-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row">
+        <!-- Forecast vs Stock Chart -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Forecast Demand vs Current Stock (Top 20 Products)</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profit Impact Chart -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Profit Impact Analysis</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="profitImpactChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Alerts -->
+    {% if alerts %}
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-danger">
+                        <i class="fas fa-bell"></i> Active Shortage & Excess Alerts ({{ alerts|length }})
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>SKU</th>
+                                    <th>Forecast Demand</th>
+                                    <th>Current Stock</th>
+                                    <th>Shortage</th>
+                                    <th>Excess</th>
+                                    <th>Profit Impact</th>
+                                    <th>Alert Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for forecast in alerts %}
+                                <tr>
+                                    <td>{{ forecast.product.name }}</td>
+                                    <td>{{ forecast.product.sku }}</td>
+                                    <td>{{ "%.2f"|format(forecast.forecast_qty) }}</td>
+                                    <td>{{ "%.2f"|format(forecast.actual_stock) }}</td>
+                                    <td class="{% if forecast.shortage_qty > 0 %}text-danger font-weight-bold{% endif %}">
+                                        {{ "%.2f"|format(forecast.shortage_qty) }}
+                                    </td>
+                                    <td class="{% if forecast.excess_qty > 0 %}text-warning font-weight-bold{% endif %}">
+                                        {{ "%.2f"|format(forecast.excess_qty) }}
+                                    </td>
+                                    <td class="{% if forecast.profit_impact < 0 %}text-danger{% else %}text-success{% endif %}">
+                                        ₹{{ "%.2f"|format(abs(forecast.profit_impact)) }}
+                                    </td>
+                                    <td>
+                                        {% if forecast.shortage_qty > 0 %}
+                                        <span class="badge badge-danger">Shortage</span>
+                                        {% elif forecast.excess_qty > 0 %}
+                                        <span class="badge badge-warning">Excess</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Top Shortages & Excess -->
+    <div class="row">
+        <!-- Top Shortages -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-danger">Top 10 Products by Shortage</h6>
+                </div>
+                <div class="card-body">
+                    {% if top_shortages %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Shortage</th>
+                                    <th>Opportunity Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for forecast in top_shortages %}
+                                <tr>
+                                    <td>{{ forecast.product.name }}</td>
+                                    <td class="text-danger font-weight-bold">{{ "%.2f"|format(forecast.shortage_qty) }}</td>
+                                    <td>₹{{ "%.2f"|format(forecast.opportunity_cost) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No shortage detected</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Excess -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">Top 10 Products by Excess Stock</h6>
+                </div>
+                <div class="card-body">
+                    {% if top_excess %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Excess</th>
+                                    <th>Holding Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for forecast in top_excess %}
+                                <tr>
+                                    <td>{{ forecast.product.name }}</td>
+                                    <td class="text-warning font-weight-bold">{{ "%.2f"|format(forecast.excess_qty) }}</td>
+                                    <td>₹{{ "%.2f"|format(forecast.holding_cost) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No excess stock detected</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Link -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-body text-center">
+                    <a href="{{ url_for('forecasting.alert_config') }}{% if selected_agency_id %}?agency_id={{ selected_agency_id }}{% endif %}" class="btn btn-primary">
+                        <i class="fas fa-cog"></i> Configure Alert Thresholds
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+// Forecast vs Stock Chart
+fetch('{{ url_for("forecasting.api_forecast_data") }}{% if selected_agency_id %}?agency_id={{ selected_agency_id }}{% endif %}')
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('forecastChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [
+                    {
+                        label: 'Forecast Demand',
+                        data: data.forecast,
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Current Stock',
+                        data: data.actual_stock,
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+
+// Profit Impact Chart
+fetch('{{ url_for("forecasting.api_profit_impact_data") }}{% if selected_agency_id %}?agency_id={{ selected_agency_id }}{% endif %}')
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('profitImpactChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [
+                    {
+                        label: 'Profit Impact',
+                        data: data.profit_impact,
+                        backgroundColor: data.profit_impact.map(v => v < 0 ? 'rgba(255, 99, 132, 0.5)' : 'rgba(75, 192, 192, 0.5)'),
+                        borderColor: data.profit_impact.map(v => v < 0 ? 'rgba(255, 99, 132, 1)' : 'rgba(75, 192, 192, 1)'),
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
