@@ -327,3 +327,429 @@ def export_orders_to_excel(orders):
     wb.save(output)
     output.seek(0)
     return output
+
+
+def generate_bulk_order_template(order_type='sale'):
+    """
+    Generate Excel template for bulk order creation
+    order_type: 'sale' or 'purchase'
+    """
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Bulk Order Template"
+    
+    # Define headers based on order type
+    if order_type == 'sale':
+        headers = [
+            'Order Group ID',
+            'Customer Name',
+            'Order Date (YYYY-MM-DD)',
+            'Product Code',
+            'Product Name',
+            'UOM',
+            'Quantity',
+            'Rate',
+            'Tax %',
+            'Discount %',
+            'Payment Type',
+            'Delivery Type',
+            'Remarks'
+        ]
+        instructions = [
+            'Instructions:',
+            '1. Order Group ID: Use same ID for products in one order (e.g., ORD001, ORD002). Leave blank for single product orders.',
+            '2. Customer Name: Must match existing customer name exactly',
+            '3. Order Date: Format YYYY-MM-DD (e.g., 2024-01-15)',
+            '4. Product Code: Product SKU code',
+            '5. Payment Type: Cash, Credit, or Credit Sale',
+            '6. Delivery Type: Local or Others',
+            '7. Mandatory fields: Customer Name, Product Code, Quantity, Rate, Payment Type',
+            '8. Skip blank rows - they will be ignored during upload'
+        ]
+    else:  # purchase
+        headers = [
+            'Order Group ID',
+            'Supplier Name',
+            'Order Date (YYYY-MM-DD)',
+            'Product Code',
+            'Product Name',
+            'UOM',
+            'Quantity',
+            'Rate',
+            'Tax %',
+            'Discount %',
+            'Payment Type',
+            'Remarks'
+        ]
+        instructions = [
+            'Instructions:',
+            '1. Order Group ID: Use same ID for products in one order (e.g., PO001, PO002). Leave blank for single product orders.',
+            '2. Supplier Name: Must match existing supplier name exactly',
+            '3. Order Date: Format YYYY-MM-DD (e.g., 2024-01-15)',
+            '4. Product Code: Product SKU code',
+            '5. Payment Type: Cash, Credit, or Credit Sale',
+            '6. Mandatory fields: Supplier Name, Product Code, Quantity, Rate, Payment Type',
+            '7. Skip blank rows - they will be ignored during upload'
+        ]
+    
+    # Add instructions sheet
+    ws_instructions = wb.create_sheet("Instructions", 0)
+    for idx, instruction in enumerate(instructions, start=1):
+        ws_instructions.cell(row=idx, column=1, value=instruction)
+    
+    # Style instructions
+    from openpyxl.styles import Alignment
+    for row in ws_instructions.iter_rows(min_row=1, max_row=len(instructions)):
+        for cell in row:
+            cell.alignment = Alignment(wrap_text=True, vertical='top')
+    ws_instructions.column_dimensions['A'].width = 100
+    
+    # Add headers to template sheet
+    ws.append(headers)
+    
+    # Style headers
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    
+    # Add sample data rows
+    if order_type == 'sale':
+        sample_rows = [
+            ['ORD001', 'ABC Company', '2024-01-15', 'PROD001', 'Sample Product 1', 'pcs', 10, 100, 18, 5, 'Cash', 'Local', 'Sample order'],
+            ['ORD001', 'ABC Company', '2024-01-15', 'PROD002', 'Sample Product 2', 'kg', 5, 200, 18, 0, 'Cash', 'Local', 'Sample order'],
+            ['', 'XYZ Ltd', '2024-01-16', 'PROD003', 'Sample Product 3', 'ltr', 20, 50, 12, 10, 'Credit', 'Others', 'Single product order'],
+        ]
+    else:
+        sample_rows = [
+            ['PO001', 'Supplier ABC', '2024-01-15', 'PROD001', 'Sample Product 1', 'pcs', 100, 80, 18, 0, 'Credit', 'Bulk purchase'],
+            ['PO001', 'Supplier ABC', '2024-01-15', 'PROD002', 'Sample Product 2', 'kg', 50, 150, 18, 5, 'Credit', 'Bulk purchase'],
+            ['', 'Supplier XYZ', '2024-01-16', 'PROD003', 'Sample Product 3', 'ltr', 200, 40, 12, 0, 'Cash', 'Single product order'],
+        ]
+    
+    for row in sample_rows:
+        ws.append(row)
+    
+    # Auto-size columns
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 30)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Save to BytesIO
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
+
+
+def process_bulk_orders(file, order_type, agency_id, user_id, user_role):
+    """
+    Process bulk order upload from Excel file
+    order_type: 'sale' or 'purchase'
+    Returns: dict with success/error details
+    """
+    from openpyxl import load_workbook
+    from models import Customer, Supplier, Product, Order, OrderItem, PurchaseOrder, PurchaseOrderItem
+    from decimal import Decimal
+    import uuid
+    
+    try:
+        wb = load_workbook(file)
+        ws = wb.active
+        
+        # Get headers from first row
+        headers = []
+        for cell in ws[1]:
+            headers.append(cell.value)
+        
+        # Group orders by Order Group ID
+        order_groups = {}
+        single_orders = []
+        
+        results = {
+            'success': [],
+            'errors': [],
+            'skipped': 0
+        }
+        
+        # Process data rows
+        for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            if not any(row):  # Skip empty rows
+                results['skipped'] += 1
+                continue
+            
+            # Create row dictionary
+            row_dict = {}
+            for i, value in enumerate(row):
+                if i < len(headers) and headers[i]:
+                    row_dict[headers[i]] = value
+            
+            # Extract and validate data
+            order_group_id = str(row_dict.get('Order Group ID', '')).strip()
+            entity_name = str(row_dict.get('Customer Name' if order_type == 'sale' else 'Supplier Name', '')).strip()
+            order_date_str = str(row_dict.get('Order Date (YYYY-MM-DD)', '')).strip()
+            product_code = str(row_dict.get('Product Code', '')).strip()
+            quantity = row_dict.get('Quantity', 0)
+            rate = row_dict.get('Rate', 0)
+            payment_type = str(row_dict.get('Payment Type', '')).strip()
+            
+            # Validate mandatory fields
+            if not all([entity_name, product_code, quantity, rate, payment_type]):
+                results['errors'].append({
+                    'row': row_num,
+                    'error': 'Missing mandatory fields (Customer/Supplier Name, Product Code, Quantity, Rate, Payment Type)'
+                })
+                continue
+            
+            # Parse order date
+            try:
+                if order_date_str:
+                    order_date = datetime.strptime(order_date_str, '%Y-%m-%d')
+                else:
+                    order_date = datetime.utcnow()
+            except ValueError:
+                results['errors'].append({
+                    'row': row_num,
+                    'error': f'Invalid date format: {order_date_str}. Use YYYY-MM-DD'
+                })
+                continue
+            
+            # Validate entity (Customer or Supplier)
+            if order_type == 'sale':
+                from sqlalchemy import func
+                entity = Customer.query.filter(
+                    func.lower(Customer.name) == entity_name.lower(),
+                    Customer.is_active == True
+                ).first()
+                if not entity:
+                    results['errors'].append({
+                        'row': row_num,
+                        'error': f'Customer not found: {entity_name}'
+                    })
+                    continue
+                # Check agency access
+                if user_role != 'super_admin' and entity.location.agency_id != agency_id:
+                    results['errors'].append({
+                        'row': row_num,
+                        'error': f'Customer does not belong to your agency: {entity_name}'
+                    })
+                    continue
+            else:  # purchase
+                from sqlalchemy import func
+                entity = Supplier.query.filter(
+                    func.lower(Supplier.name) == entity_name.lower(),
+                    Supplier.is_active == True
+                ).first()
+                if not entity:
+                    results['errors'].append({
+                        'row': row_num,
+                        'error': f'Supplier not found: {entity_name}'
+                    })
+                    continue
+                # Check agency access
+                if user_role != 'super_admin' and entity.agency_id != agency_id:
+                    results['errors'].append({
+                        'row': row_num,
+                        'error': f'Supplier does not belong to your agency: {entity_name}'
+                    })
+                    continue
+            
+            # Validate product
+            product = Product.query.filter_by(sku=product_code, is_active=True).first()
+            if not product:
+                results['errors'].append({
+                    'row': row_num,
+                    'error': f'Product not found: {product_code}'
+                })
+                continue
+            
+            # Prepare item data
+            item_data = {
+                'product': product,
+                'product_name': str(row_dict.get('Product Name', product.name)).strip(),
+                'uom': str(row_dict.get('UOM', product.uom_ref.short_name if product.uom_ref else 'pcs')).strip(),
+                'quantity': float(quantity),
+                'rate': float(rate),
+                'tax_percentage': float(row_dict.get('Tax %', 0) or 0),
+                'discount_percentage': float(row_dict.get('Discount %', 0) or 0),
+                'payment_type': payment_type,
+                'remarks': str(row_dict.get('Remarks', '')).strip(),
+                'row_num': row_num
+            }
+            
+            if order_type == 'sale':
+                item_data['delivery_type'] = str(row_dict.get('Delivery Type', 'Local')).strip()
+            
+            # Group by Order Group ID or create single order
+            if order_group_id:
+                if order_group_id not in order_groups:
+                    order_groups[order_group_id] = {
+                        'entity': entity,
+                        'entity_name': entity_name,
+                        'order_date': order_date,
+                        'payment_type': payment_type,
+                        'delivery_type': item_data.get('delivery_type', 'Local'),
+                        'remarks': item_data['remarks'],
+                        'items': []
+                    }
+                order_groups[order_group_id]['items'].append(item_data)
+            else:
+                single_orders.append({
+                    'entity': entity,
+                    'entity_name': entity_name,
+                    'order_date': order_date,
+                    'payment_type': payment_type,
+                    'delivery_type': item_data.get('delivery_type', 'Local'),
+                    'remarks': item_data['remarks'],
+                    'items': [item_data]
+                })
+        
+        # Create orders from groups
+        all_orders = list(order_groups.values()) + single_orders
+        
+        for order_data in all_orders:
+            try:
+                if order_type == 'sale':
+                    # Create Sales Order
+                    order_number = f"ORD-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:8].upper()}"
+                    
+                    order = Order(
+                        order_number=order_number,
+                        customer_id=order_data['entity'].id,
+                        agency_id=order_data['entity'].location.agency_id,
+                        salesperson_id=user_id,
+                        status='pending',
+                        payment_status='pending',
+                        order_date=order_data['order_date'],
+                        payment_mode=order_data['payment_type'].lower().replace(' ', '_'),
+                        order_type=order_data['delivery_type'].lower(),
+                        notes=order_data['remarks']
+                    )
+                    db.session.add(order)
+                    db.session.flush()
+                    
+                    subtotal = Decimal('0')
+                    total_tax = Decimal('0')
+                    total_discount = Decimal('0')
+                    
+                    for item_data in order_data['items']:
+                        quantity = Decimal(str(item_data['quantity']))
+                        unit_price = Decimal(str(item_data['rate']))
+                        discount_pct = Decimal(str(item_data['discount_percentage']))
+                        tax_pct = Decimal(str(item_data['tax_percentage']))
+                        
+                        # Calculate line totals
+                        line_subtotal = quantity * unit_price
+                        line_discount = line_subtotal * (discount_pct / 100)
+                        line_after_discount = line_subtotal - line_discount
+                        line_tax = line_after_discount * (tax_pct / 100)
+                        line_total = line_after_discount + line_tax
+                        
+                        discounted_price = unit_price * (1 - (discount_pct / 100))
+                        
+                        order_item = OrderItem(
+                            order_id=order.id,
+                            product_id=item_data['product'].id,
+                            quantity=quantity,
+                            uom=item_data['uom'],
+                            unit_price=unit_price,
+                            mrp_price=item_data['product'].mrp_price or unit_price,
+                            discount_percentage=discount_pct,
+                            discounted_price=discounted_price,
+                            tax_code=f'GST{int(tax_pct)}',
+                            tax_rate=tax_pct,
+                            tax_amount=line_tax,
+                            line_total=line_total,
+                            total_price=line_total
+                        )
+                        db.session.add(order_item)
+                        
+                        subtotal += line_subtotal
+                        total_tax += line_tax
+                        total_discount += line_discount
+                    
+                    order.subtotal_amount = subtotal
+                    order.total_tax_amount = total_tax
+                    order.discount = total_discount
+                    order.total_amount = subtotal - total_discount + total_tax
+                    order.total_items_count = len(order_data['items'])
+                    
+                    db.session.commit()
+                    
+                    results['success'].append({
+                        'order_number': order_number,
+                        'entity': order_data['entity_name'],
+                        'items_count': len(order_data['items']),
+                        'total': float(order.total_amount)
+                    })
+                    
+                else:  # purchase order
+                    po_number = f"PO-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:8].upper()}"
+                    
+                    # Determine agency_id for PO
+                    po_agency_id = order_data['entity'].agency_id if hasattr(order_data['entity'], 'agency_id') else agency_id
+                    
+                    purchase_order = PurchaseOrder(
+                        po_number=po_number,
+                        supplier_id=order_data['entity'].id,
+                        agency_id=po_agency_id,
+                        created_by=user_id,
+                        status='draft',
+                        notes=order_data['remarks']
+                    )
+                    db.session.add(purchase_order)
+                    db.session.flush()
+                    
+                    total_amount = Decimal('0')
+                    
+                    for item_data in order_data['items']:
+                        quantity = int(item_data['quantity'])
+                        unit_cost = Decimal(str(item_data['rate']))
+                        line_total = quantity * unit_cost
+                        
+                        po_item = PurchaseOrderItem(
+                            po_id=purchase_order.id,
+                            product_id=item_data['product'].id,
+                            quantity_ordered=quantity,
+                            unit_cost=unit_cost,
+                            total_cost=line_total
+                        )
+                        db.session.add(po_item)
+                        total_amount += line_total
+                    
+                    purchase_order.total_amount = total_amount
+                    db.session.commit()
+                    
+                    results['success'].append({
+                        'order_number': po_number,
+                        'entity': order_data['entity_name'],
+                        'items_count': len(order_data['items']),
+                        'total': float(purchase_order.total_amount)
+                    })
+                    
+            except Exception as e:
+                db.session.rollback()
+                results['errors'].append({
+                    'row': 'Order Creation',
+                    'error': f'Failed to create order for {order_data["entity_name"]}: {str(e)}'
+                })
+        
+        return results
+        
+    except Exception as e:
+        db.session.rollback()
+        return {
+            'success': [],
+            'errors': [{'row': 'File Processing', 'error': str(e)}],
+            'skipped': 0
+        }

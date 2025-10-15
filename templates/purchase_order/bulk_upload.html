@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Purchase Order Upload - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0"><i class="fas fa-file-upload me-2"></i>Bulk Purchase Order Upload</h2>
+        <a href="{{ url_for('purchase_order.list_purchase_orders') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Purchase Orders
+        </a>
+    </div>
+
+    <!-- Instructions Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Instructions</h5>
+        </div>
+        <div class="card-body">
+            <ol class="mb-0">
+                <li><strong>Download the Excel template</strong> using the button below</li>
+                <li><strong>Fill in the purchase order details</strong> following the template structure:
+                    <ul class="mt-2">
+                        <li><strong>Order Group ID:</strong> Use the same ID for products belonging to one order (e.g., PO001). Leave blank for single-product orders.</li>
+                        <li><strong>Supplier Name:</strong> Must match an existing supplier name exactly (case-insensitive)</li>
+                        <li><strong>Order Date:</strong> Format YYYY-MM-DD (e.g., 2024-01-15)</li>
+                        <li><strong>Product Code:</strong> Product SKU code (must exist in the system)</li>
+                        <li><strong>Payment Type:</strong> Cash, Credit, or Credit Sale</li>
+                    </ul>
+                </li>
+                <li><strong>Mandatory fields:</strong> Supplier Name, Product Code, Quantity, Rate, Payment Type</li>
+                <li><strong>Upload the completed file</strong> using the form below</li>
+                <li>Blank rows will be automatically skipped</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Download Template Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-download me-2"></i>Step 1: Download Template</h5>
+        </div>
+        <div class="card-body text-center">
+            <p class="mb-3">Download the Excel template to get started with bulk purchase order creation</p>
+            <a href="{{ url_for('purchase_order.download_bulk_purchase_order_template') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-file-excel me-2"></i>Download Purchase Order Template
+            </a>
+        </div>
+    </div>
+
+    <!-- Upload Form Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-upload me-2"></i>Step 2: Upload Completed File</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="file" class="form-label">Select Excel File (.xlsx or .xls)</label>
+                    <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
+                    <div class="form-text">Supported formats: .xlsx, .xls</div>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-cloud-upload-alt me-2"></i>Upload and Process Purchase Orders
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Example Card -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Example Data</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Single Product Purchase Order Example:</strong></p>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Order Group ID</th>
+                            <th>Supplier Name</th>
+                            <th>Order Date</th>
+                            <th>Product Code</th>
+                            <th>Quantity</th>
+                            <th>Rate</th>
+                            <th>Tax %</th>
+                            <th>Discount %</th>
+                            <th>Payment Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><em>(blank)</em></td>
+                            <td>Supplier ABC</td>
+                            <td>2024-01-15</td>
+                            <td>PROD001</td>
+                            <td>100</td>
+                            <td>80</td>
+                            <td>18</td>
+                            <td>0</td>
+                            <td>Credit</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="mt-4"><strong>Multi-Product Purchase Order Example:</strong></p>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Order Group ID</th>
+                            <th>Supplier Name</th>
+                            <th>Order Date</th>
+                            <th>Product Code</th>
+                            <th>Quantity</th>
+                            <th>Rate</th>
+                            <th>Tax %</th>
+                            <th>Discount %</th>
+                            <th>Payment Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>PO001</td>
+                            <td>Supplier ABC</td>
+                            <td>2024-01-15</td>
+                            <td>PROD001</td>
+                            <td>100</td>
+                            <td>80</td>
+                            <td>18</td>
+                            <td>0</td>
+                            <td>Credit</td>
+                        </tr>
+                        <tr>
+                            <td>PO001</td>
+                            <td>Supplier ABC</td>
+                            <td>2024-01-15</td>
+                            <td>PROD002</td>
+                            <td>50</td>
+                            <td>150</td>
+                            <td>18</td>
+                            <td>5</td>
+                            <td>Credit</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-muted"><small>Note: Both rows have the same Order Group ID (PO001), so they will be combined into a single purchase order with 2 products.</small></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

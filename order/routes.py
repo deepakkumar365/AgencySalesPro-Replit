@@ -1052,3 +1052,93 @@ def update_delivery_challan_status(challan_id):
         flash(f'An error occurred while updating status: {str(e)}', 'danger')
     
     return redirect(url_for('order.view_delivery_challan', challan_id=challan_id))
+
+
+@order_bp.route('/bulk-upload', methods=['GET', 'POST'])
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@log_activity('bulk_order_upload')
+def bulk_order_upload():
+    """Bulk order upload page for Sales Orders"""
+    if request.method == 'POST':
+        # Check if file was uploaded
+        if 'file' not in request.files:
+            flash('No file uploaded', 'danger')
+            return redirect(request.url)
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            flash('No file selected', 'danger')
+            return redirect(request.url)
+        
+        # Check file extension
+        if not (file.filename.lower().endswith('.xlsx') or file.filename.lower().endswith('.xls')):
+            flash('Invalid file format. Please upload an Excel file (.xlsx or .xls)', 'danger')
+            return redirect(request.url)
+        
+        try:
+            from utils.excel_utils import process_bulk_orders
+            
+            user_role = session.get('role')
+            user_id = session.get('user_id')
+            agency_id = session.get('agency_id')
+            
+            # Process the file
+            results = process_bulk_orders(file, 'sale', agency_id, user_id, user_role)
+            
+            # Display results
+            success_count = len(results['success'])
+            error_count = len(results['errors'])
+            skipped_count = results['skipped']
+            
+            if success_count > 0:
+                flash(f'Successfully created {success_count} order(s)', 'success')
+            
+            if error_count > 0:
+                flash(f'{error_count} error(s) occurred during processing', 'warning')
+            
+            if skipped_count > 0:
+                flash(f'{skipped_count} blank row(s) skipped', 'info')
+            
+            # Store results in session for display
+            session['bulk_upload_results'] = results
+            
+            return redirect(url_for('order.bulk_order_results'))
+            
+        except Exception as e:
+            flash(f'An error occurred while processing the file: {str(e)}', 'danger')
+            return redirect(request.url)
+    
+    return render_template('order/bulk_upload.html', order_type='sale')
+
+
+@order_bp.route('/bulk-upload/results')
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def bulk_order_results():
+    """Display bulk order upload results"""
+    results = session.pop('bulk_upload_results', None)
+    
+    if not results:
+        flash('No upload results found', 'warning')
+        return redirect(url_for('order.list_orders'))
+    
+    return render_template('order/bulk_upload_results.html', results=results, order_type='sale')
+
+
+@order_bp.route('/bulk-upload/download-template')
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def download_bulk_order_template():
+    """Download Excel template for bulk order upload"""
+    from utils.excel_utils import generate_bulk_order_template
+    
+    output = generate_bulk_order_template('sale')
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'bulk_sales_order_template_{datetime.now().strftime("%Y%m%d")}.xlsx'
+    )

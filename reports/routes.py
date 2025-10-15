@@ -1,4 +1,4 @@
-from flask import render_template, request, session, jsonify
+from flask import render_template, request, session, jsonify, redirect, url_for
 from datetime import datetime, timedelta
 from decimal import Decimal
 from extensions import db
@@ -148,12 +148,18 @@ def unified_dashboard(current_agency_id=None):
                          start_date=start_date,
                          end_date=end_date)
 
-@reports_bp.route('/sales_analytics')
+@reports_bp.route('/sales_analytics') # Old route, will redirect
+def sales_analytics_redirect():
+    """Redirects old sales analytics URL to the new unified dashboard."""
+    return redirect(url_for('reports.unified_dashboard'))
+
+@reports_bp.route('/accounting_report/<report_type>', endpoint='accounting_report')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
-def sales_analytics(current_agency_id=None):
-    """Detailed sales analytics and trends"""
+def accounting_report(current_agency_id=None, report_type=None):
+    """Handles detailed accounting reports like Sales, AR, and AP."""
     user_role = session.get('role')
     
+    # Default to 'sales' if no report_type is specified
     # Get date range from query params
     period = request.args.get('period', '30')  # days
     end_date = datetime.utcnow()
@@ -163,6 +169,12 @@ def sales_analytics(current_agency_id=None):
     if user_role == 'super_admin':
         order_query = Order.query
     else:
+        # Ensure agency_id is available for non-super_admin roles
+        if not current_agency_id:
+            # This can happen if the route is accessed directly without middleware context
+            # A more robust solution would be to fetch it from the user session
+            user = User.query.get(session.get('user_id'))
+            current_agency_id = user.agency_id if user else None
         order_query = Order.query.filter_by(agency_id=current_agency_id)
     
     # Get orders for the period
@@ -170,7 +182,18 @@ def sales_analytics(current_agency_id=None):
         Order.order_date >= start_date,
         Order.order_date <= end_date
     ).all()
+
+    # Handle different report types
+    if report_type == 'ar':
+        # Logic for AR Transaction Report
+        # This is a placeholder; you would query AR-specific data here
+        return render_template('reports/ar_report.html', period=period, start_date=start_date, end_date=end_date)
+    elif report_type == 'ap':
+        # Logic for AP Transaction Report
+        # This is a placeholder; you would query AP-specific data here
+        return render_template('reports/ap_report.html', period=period, start_date=start_date, end_date=end_date)
     
+    # Default to sales analytics report
     # Sales by salesperson
     salesperson_sales = {}
     for order in period_orders:
@@ -229,9 +252,10 @@ def sales_analytics(current_agency_id=None):
                          end_date=end_date.strftime('%Y-%m-%d'))
 
 @reports_bp.route('/api/dashboard_data')
+@reports_bp.route('/api/sales_trend_data') # More specific endpoint
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
-def dashboard_api(current_agency_id=None):
-    """API endpoint for dashboard charts"""
+def sales_trend_api(current_agency_id=None):
+    """API endpoint for sales trend chart"""
     user_role = session.get('role')
     chart_type = request.args.get('type', 'sales_trend')
     days = int(request.args.get('days', 30))
@@ -246,55 +270,60 @@ def dashboard_api(current_agency_id=None):
         order_query = Order.query.filter_by(agency_id=current_agency_id)
         invoice_query = Invoice.query.filter_by(agency_id=current_agency_id)
     
-    if chart_type == 'sales_trend':
-        # Daily sales for the last N days
-        daily_data = []
-        for i in range(days):
-            day = end_date - timedelta(days=i)
-            day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
-            day_end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
-            
-            day_orders = order_query.filter(
-                Order.order_date >= day_start,
-                Order.order_date <= day_end
-            ).all()
-            
-            daily_data.append({
-                'date': day.strftime('%Y-%m-%d'),
-                'sales': float(sum(order.total_amount for order in day_orders)),
-                'orders': len(day_orders)
-            })
+    # Daily sales for the last N days
+    daily_data = []
+    for i in range(days):
+        day = end_date - timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
         
-        daily_data.reverse()
-        return jsonify(daily_data)
-    
-    elif chart_type == 'collection_rate':
-        # Collection rate over time
-        monthly_data = []
-        for i in range(6):  # Last 6 months
-            month_start = (end_date.replace(day=1) - timedelta(days=30*i)).replace(day=1)
-            month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
-            
-            month_invoices = invoice_query.filter(
-                Invoice.issue_date >= month_start,
-                Invoice.issue_date <= month_end
-            ).all()
-            
-            total_invoiced = sum(inv.total_amount for inv in month_invoices)
-            total_collected = sum(inv.total_amount for inv in month_invoices if inv.status == 'paid')
-            collection_rate = (total_collected / total_invoiced * 100) if total_invoiced > 0 else 0
-            
-            monthly_data.append({
-                'month': month_start.strftime('%Y-%m'),
-                'invoiced': float(total_invoiced),
-                'collected': float(total_collected),
-                'rate': round(collection_rate, 1)
-            })
+        day_orders = order_query.filter(
+            Order.order_date >= day_start,
+            Order.order_date <= day_end
+        ).all()
         
-        monthly_data.reverse()
-        return jsonify(monthly_data)
+        daily_data.append({
+            'date': day.strftime('%Y-%m-%d'),
+            'sales': float(sum(order.total_amount for order in day_orders)),
+            'orders': len(day_orders)
+        })
     
-    return jsonify({'error': 'Unknown chart type'})
+    daily_data.reverse()
+    return jsonify(daily_data)
+
+@reports_bp.route('/api/collection_rate_data')
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def collection_rate_api(current_agency_id=None):
+    """API endpoint for collection rate chart"""
+    user_role = session.get('role')
+    
+    end_date = datetime.utcnow()
+    
+    if user_role == 'super_admin':
+        invoice_query = Invoice.query
+    else:
+        invoice_query = Invoice.query.filter_by(agency_id=current_agency_id)
+
+    monthly_data = []
+    for i in range(6):  # Last 6 months
+        month_start = (end_date.replace(day=1) - timedelta(days=30*i)).replace(day=1)
+        month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        
+        month_invoices = invoice_query.filter(Invoice.issue_date >= month_start, Invoice.issue_date <= month_end).all()
+        
+        total_invoiced = sum(inv.total_amount for inv in month_invoices)
+        total_collected = sum(inv.total_amount for inv in month_invoices if inv.status == 'paid')
+        collection_rate = (total_collected / total_invoiced * 100) if total_invoiced > 0 else 0
+        
+        monthly_data.append({
+            'month': month_start.strftime('%Y-%m'),
+            'invoiced': float(total_invoiced),
+            'collected': float(total_collected),
+            'rate': round(collection_rate, 1)
+        })
+    
+    monthly_data.reverse()
+    return jsonify(monthly_data)
 
 @reports_bp.route('/export/<report_type>')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])

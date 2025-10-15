@@ -129,13 +129,6 @@ def create_customer():
             flash('Customer code already exists. Please use a different code.', 'error')
             return render_template('customer/form.html', locations=get_locations_for_user())
         
-        # Validate Indian phone number format
-        indian_phone_pattern = r'^(\+91|91)?[6-9]\d{9}$'
-        phone_clean = phone.replace(' ', '').replace('-', '')
-        if not re.match(indian_phone_pattern, phone_clean):
-            flash('Invalid Indian phone number. Format: +91XXXXXXXXXX or 10-digit number starting with 6-9.', 'error')
-            return render_template('customer/form.html', locations=get_locations_for_user())
-        
         # Validate location belongs to user's agency
         user_role = session.get('role')
         current_agency_id = session.get('agency_id')
@@ -248,13 +241,6 @@ def edit_customer(customer_id):
         
         if not all([customer.name, customer.phone, location_id]):
             flash('Customer name, phone number, and location are required.', 'error')
-            return render_template('customer/form.html', customer=customer, locations=get_locations_for_user())
-        
-        # Validate Indian phone number format
-        indian_phone_pattern = r'^(\+91|91)?[6-9]\d{9}$'
-        phone_clean = customer.phone.replace(' ', '').replace('-', '')
-        if not re.match(indian_phone_pattern, phone_clean):
-            flash('Invalid Indian phone number. Format: +91XXXXXXXXXX or 10-digit number starting with 6-9.', 'error')
             return render_template('customer/form.html', customer=customer, locations=get_locations_for_user())
         
         # Validate location

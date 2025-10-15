@@ -39,11 +39,9 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="phone" class="form-label">Phone (India) <span class="text-danger">*</span></label>
-                            <input type="tel" class="form-control" id="phone" name="phone" 
+                            <input type="text" class="form-control" id="phone" name="phone" 
                                    value="{{ customer.phone if customer else '' }}" 
-                                   placeholder="+91XXXXXXXXXX or 10-digit number" required>
-                            <small class="form-text text-muted">Indian format: +91XXXXXXXXXX or 10-digit number</small>
-                            <div class="invalid-feedback" id="phoneError">Please enter a valid Indian phone number.</div>
+                                   placeholder="Enter phone number" required>
                         </div>
                     </div>
                     
@@ -109,31 +107,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const customerCodeInput = document.getElementById('customer_code');
     const form = document.getElementById('customerForm');
     
-    // Indian phone number validation pattern
-    // Accepts: +91XXXXXXXXXX, 91XXXXXXXXXX, or 10-digit number starting with 6-9
-    const indianPhonePattern = /^(\+91|91)?[6-9]\d{9}$/;
-    
     // Customer code validation (6 alphanumeric characters)
     const customerCodePattern = /^[A-Za-z0-9]{6}$/;
-    
-    // Validate phone number
-    function validatePhone() {
-        const phoneValue = phoneInput.value.replace(/[\s\-]/g, ''); // Remove spaces and dashes
-        const isValid = indianPhonePattern.test(phoneValue);
-        
-        if (phoneValue && !isValid) {
-            phoneInput.classList.add('is-invalid');
-            phoneInput.classList.remove('is-valid');
-            document.getElementById('phoneError').textContent = 
-                'Invalid Indian phone number. Format: +91XXXXXXXXXX or 10-digit number starting with 6-9';
-            return false;
-        } else if (phoneValue) {
-            phoneInput.classList.remove('is-invalid');
-            phoneInput.classList.add('is-valid');
-            return true;
-        }
-        return true;
-    }
     
     // Validate customer code
     function validateCustomerCode() {
@@ -153,9 +128,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Real-time validation
-    phoneInput.addEventListener('input', validatePhone);
-    phoneInput.addEventListener('blur', validatePhone);
-    
     customerCodeInput.addEventListener('input', function() {
         // Convert to uppercase for consistency
         this.value = this.value.toUpperCase();
@@ -165,20 +137,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Form submission validation
     form.addEventListener('submit', function(e) {
-        const isPhoneValid = validatePhone();
-        const isCodeValid = validateCustomerCode();
-        
-        if (!isPhoneValid || !isCodeValid) {
+        // The readonly attribute for existing customers means we only need to validate on create
+        if (!customerCodeInput.hasAttribute('readonly')) {
+            const isCodeValid = validateCustomerCode();
+            if (!isCodeValid) {
             e.preventDefault();
             e.stopPropagation();
-            
-            if (!isPhoneValid) {
-                phoneInput.focus();
-            } else if (!isCodeValid) {
-                customerCodeInput.focus();
+            customerCodeInput.focus();
             }
-            
-            return false;
         }
     });
 });

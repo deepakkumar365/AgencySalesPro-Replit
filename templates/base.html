@@ -71,7 +71,7 @@
                     {% endif %}
                     
                     <!-- Tenant/Agency: People Menu (All Users) - Removed for Staff as per requirements -->
-                    {% if session.role in ['agency_manager', 'agency_admin'] %}
+                    {% if session.role in ['agency_manager', 'agency_admin'] %} {# staff role removed #}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-users me-1"></i>People
@@ -211,17 +211,17 @@
                             <i class="fas fa-file-invoice-dollar me-1"></i>Accounting
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('finance.dashboard') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('reports.unified_dashboard') }}">
                                 <i class="fas fa-tachometer-alt me-1"></i>Accounting Dashboard
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.unified_dashboard') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('reports.accounting_report', report_type='ar') }}">
                                 <i class="fas fa-chart-bar me-1"></i>AR Transaction Report
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.unified_dashboard') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('reports.accounting_report', report_type='ap') }}">
                                 <i class="fas fa-chart-line me-1"></i>AP Transaction Report
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.unified_dashboard') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('reports.accounting_report', report_type='gp') }}">
                                 <i class="fas fa-dollar-sign me-1"></i>Gross Profit Report
                             </a></li>
                         </ul>
@@ -256,7 +256,7 @@
                             <i class="fas fa-wallet me-1"></i>Finance
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('finance.dashboard') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('reports.unified_dashboard') }}">
                                 <i class="fas fa-tachometer-alt me-1"></i>Finance Dashboard
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
@@ -348,8 +348,8 @@
                                 <i class="fas fa-chart-line me-1"></i>Sales Analytics
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('reports.unified_dashboard') }}" title="A focused view on sales and billing performance.">
-                                <i class="fas fa-file-invoice-dollar me-1"></i>Accounting Reports
+                            <li><a class="dropdown-item" href="{{ url_for('reports.accounting_report') }}" title="A focused view on sales and billing performance.">
+                                <i class="fas fa-file-invoice-dollar me-1"></i>Accounting Report
                             </a></li>
                         </ul>
                     </li>
@@ -358,7 +358,7 @@
                     <!-- Reports Menu (Tenant, Agency) -->
                     {% if session.role in ['agency_admin', 'agency_manager', 'staff'] %}
                     <li class="nav-item dropdown">
-                        <!-- Reports menu removed for Agency Manager as per requirements -->
+                        <!-- Reports menu removed for agency_admin, agency_manager, staff as per requirements -->
                     </li>
                     {% endif %}
                     
@@ -437,7 +437,7 @@
                             <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">
                                 <i class="fas fa-user-circle me-1"></i>My Profile
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('auth.forgot_password') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.reset_password') }}"> {# Corrected to use the available 'reset_password' endpoint #}
                                 <i class="fas fa-key me-1"></i>Change Password
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('super_admin.view_activities') }}">

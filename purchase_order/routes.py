@@ -520,3 +520,93 @@ def search_suppliers(current_agency_id=None):
     ]
 
     return jsonify(results)
+
+
+@purchase_order_bp.route('/bulk-upload', methods=['GET', 'POST'])
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def bulk_purchase_order_upload(current_agency_id=None):
+    """Bulk purchase order upload page"""
+    if request.method == 'POST':
+        # Check if file was uploaded
+        if 'file' not in request.files:
+            flash('No file uploaded', 'danger')
+            return redirect(request.url)
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            flash('No file selected', 'danger')
+            return redirect(request.url)
+        
+        # Check file extension
+        if not (file.filename.lower().endswith('.xlsx') or file.filename.lower().endswith('.xls')):
+            flash('Invalid file format. Please upload an Excel file (.xlsx or .xls)', 'danger')
+            return redirect(request.url)
+        
+        try:
+            from utils.excel_utils import process_bulk_orders
+            from utils.decorators import log_activity
+            
+            user_role = session.get('role')
+            user_id = session.get('user_id')
+            agency_id = current_agency_id or session.get('agency_id')
+            
+            # Process the file
+            results = process_bulk_orders(file, 'purchase', agency_id, user_id, user_role)
+            
+            # Display results
+            success_count = len(results['success'])
+            error_count = len(results['errors'])
+            skipped_count = results['skipped']
+            
+            if success_count > 0:
+                flash(f'Successfully created {success_count} purchase order(s)', 'success')
+            
+            if error_count > 0:
+                flash(f'{error_count} error(s) occurred during processing', 'warning')
+            
+            if skipped_count > 0:
+                flash(f'{skipped_count} blank row(s) skipped', 'info')
+            
+            # Store results in session for display
+            session['bulk_upload_results'] = results
+            
+            return redirect(url_for('purchase_order.bulk_purchase_order_results'))
+            
+        except Exception as e:
+            flash(f'An error occurred while processing the file: {str(e)}', 'danger')
+            return redirect(request.url)
+    
+    return render_template('purchase_order/bulk_upload.html', order_type='purchase')
+
+
+@purchase_order_bp.route('/bulk-upload/results')
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def bulk_purchase_order_results():
+    """Display bulk purchase order upload results"""
+    results = session.pop('bulk_upload_results', None)
+    
+    if not results:
+        flash('No upload results found', 'warning')
+        return redirect(url_for('purchase_order.list_purchase_orders'))
+    
+    return render_template('purchase_order/bulk_upload_results.html', results=results, order_type='purchase')
+
+
+@purchase_order_bp.route('/bulk-upload/download-template')
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def download_bulk_purchase_order_template():
+    """Download Excel template for bulk purchase order upload"""
+    from utils.excel_utils import generate_bulk_order_template
+    
+    output = generate_bulk_order_template('purchase')
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'bulk_purchase_order_template_{datetime.now().strftime("%Y%m%d")}.xlsx'
+    )
