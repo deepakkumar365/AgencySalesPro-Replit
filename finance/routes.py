@@ -566,9 +566,9 @@ def payment_configurations():
     # --- GET Request ---
     # Fetch agencies that can be configured
     if user_role == 'super_admin':
-        agencies = Agency.query.options(db.joinedload(Agency.payment_configuration), db.joinedload(Agency.country)).filter_by(is_active=True).order_by(Agency.name).all()
+        agencies = Agency.query.options(db.joinedload(Agency.payment_configuration)).filter_by(is_active=True).order_by(Agency.name).all()
     elif user_role == 'agency_manager':
-        agencies = Agency.query.options(db.joinedload(Agency.payment_configuration), db.joinedload(Agency.country)).filter(
+        agencies = Agency.query.options(db.joinedload(Agency.payment_configuration)).filter(
             Agency.agency_manager_id == session.get('user_id'),
             Agency.is_active == True
         ).order_by(Agency.name).all()

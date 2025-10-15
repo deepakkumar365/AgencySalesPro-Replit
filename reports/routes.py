@@ -148,7 +148,7 @@ def unified_dashboard(current_agency_id=None):
                          start_date=start_date,
                          end_date=end_date)
 
-@reports_bp.route('/sales_analytics') # Old route, will redirect
+@reports_bp.route('/sales_analytics', endpoint='sales_analytics') # Old route, will redirect
 def sales_analytics_redirect():
     """Redirects old sales analytics URL to the new unified dashboard."""
     return redirect(url_for('reports.unified_dashboard'))
