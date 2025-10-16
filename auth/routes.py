@@ -11,6 +11,9 @@ from datetime import datetime, timedelta
 from . import auth_bp
 from .utils import login_required
 
+# Import the centralized dashboard URL helper
+from app import get_dashboard_url
+
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -35,12 +38,8 @@ def login():
             session['agency_id'] = user.agency_id
             flash('Logged in successfully!', 'success')
 
-            if user.role == 'agency_manager':
-                return redirect(url_for('agency_manager.dashboard'))
-            elif user.role == 'agency_admin':
-                return redirect(url_for('inventory.dashboard'))
-                
-            return redirect(url_for('index'))
+            # Redirect to appropriate dashboard based on user role
+            return redirect(url_for(get_dashboard_url(user.role)))
         else:
             flash('Invalid username or password', 'error')
             return redirect(url_for('auth.login'))

@@ -26,7 +26,7 @@
     {% if session.user_id %}
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
+            <a class="navbar-brand" href="{{ url_for(get_dashboard_url(session.role)) }}">
                 <i class="fas fa-chart-line me-2"></i>AgencySales Pro
             </a>
             
@@ -38,17 +38,7 @@
                 <ul class="navbar-nav me-auto">
                     <!-- Dashboard (All Roles) -->
                     <li class="nav-item">
-                        {% if session.role == 'super_admin' %}
-                        <a class="nav-link" href="{{ url_for('super_admin.dashboard') }}">
-                        {% elif session.role == 'agency_manager' %}
-                        <a class="nav-link" href="{{ url_for('agency_manager.dashboard') }}">
-                        {% elif session.role == 'agency_admin' %}
-                        <a class="nav-link" href="{{ url_for('inventory.dashboard') }}">
-                        {% elif session.role == 'customer' %}
-                        <a class="nav-link" href="{{ url_for('customer.dashboard') }}">
-                        {% else %}
-                        <a class="nav-link" href="{{ url_for('index') }}">
-                        {% endif %}
+                        <a class="nav-link" href="{{ url_for(get_dashboard_url(session.role)) }}">
                             <i class="fas fa-home me-1"></i>Dashboard
                         </a>
                     </li>
@@ -403,10 +393,10 @@
                             <i class="fas fa-chart-bar me-1"></i>Reports
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('customer.order_reports') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('customer.view_orders') }}">
                                 <i class="fas fa-chart-line me-1"></i>Order Reports
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('customer.purchase_history') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('customer.view_products') }}">
                                 <i class="fas fa-history me-1"></i>Purchase History
                             </a></li>
                         </ul>

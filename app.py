@@ -1,7 +1,7 @@
 import os
 import logging
 import json
-from flask import Flask
+from flask import Flask, url_for
 from markupsafe import escape, Markup
 from dotenv import load_dotenv
 from sqlalchemy.engine import Row
@@ -23,6 +23,25 @@ class CustomJSONEncoder(json.JSONEncoder):
         if isinstance(obj, Row):
             return dict(obj._mapping)
         return super(CustomJSONEncoder, self).default(obj)
+
+# Helper function to get dashboard URL based on user role
+def get_dashboard_url(role):
+    """
+    Returns the appropriate dashboard URL based on the user's role.
+    
+    Args:
+        role: The user's role (super_admin, agency_manager, agency_admin, customer, etc.)
+    
+    Returns:
+        The endpoint name for the user's dashboard
+    """
+    role_dashboard_map = {
+        'super_admin': 'super_admin.dashboard',
+        'agency_manager': 'agency_manager.dashboard',
+        'agency_admin': 'inventory.dashboard',
+        'customer': 'customer.customer_dashboard',
+    }
+    return role_dashboard_map.get(role, 'index')
 
 def create_app():
     # Load environment variables from .env file
@@ -68,8 +87,9 @@ def create_app():
         return ''
     app.jinja_env.filters['nl2br'] = nl2br_filter
     
-    # Add abs function to Jinja2 globals
+    # Add functions to Jinja2 globals
     app.jinja_env.globals['abs'] = abs
+    app.jinja_env.globals['get_dashboard_url'] = get_dashboard_url
 
     db.init_app(app)
     jwt.init_app(app)
