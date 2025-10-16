@@ -68,11 +68,12 @@
                 </thead>
                 <tbody>
                     {% for row in products.items %}
-                    {% set product = row.Product if row.Product is defined else row %}
+                    {% set product = row[0] %}
+                    {% set product_agency = row[2] %}
                     {% set stock = row.current_stock if row.current_stock is defined else 0 %}
                     <tr>
                         <td>
-                            <div class="fw-bold">{{ product.name }}</div>
+                            <div class="fw-bold">{{ product_agency.display_name or product.name }}</div>
                             <small class="text-muted">{{ (product.description or '')|truncate(50) }}</small>
                         </td>
                         <td>{{ product.sku }}</td>

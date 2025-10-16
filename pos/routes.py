@@ -334,6 +334,7 @@ def create_sale(current_agency_id=None):
                 tax_amount=0,
                 line_total=quantity * unit_price,
                 total_price=quantity * unit_price, # For backward compatibility if needed
+                product_name=product.get_display_name_for_agency(agency_id)
             )
             db.session.add(order_item)
             

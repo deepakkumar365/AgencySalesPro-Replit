@@ -214,7 +214,7 @@
                             <tbody>
                                 {% for forecast in alerts %}
                                 <tr>
-                                    <td>{{ forecast.product.name }}</td>
+                                    <td>{{ forecast.product.get_display_name_for_agency(forecast.agency_id) }}</td>
                                     <td>{{ forecast.product.sku }}</td>
                                     <td>{{ "%.2f"|format(forecast.forecast_qty) }}</td>
                                     <td>{{ "%.2f"|format(forecast.actual_stock) }}</td>
@@ -267,7 +267,7 @@
                             <tbody>
                                 {% for forecast in top_shortages %}
                                 <tr>
-                                    <td>{{ forecast.product.name }}</td>
+                                    <td>{{ forecast.product.get_display_name_for_agency(forecast.agency_id) }}</td>
                                     <td class="text-danger font-weight-bold">{{ "%.2f"|format(forecast.shortage_qty) }}</td>
                                     <td>₹{{ "%.2f"|format(forecast.opportunity_cost) }}</td>
                                 </tr>
@@ -302,7 +302,7 @@
                             <tbody>
                                 {% for forecast in top_excess %}
                                 <tr>
-                                    <td>{{ forecast.product.name }}</td>
+                                    <td>{{ forecast.product.get_display_name_for_agency(forecast.agency_id) }}</td>
                                     <td class="text-warning font-weight-bold">{{ "%.2f"|format(forecast.excess_qty) }}</td>
                                     <td>₹{{ "%.2f"|format(forecast.holding_cost) }}</td>
                                 </tr>

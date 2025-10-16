@@ -124,7 +124,7 @@
                     <tbody>
                         {% for forecast in forecasts %}
                         <tr>
-                            <td>{{ forecast.product.name }}</td>
+                            <td>{{ forecast.product.get_display_name_for_agency(forecast.agency_id) }}</td>
                             <td>{{ forecast.product.sku }}</td>
                             <td>{{ forecast.product.category_ref.name if forecast.product.category_ref else '-' }}</td>
                             {% if not selected_agency_id %}
