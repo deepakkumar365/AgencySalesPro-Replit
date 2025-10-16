@@ -43,8 +43,8 @@
                         </a>
                     </li>
                     
-                    <!-- Super Admin: Agencies Menu -->
-                    {% if session.role == 'super_admin' %}
+                    <!-- Agencies Menu (Super Admin, Agency Manager) -->
+                    {% if permissions.can_manage_agencies %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-building me-1"></i>Agencies
@@ -60,31 +60,30 @@
                     </li>
                     {% endif %}
                     
-                    <!-- Tenant/Agency: People Menu (All Users) - Removed for Staff as per requirements -->
-                    {% if session.role in ['agency_manager', 'agency_admin'] %} {# staff role removed #}
+                    <!-- People Menu (User Management) -->
+                    {% if permissions.can_manage_users %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-users me-1"></i>People
                         </a>
                         <ul class="dropdown-menu">
-                            {% if session.role in ['agency_manager', 'agency_admin'] %}
                             <li>
                                 {% if session.role == 'agency_admin' %}
                                 <a class="dropdown-item" href="{{ url_for('agency.agency_users', agency_id=session.agency_id) }}" title="Manage all users in your agency">
+                                {% elif session.role == 'agency_manager' %}
+                                <a class="dropdown-item" href="{{ url_for('agency_manager.manage_users') }}" title="Manage all users in your agencies">
                                 {% else %}
-                                <a class="dropdown-item" href="{{ url_for('agency_manager.manage_users') }}" title="Manage all users in your agency">
+                                <a class="dropdown-item" href="{{ url_for('super_admin.manage_users') }}" title="Manage all system users">
                                 {% endif %}
                                     <i class="fas fa-users-cog me-1"></i>All Users
                                 </a>
                             </li>
-                            {% endif %}
-                            <!-- Salesperson menu item removed as per requirements -->
                         </ul>
                     </li>
                     {% endif %}
                     
-                    <!-- Masters Menu (Super Admin, Tenant, Agency) -->
-                    {% if session.role in ['super_admin', 'agency_admin', 'agency_manager', 'staff'] %}
+                    <!-- Masters Menu -->
+                    {% if permissions.can_manage_locations or permissions.can_manage_customers %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-cogs me-1"></i>Masters
@@ -93,23 +92,30 @@
                             <li><a class="dropdown-item" href="{{ url_for('masters.index') }}">
                                 <i class="fas fa-tachometer-alt me-1"></i>Masters Dashboard
                             </a></li>
-                            <li><hr class="dropdown-divider"></li>
+                            {% if permissions.can_manage_locations %}
                             <li><a class="dropdown-item" href="{{ url_for('location.list_locations') }}">
                                 <i class="fas fa-map-marker-alt me-1"></i>Locations
                             </a></li>
+                            {% endif %}
+                            {% if permissions.can_manage_inventory %}
                             <li><a class="dropdown-item" href="{{ url_for('masters.categories') }}">
                                 <i class="fas fa-tags me-1"></i>Categories
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('masters.uoms') }}">
                                 <i class="fas fa-balance-scale me-1"></i>Units of Measure
                             </a></li>
+                            {% endif %}
+                            {% if permissions.can_manage_billing %}
                             <li><a class="dropdown-item" href="{{ url_for('masters.tax_masters') }}">
                                 <i class="fas fa-percent me-1"></i>Tax Masters
                             </a></li>
+                            {% endif %}
+                            {% if permissions.can_manage_customers %}
                             <li><a class="dropdown-item" href="{{ url_for('customer.list_customers') }}">
                                 <i class="fas fa-user-friends me-1"></i>Customers
                             </a></li>
-                            {% if session.role in ['agency_admin', 'agency_manager'] %}
+                            {% endif %}
+                            {% if permissions.can_manage_inventory %}
                             <li><a class="dropdown-item" href="{{ url_for('inventory.list_suppliers') }}">
                                 <i class="fas fa-truck me-1"></i>Suppliers
                             </a></li>
@@ -118,8 +124,8 @@
                     </li>
                     {% endif %}
                     
-                    <!-- Inventory Menu (Tenant, Agency - Not Customer) -->
-                    {% if session.role in ['agency_admin', 'agency_manager', 'staff', 'salesperson', 'pos_user'] %}
+                    <!-- Inventory Menu -->
+                    {% if permissions.can_view_inventory %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-boxes me-1"></i>Inventory
@@ -129,13 +135,15 @@
                                 <i class="fas fa-tachometer-alt me-1"></i>Inventory Dashboard
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
+                            {% if permissions.can_manage_inventory %}
                             <li><a class="dropdown-item" href="{{ url_for('product_overrides.list_overrides', agency=session.agency_id) }}">
                                 <i class="fas fa-box me-1"></i>Products
                             </a></li>
+                            {% endif %}
                             <li><a class="dropdown-item" href="{{ url_for('inventory.stock_levels') }}">
                                 <i class="fas fa-layer-group me-1"></i>Stock Levels
                             </a></li>
-                            {% if session.role == 'agency_manager' %}
+                            {% if permissions.can_view_reports %}
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('inventory.reports') }}">
                                 <i class="fas fa-chart-bar me-1"></i>Inventory Reports
@@ -146,7 +154,7 @@
                     {% endif %}
                     
                     <!-- Forecasting Menu (Agency Admin, Manager, Staff) -->
-                    {% if session.role in ['super_admin', 'agency_admin', 'agency_manager', 'staff'] %}
+                    {% if permissions.can_manage_inventory %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-chart-line me-1"></i>Forecasting
@@ -166,8 +174,8 @@
                     </li>
                     {% endif %}
                     
-                    <!-- Sales Menu (Tenant, Agency - Not Customer) -->
-                    {% if session.role in ['agency_admin', 'agency_manager', 'staff', 'salesperson', 'pos_user'] %}
+                    <!-- Sales Menu -->
+                    {% if permissions.can_manage_orders %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-shopping-cart me-1"></i>Sales
@@ -187,36 +195,8 @@
                     </li>
                     {% endif %}
 
-                    <!--
-                    {% if session.role in ['super_admin', 'agency_admin', 'agency_manager', 'staff'] %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-briefcase me-2"></i>Job Accounting
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('job_accounting.dashboard') }}">
-                                <i class="fas fa-tachometer-alt me-1"></i>Job Dashboard
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('job_accounting.list_jobs') }}">
-                                <i class="fas fa-list-alt me-1"></i>All Jobs
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('purchase_order.list_purchase_orders') }}">
-                                <i class="fas fa-dolly-flatbed me-1"></i>Purchase Orders
-                            </a></li>
-                            {% if session.role in ['super_admin', 'agency_admin', 'agency_manager'] %}
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('job_accounting.create_job') }}">
-                                <i class="fas fa-plus-circle me-1"></i>Create Job
-                            </a></li>
-                            {% endif %}
-                        </ul>
-                    </li>
-                    {% endif %}
-                    -->
-
-                    <!-- Accounting Menu (Tenant, Agency - Not Customer) -->
-                    {% if session.role in ['super_admin', 'agency_admin', 'agency_manager', 'staff'] %}
+                    <!-- Accounting Menu -->
+                    {% if permissions.can_manage_billing %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-file-invoice-dollar me-1"></i>Accounting
@@ -239,8 +219,8 @@
                     </li>
                     {% endif %}
 
-                    <!-- POS Menu (Tenant, Agency - POS Users) -->
-                    {% if session.role in ['pos_user', 'staff', 'agency_admin', 'agency_manager'] %}
+                    <!-- POS Menu -->
+                    {% if permissions.can_access_pos %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-cash-register me-1"></i>POS
@@ -260,8 +240,8 @@
                     </li>
                     {% endif %}
                     
-                    <!-- Finance Menu (Super Admin and Agency Manager) -->
-                    {% if session.role in ['super_admin', 'agency_manager'] %}
+                    <!-- Finance Menu -->
+                    {% if permissions.can_manage_billing and session.role in ['super_admin', 'agency_manager'] %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-wallet me-1"></i>Finance
@@ -293,7 +273,7 @@
                     {% endif %}
                     
                     <!-- Subscriptions Menu (Super Admin Only) -->
-                    {% if session.role == 'super_admin' %}
+                    {% if permissions.can_manage_billing and session.role == 'super_admin' %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-crown me-1"></i>Subscriptions
@@ -325,7 +305,7 @@
                     {% endif %}
                     
                     <!-- Subscriptions Menu (Tenant - Agency Manager) -->
-                    {% if session.role == 'agency_manager' %}
+                    {% if permissions.can_manage_billing and session.role == 'agency_manager' %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-crown me-1"></i>Subscriptions
@@ -345,8 +325,8 @@
                     </li>
                     {% endif %}
                     
-                    <!-- Reports Menu (Super Admin) -->
-                    {% if session.role == 'super_admin' %}
+                    <!-- Reports Menu -->
+                    {% if permissions.can_view_reports %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-chart-bar me-1"></i>Reports
@@ -364,12 +344,6 @@
                             </a></li>
                         </ul>
                     </li>
-                    {% endif %}
-                    
-                    <!-- Reports Menu (Tenant, Agency) -->
-                    {% if session.role in ['agency_admin', 'agency_manager', 'staff'] %}
-                    <li class="nav-item dropdown">
-                        <!-- Reports menu removed for agency_admin, agency_manager, staff as per requirements -->
                     </li>
                     {% endif %}
                     
@@ -402,33 +376,6 @@
                         </ul>
                     </li>
                     {% endif %}
-                    <!--
-                    {% if session.role in ['super_admin', 'agency_manager', 'agency_admin'] %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-cog me-1"></i>Admin
-                        </a>
-                        <ul class="dropdown-menu">
-                            {% if session.role == 'super_admin' %}
-                            <li><a class="dropdown-item" href="{{ url_for('super_admin.dashboard') }}">
-                                <i class="fas fa-tachometer-alt me-1"></i>Super Admin
-                            </a></li>
-                            
-                            <li><a class="dropdown-item" href="{{ url_for('super_admin.manage_users') }}">
-                                <i class="fas fa-users-cog me-1"></i>Manage Users
-                            </a></li>
-                            {% elif session.role in ['agency_manager', 'agency_admin'] %}
-                            <li><a class="dropdown-item" href="{{ url_for('agency_manager.dashboard') }}">
-                                <i class="fas fa-tachometer-alt me-1"></i>Manager Dashboard
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('agency_manager.manage_users') }}">
-                                <i class="fas fa-users-cog me-1"></i>Manage Users
-                            </a></li>
-                            {% endif %}                            
-                        </ul>
-                    </li>
-                    {% endif %}
-                    -->
                 </ul>
                 
                 <ul class="navbar-nav">

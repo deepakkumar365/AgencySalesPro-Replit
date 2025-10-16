@@ -124,7 +124,7 @@ def list_products(current_agency_id=None):
                          })
 
 @product_bp.route('/create', methods=['GET', 'POST'])
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('create_product')
 def create_product(current_agency_id=None):
     master_data = _get_master_data()
@@ -298,16 +298,10 @@ def create_product(current_agency_id=None):
                         )
 
 @product_bp.route('/<int:product_id>/edit', methods=['GET', 'POST'])
-@permission_required(roles=['super_admin'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('edit_product')
-def edit_product(product_id):
+def edit_product(product_id, current_agency_id=None):
     product = Product.query.get_or_404(product_id)
-    
-    user_role = session.get('role')
-    # Only super_admin can edit master
-    if user_role != 'super_admin':
-        flash('Only super admins can edit the product master. Use "Product Overrides" to manage agency-specific details.', 'error')
-        return redirect(url_for('product.list_products'))
     
     if request.method == 'POST':
         product.name = request.form.get('name')
@@ -472,7 +466,7 @@ def export_products():
     )
 
 @product_bp.route('/import', methods=['GET', 'POST'])
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('import_products')
 def import_products(current_agency_id=None):
     if request.method == 'POST':

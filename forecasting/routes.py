@@ -343,7 +343,7 @@ def export_report(current_agency_id=None):
 
 
 @forecasting_bp.route('/alert-config', methods=['GET', 'POST'])
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def alert_config(current_agency_id=None):
     """
     Configure alert thresholds

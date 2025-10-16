@@ -17,7 +17,7 @@ import base64
 import json
 
 @pos_bp.route('/dashboard')
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user', 'staff'])
 def dashboard(current_agency_id=None):
     """POS Dashboard with quick stats and recent transactions"""
     user_role = session.get('role')
@@ -70,7 +70,7 @@ def dashboard(current_agency_id=None):
                          payment_methods=payment_methods)
 
 @pos_bp.route('/sale')
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user', 'staff'])
 def new_sale(current_agency_id=None):
     """Create new POS sale"""
     user_role = session.get('role')
@@ -98,7 +98,7 @@ def new_sale(current_agency_id=None):
                          payment_methods=payment_methods)
 
 @pos_bp.route('/api/search_products')
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user', 'staff'])
 def search_products(current_agency_id=None):
     """Search products for POS with robust error handling"""
     query = (request.args.get('q') or '').strip()
@@ -182,7 +182,7 @@ def search_products(current_agency_id=None):
         return jsonify({'error': 'Failed to search products', 'details': str(e)}), 500
 
 @pos_bp.route('/api/get_customer')
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user', 'staff'])
 def get_customer(current_agency_id=None):
     """Get or create customer for POS sale"""
     phone = request.args.get('phone', '').strip()
@@ -222,7 +222,7 @@ def get_customer(current_agency_id=None):
     return jsonify({'error': 'Customer not found'}), 404
 
 @pos_bp.route('/api/create_sale', methods=['POST'])
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user', 'staff'])
 @log_activity('pos_sale_created')
 def create_sale(current_agency_id=None):
     """Create POS sale"""
@@ -408,7 +408,7 @@ def create_sale(current_agency_id=None):
         return jsonify({'error': str(e)}), 500
 
 @pos_bp.route('/receipt/<int:order_id>')
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user', 'staff'])
 def receipt(order_id, current_agency_id=None):
     """Display receipt for POS sale"""
     user_role = session.get('role')
@@ -454,7 +454,7 @@ def receipt(order_id, current_agency_id=None):
     return render_template('pos/receipt.html', order=order, qr_code=qr_code_base64)
 
 @pos_bp.route('/sales_history')
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user', 'staff'])
 def sales_history(current_agency_id=None):
     """View POS sales history"""
     user_role = session.get('role')

@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import session, redirect, url_for, flash, request
+from flask import session, redirect, url_for, flash, request, current_app
 from werkzeug.local import LocalProxy
 from models import User, Agency
 
@@ -107,62 +107,105 @@ def get_role_permissions(role):
     """Get permissions for a specific role"""
     permissions = {
         'super_admin': {
+            # Full system control
             'can_manage_agencies': True,
-            'can_manage_all_users': True,
+            'can_manage_users': True,
             'can_view_all_data': True,
             'can_access_pos': True,
             'can_manage_inventory': True,
             'can_manage_billing': True,
-            'can_view_reports': True
-        },
-        'agency_admin': {
-            'can_manage_agencies': False,
-            'can_manage_all_users': True,
-            'can_view_all_data': False,
-            'can_access_pos': True,
-            'can_manage_inventory': True,
-            'can_manage_billing': True,
             'can_view_reports': True,
-            'can_manage_agency_users': True
+            'can_manage_roles': True,
+            'can_manage_orders': True,
+            'can_manage_customers': True,
+            'can_manage_locations': True,
+            'can_view_inventory': True
         },
+
         'agency_manager': {
-            'can_manage_agencies': True, # Can view/create/edit their own
-            'can_manage_all_users': True,
+            # Full control within their managed agencies
+            'can_manage_agencies': True,
+            'can_manage_users': True,
             'can_view_all_data': True,
             'can_access_pos': True,
             'can_manage_inventory': True,
             'can_manage_billing': True,
             'can_view_reports': True,
-            'can_manage_agency_users': True
+            'can_manage_roles': False,
+            'can_manage_orders': True,
+            'can_manage_customers': True,
+            'can_manage_locations': True,
+            'can_view_inventory': True
         },
-        'staff': {
+
+        'agency_admin': {
+            # Manages users and operations within a single agency
             'can_manage_agencies': False,
-            'can_manage_all_users': False,
+            'can_manage_users': True,
             'can_view_all_data': False,
-            'can_access_pos': False,
+            'can_access_pos': True,
             'can_manage_inventory': True,
             'can_manage_billing': True,
-            'can_view_reports': False
+            'can_view_reports': True,
+            'can_manage_roles': False,
+            'can_manage_orders': True,
+            'can_manage_customers': True,
+            'can_manage_locations': True,
+            'can_view_inventory': True
         },
-        'salesperson': {
+
+        'staff': {
+            # Operational role within an agency
             'can_manage_agencies': False,
-            'can_manage_all_users': False,
+            'can_manage_users': False,
+            'can_view_all_data': False,
+            'can_access_pos': True,
+            'can_manage_inventory': True,
+            'can_manage_billing': True,
+            'can_view_reports': False,
+            'can_manage_roles': False,
+            'can_manage_orders': True,
+            'can_manage_customers': True,
+            'can_manage_locations': True,
+            'can_view_inventory': True
+        },
+
+        'salesperson': {
+            # Sales-focused role
+            'can_manage_agencies': False,
+            'can_manage_users': False,
             'can_view_all_data': False,
             'can_access_pos': False,
-            'can_manage_inventory': True,
+            'can_manage_inventory': False,
             'can_manage_billing': False,
             'can_view_reports': False,
-            'can_manage_orders': True
+            'can_manage_roles': False,
+            'can_manage_orders': True,
+            'can_manage_customers': True,
+            'can_manage_locations': True,
+            'can_view_inventory': True
         },
+
         'pos_user': {
+            # POS-only role
             'can_manage_agencies': False,
-            'can_manage_all_users': False,
+            'can_manage_users': False,
             'can_view_all_data': False,
             'can_access_pos': True,
             'can_manage_inventory': False,
             'can_manage_billing': True,
             'can_view_reports': False,
-            'can_create_quick_sales': True
+            'can_manage_roles': False,
+            'can_manage_orders': True,
+            'can_manage_customers': True,
+            'can_view_inventory': True
         }
     }
+
     return permissions.get(role, {})
+
+def inject_permissions():
+    """Injects user permissions into the template context."""
+    if 'user_id' in session and 'role' in session:
+        return {'permissions': get_role_permissions(session['role'])}
+    return {'permissions': {}}

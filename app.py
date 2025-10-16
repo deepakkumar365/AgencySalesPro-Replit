@@ -91,6 +91,13 @@ def create_app():
     app.jinja_env.globals['abs'] = abs
     app.jinja_env.globals['get_dashboard_url'] = get_dashboard_url
 
+    # Register the context processor to inject permissions into templates
+    from auth.utils import inject_permissions
+
+    @app.context_processor
+    def _inject_permissions_context():
+        return inject_permissions()
+
     db.init_app(app)
     jwt.init_app(app)
     

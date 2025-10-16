@@ -82,7 +82,7 @@ def list_overrides(current_agency_id=None):
 
 @overrides_bp.route('/<int:product_id>/edit', methods=['GET', 'POST'])
 @login_required
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('edit_product_override')
 def edit_override(product_id, current_agency_id=None):
     user_role = session.get('role')
@@ -129,7 +129,7 @@ def edit_override(product_id, current_agency_id=None):
 
 @overrides_bp.route('/bulk-upload', methods=['GET', 'POST'])
 @login_required
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('bulk_upload_overrides')
 def bulk_upload_overrides(current_agency_id=None):
     user_role = session.get('role')
