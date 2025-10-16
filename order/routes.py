@@ -259,7 +259,8 @@ def create_order():
                     tax_rate=0,
                     tax_amount=0,
                     line_total=line_total,
-                    total_price=line_total  # Backward compatibility
+                    total_price=line_total,  # Backward compatibility
+                    product_name=product.get_display_name_for_agency(order.agency_id)  # Store effective product name respecting agency-specific overrides
                 )
                 db.session.add(order_item)
                 

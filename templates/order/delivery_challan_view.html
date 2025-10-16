@@ -141,7 +141,7 @@
                         <tbody>
                             {% for item in challan.order.order_items %}
                             <tr>
-                                <td>{{ item.product.name }}</td>
+                                <td>{{ item.product_name or item.product.name }}</td>
                                 <td><code>{{ item.product.sku }}</code></td>
                                 <td>{{ "%g"|format(item.quantity|float) }}</td>
                                 <td>{{ item.uom }}</td>

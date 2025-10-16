@@ -251,7 +251,7 @@ def export_orders_to_excel(orders):
                 order.customer.location.name,
                 order.agency.name,
                 order.salesperson.full_name,
-                item.product.name,
+                item.product_name or item.product.name,
                 item.product.sku,
                 item.quantity,
                 float(item.unit_price),

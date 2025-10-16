@@ -152,7 +152,7 @@ def get_order_detail(order_id):
         },
         'items': [{
             'id': item.id,
-            'product_name': item.product.name,
+            'product_name': item.product_name or item.product.name,
             'product_sku': item.product.sku,
             'quantity': item.quantity,
             'unit_price': str(item.unit_price),

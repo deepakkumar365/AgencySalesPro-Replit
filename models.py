@@ -176,6 +176,23 @@ class Product(db.Model):
             return round(((self.sell_price - self.buy_price) / self.buy_price) * 100, 2)
         return 0
     
+    def get_display_name_for_agency(self, agency_id):
+        """
+        Get the effective display name for this product in a specific agency.
+        Respects agency-specific overrides from ProductAgency.
+        
+        Args:
+            agency_id: The ID of the agency
+            
+        Returns:
+            The agency-specific display name if it exists, otherwise the global product name
+        """
+        if agency_id:
+            mapping = ProductAgency.query.filter_by(product_id=self.id, agency_id=agency_id).first()
+            if mapping and mapping.display_name:
+                return mapping.display_name
+        return self.name
+    
     # Backward compatibility methods
     def sync_legacy_fields(self):
         """Legacy columns removed; no-op to maintain compatibility with old calls."""
@@ -253,6 +270,7 @@ class OrderItem(db.Model):
     tax_amount = db.Column(db.Numeric(10, 2), default=0)  # Calculated tax amount
     line_total = db.Column(db.Numeric(10, 2), nullable=False)  # Final line amount with tax
     total_price = db.Column(db.Numeric(10, 2), nullable=False)  # For backward compatibility
+    product_name = db.Column(db.String(150))  # Effective product name at order creation (respects agency-specific overrides)
     
     def calculate_totals(self):
         """Calculate item totals after setting all values"""
@@ -298,6 +316,20 @@ class DeliveryChallan(db.Model):
     agency = db.relationship('Agency', backref='delivery_challans', lazy=True)
     customer = db.relationship('Customer', backref='delivery_challans', lazy=True)
     creator = db.relationship('User', backref='created_challans', lazy=True)
+    items = db.relationship('DeliveryChallanItem', backref='challan', lazy=True, cascade='all, delete-orphan')
+
+class DeliveryChallanItem(db.Model):
+    """Line items for delivery challans with product name snapshot"""
+    __tablename__ = 'ASP_delivery_challan_items'
+    id = db.Column(db.Integer, primary_key=True)
+    challan_id = db.Column(db.Integer, db.ForeignKey('ASP_delivery_challans.id'), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
+    quantity = db.Column(db.Numeric(10, 3), nullable=False)
+    uom = db.Column(db.String(20), default='pcs')  # Unit of Measure: pcs, kg, ltr, etc.
+    product_name = db.Column(db.String(150))  # Effective product name at creation (respects agency-specific overrides)
+    
+    # Relationships
+    product = db.relationship('Product', backref='delivery_challan_items', lazy=True)
 
 class ActivityLog(db.Model):
     __tablename__ = 'ASP_activity_logs'
@@ -335,6 +367,22 @@ class Invoice(db.Model):
     order = db.relationship('Order', backref='invoice', lazy=True)
     customer = db.relationship('Customer', backref='invoices', lazy=True)
     payments = db.relationship('Payment', backref='invoice', lazy=True)
+    items = db.relationship('InvoiceItem', backref='invoice', lazy=True, cascade='all, delete-orphan')
+
+class InvoiceItem(db.Model):
+    """Line items for invoices with product name snapshot"""
+    __tablename__ = 'ASP_invoice_items'
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('ASP_invoices.id'), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
+    quantity = db.Column(db.Numeric(10, 3), nullable=False)
+    unit_price = db.Column(db.Numeric(10, 2), nullable=False)
+    tax_amount = db.Column(db.Numeric(10, 2), default=0)
+    total_price = db.Column(db.Numeric(10, 2), nullable=False)
+    product_name = db.Column(db.String(150))  # Effective product name at creation (respects agency-specific overrides)
+    
+    # Relationships
+    product = db.relationship('Product', backref='invoice_items', lazy=True)
 
 class Payment(db.Model):
     __tablename__ = 'ASP_payments'
@@ -434,6 +482,7 @@ class PurchaseOrderItem(db.Model):
     quantity_received = db.Column(db.Numeric(10, 2), default=0)  # Changed from Integer to Numeric to support decimal values
     unit_cost = db.Column(db.Numeric(10, 2), nullable=False)
     total_cost = db.Column(db.Numeric(10, 2), nullable=False)
+    product_name = db.Column(db.String(150))  # Effective product name at creation (respects agency-specific overrides)
     
     # Relationships
     product = db.relationship('Product', backref='po_items', lazy=True)

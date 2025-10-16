@@ -147,12 +147,18 @@ def create_purchase_order(current_agency_id=None):
             line_total = (quantity_value * unit_price_value).quantize(Decimal("0.01"))
             subtotal += line_total
 
+            # Fetch product to get effective display name
+            product = Product.query.get(product_id)
+            if not product:
+                continue
+            
             purchase_order_item = PurchaseOrderItem(
                 po_id=purchase_order.id,
                 product_id=product_id,
                 quantity_ordered=int(quantity_value),
                 unit_cost=unit_price_value,
                 total_cost=line_total,
+                product_name=product.get_display_name_for_agency(agency_id)  # Store effective product name respecting agency-specific overrides
             )
             db.session.add(purchase_order_item)
 
@@ -377,12 +383,18 @@ def edit_purchase_order(purchase_order_id, current_agency_id=None):
                 line_total = (quantity_value * unit_price_value).quantize(Decimal("0.01"))
                 subtotal += line_total
 
+                # Fetch product to get effective display name
+                product = Product.query.get(int(product_id))
+                if not product:
+                    continue
+                
                 purchase_order_item = PurchaseOrderItem(
                     po_id=purchase_order.id,
                     product_id=int(product_id),
                     quantity_ordered=int(quantity_value),
                     unit_cost=unit_price_value,
                     total_cost=line_total,
+                    product_name=product.get_display_name_for_agency(purchase_order.agency_id)  # Store effective product name respecting agency-specific overrides
                 )
                 db.session.add(purchase_order_item)
 

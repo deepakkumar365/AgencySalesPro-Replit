@@ -96,7 +96,7 @@
                             {% for item in purchase_order.po_items %}
                             <tr>
                                 <td>
-                                    <strong>{{ item.product.name if item.product else 'Unknown Product' }}</strong>
+                                    <strong>{{ item.product_name or (item.product.name if item.product else 'Unknown Product') }}</strong>
                                     {% if item.product and item.product.sku %}
                                     <br><small class="text-muted">SKU: {{ item.product.sku }}</small>
                                     {% endif %}

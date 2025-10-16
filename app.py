@@ -188,6 +188,58 @@ def create_app():
             logging.info("App not installed. Running setup...")
             run_setup()
 
+    # Register CLI commands
+    @app.cli.command('resync-product-names')
+    def resync_product_names_command():
+        """Resync all item product names across all tables to respect current ProductAgency overrides.
+        
+        This command updates product names for:
+        - Order Items
+        - Purchase Order Items  
+        - Invoice Items
+        - Delivery Challan Items
+        """
+        try:
+            from utils.maintenance import resync_product_names
+            from flask import current_app
+            
+            with app.app_context():
+                logging.info('Starting comprehensive product names resync across all item tables...')
+                stats = resync_product_names()
+                
+                # Log results
+                logging.info(f'Resync completed:')
+                logging.info(f'  - Order Items: {stats["order_items_updated"]} updated')
+                logging.info(f'  - Purchase Order Items: {stats["po_items_updated"]} updated')
+                logging.info(f'  - Invoice Items: {stats["invoice_items_updated"]} updated')
+                logging.info(f'  - Delivery Challan Items: {stats["challan_items_updated"]} updated')
+                logging.info(f'  - Total: {stats["total_updated"]} records updated')
+                
+                if stats['errors']:
+                    logging.warning(f'  - Errors: {len(stats["errors"])} error(s) occurred')
+                    for error in stats['errors']:
+                        logging.warning(f'    - {error}')
+                
+                # Console output
+                print(f'\n✓ Product names resync completed!')
+                print(f'  Order Items: {stats["order_items_updated"]} updated')
+                print(f'  Purchase Order Items: {stats["po_items_updated"]} updated')
+                print(f'  Invoice Items: {stats["invoice_items_updated"]} updated')
+                print(f'  Delivery Challan Items: {stats["challan_items_updated"]} updated')
+                print(f'  Total: {stats["total_updated"]} records updated\n')
+                
+                if stats['errors']:
+                    print(f'⚠ {len(stats["errors"])} error(s) occurred:')
+                    for error in stats['errors']:
+                        print(f'  - {error}')
+                    print()
+                
+        except Exception as e:
+            logging.error(f'Resync failed: {str(e)}')
+            print(f'\n✗ Error: {str(e)}\n')
+            return 1
+        return 0
+    
     return app
 
 app = create_app()
