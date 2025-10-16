@@ -121,6 +121,7 @@ def create_app():
         from job_accounting import job_accounting_bp
         from product_overrides import overrides_bp
         from finance import finance_bp
+        from service import service_bp
         from forecasting import forecasting_bp
 
         app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -142,6 +143,7 @@ def create_app():
         app.register_blueprint(job_accounting_bp, url_prefix='/job-accounting')
         app.register_blueprint(finance_bp, url_prefix='/billing') # Changed from /finance to /billing
         app.register_blueprint(overrides_bp)
+        app.register_blueprint(service_bp) # No prefix, as it's an API blueprint with its own prefix
         app.register_blueprint(forecasting_bp, url_prefix='/forecasting')
 
     register_blueprints(app)

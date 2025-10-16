@@ -29,6 +29,7 @@ class Agency(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     code = db.Column(db.String(20), unique=True, nullable=False)
+    agency_type = db.Column(db.String(50), nullable=False, default='sales', index=True) # 'sales' or 'service'
     
     # Address fields (Ticket #12)
     address = db.Column(db.Text)  # Kept for backward compatibility
@@ -65,6 +66,7 @@ class User(db.Model):
     last_name = db.Column(db.String(50))
     role = db.Column(db.String(20), nullable=False)  # super_admin, agency_admin, agency_manager, staff, salesperson, pos_user
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), index=True)
+    service_technician_id = db.Column(db.String(50), unique=True, nullable=True, index=True) # For service technicians
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
@@ -138,6 +140,7 @@ class Customer(db.Model):
     orders = db.relationship('Order', backref='customer', lazy=True)
     subscription = db.relationship('Subscription', back_populates='customer_rel', uselist=False)
     agency_mappings = db.relationship('CustomerAgency', backref='customer', lazy=True, cascade='all, delete-orphan')
+    vehicles = db.relationship('Vehicle', backref='customer', lazy=True, cascade='all, delete-orphan')
 
 class Product(db.Model):
     __tablename__ = 'ASP_products'
@@ -1090,3 +1093,103 @@ class ForecastRefreshLog(db.Model):
     # Relationships
     agency = db.relationship('Agency', backref='forecast_refresh_logs', lazy=True)
     user = db.relationship('User', backref='forecast_refresh_logs', lazy=True)
+ 
+# Service Module Models
+class Vehicle(db.Model):
+    """Model to store customer vehicle information"""
+    __tablename__ = 'ASP_vehicles'
+    id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    make = db.Column(db.String(100), nullable=False)
+    model = db.Column(db.String(100), nullable=False)
+    year = db.Column(db.String(4))
+    vin = db.Column(db.String(50), unique=True, index=True) # Vehicle Identification Number
+    license_plate = db.Column(db.String(20), unique=True, index=True)
+    color_code = db.Column(db.String(50))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    agency = db.relationship('Agency', backref='vehicles', lazy=True)
+    work_orders = db.relationship('WorkOrder', backref='vehicle', lazy=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('license_plate', 'agency_id', name='uq_vehicle_license_agency'),
+    )
+
+class ServiceCatalog(db.Model):
+    """List of predefined billable services offered by a garage."""
+    __tablename__ = 'ASP_service_catalog'
+    id = db.Column(db.Integer, primary_key=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    default_price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    estimated_hours = db.Column(db.Numeric(5, 2))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    agency = db.relationship('Agency', backref='service_catalog', lazy=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('name', 'agency_id', name='uq_service_name_agency'),
+    )
+
+class WorkOrder(db.Model):
+    """Core model to manage garage jobs and workflow."""
+    __tablename__ = 'ASP_work_orders'
+    id = db.Column(db.Integer, primary_key=True)
+    job_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False, index=True)
+    vehicle_id = db.Column(db.Integer, db.ForeignKey('ASP_vehicles.id'), nullable=False, index=True)
+    status = db.Column(db.String(30), default='Estimate', index=True) # Estimate, Approved, In Progress, Completed, Delivered, Cancelled
+    assigned_technician_id = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), index=True)
+    estimated_cost = db.Column(db.Numeric(12, 2), default=0)
+    actual_cost = db.Column(db.Numeric(12, 2), default=0)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    approved_at = db.Column(db.DateTime)
+    in_progress_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime)
+    delivered_at = db.Column(db.DateTime)
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+
+    # Relationships
+    agency = db.relationship('Agency', backref='work_orders', lazy=True)
+    customer = db.relationship('Customer', backref='work_orders', lazy=True)
+    assigned_technician = db.relationship('User', foreign_keys=[assigned_technician_id], backref='assigned_work_orders', lazy=True)
+    creator = db.relationship('User', foreign_keys=[created_by], backref='created_work_orders', lazy=True)
+    line_items = db.relationship('WorkOrderLineItem', backref='work_order', lazy=True, cascade='all, delete-orphan')
+
+class WorkOrderLineItem(db.Model):
+    """Line items for a Work Order, can be a service, material, or labor."""
+    __tablename__ = 'ASP_work_order_line_items'
+    id = db.Column(db.Integer, primary_key=True)
+    work_order_id = db.Column(db.Integer, db.ForeignKey('ASP_work_orders.id'), nullable=False, index=True)
+    line_type = db.Column(db.String(20), nullable=False, index=True) # service, material, labor
+    description = db.Column(db.Text, nullable=False)
+    quantity = db.Column(db.Numeric(10, 2), nullable=False, default=1)
+    unit_cost = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    total_cost = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+
+    # Foreign keys for linking to other entities
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=True, index=True) # For materials
+    service_id = db.Column(db.Integer, db.ForeignKey('ASP_service_catalog.id'), nullable=True, index=True) # For services
+
+    # Relationships
+    product = db.relationship('Product', backref='work_order_items', lazy=True)
+    service = db.relationship('ServiceCatalog', backref='work_order_items', lazy=True)
+
+    def __init__(self, **kwargs):
+        super(WorkOrderLineItem, self).__init__(**kwargs)
+        self.calculate_total()
+
+    def calculate_total(self):
+        if self.quantity is not None and self.unit_cost is not None:
+            self.total_cost = self.quantity * self.unit_cost
+        else:
+            self.total_cost = 0
