@@ -556,3 +556,9 @@ def reset_agency_manager_password(agency_id):
         flash(f"An error occurred while resetting the password: {str(e)}", "danger")
 
     return redirect(url_for('agency.list_agencies'))
+
+@super_admin_bp.route('/user-manual')
+@login_required
+def user_manual():
+    """Display Super Admin User Manual"""
+    return render_template('super_admin/user_manual.html')
