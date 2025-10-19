@@ -140,7 +140,7 @@ class Customer(db.Model):
     orders = db.relationship('Order', backref='customer', lazy=True)
     subscription = db.relationship('Subscription', back_populates='customer_rel', uselist=False)
     agency_mappings = db.relationship('CustomerAgency', backref='customer', lazy=True, cascade='all, delete-orphan')
-    vehicles = db.relationship('Vehicle', backref='customer', lazy=True, cascade='all, delete-orphan')
+
 
 class Product(db.Model):
     __tablename__ = 'ASP_products'
@@ -1096,29 +1096,7 @@ class ForecastRefreshLog(db.Model):
     user = db.relationship('User', backref='forecast_refresh_logs', lazy=True)
  
 # Service Module Models
-class Vehicle(db.Model):
-    """Model to store customer vehicle information"""
-    __tablename__ = 'ASP_vehicles'
-    id = db.Column(db.Integer, primary_key=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False, index=True)
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
-    make = db.Column(db.String(100), nullable=False)
-    model = db.Column(db.String(100), nullable=False)
-    year = db.Column(db.String(4))
-    vin = db.Column(db.String(50), unique=True, index=True) # Vehicle Identification Number
-    license_plate = db.Column(db.String(20), unique=True, index=True)
-    color_code = db.Column(db.String(50))
-    is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relationships
-    agency = db.relationship('Agency', backref='vehicles', lazy=True)
-    work_orders = db.relationship('WorkOrder', backref='vehicle', lazy=True)
-
-    __table_args__ = (
-        db.UniqueConstraint('license_plate', 'agency_id', name='uq_vehicle_license_agency'),
-    )
+# Vehicle model removed: ASP_vehicles table will be dropped via migration
 
 class ServiceCatalog(db.Model):
     """List of predefined billable services offered by a garage."""
@@ -1127,6 +1105,9 @@ class ServiceCatalog(db.Model):
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
+    # service_type allows the same catalog to host multiple service domains
+    # examples: 'garage', 'chitfund', 'subscription'
+    service_type = db.Column(db.String(50), nullable=False, default='garage', index=True)
     default_price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     estimated_hours = db.Column(db.Numeric(5, 2))
     is_active = db.Column(db.Boolean, default=True)
@@ -1146,7 +1127,6 @@ class WorkOrder(db.Model):
     job_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
     customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False, index=True)
-    vehicle_id = db.Column(db.Integer, db.ForeignKey('ASP_vehicles.id'), nullable=False, index=True)
     status = db.Column(db.String(30), default='Estimate', index=True) # Estimate, Approved, In Progress, Completed, Delivered, Cancelled
     assigned_technician_id = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), index=True)
     estimated_cost = db.Column(db.Numeric(12, 2), default=0)

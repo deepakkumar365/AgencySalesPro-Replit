@@ -7,7 +7,7 @@ from sqlalchemy import func
 
 from auth.utils import login_required, permission_required
 from extensions import db
-from models import (WorkOrder, WorkOrderLineItem, Customer, Vehicle,
+from models import (WorkOrder, WorkOrderLineItem, Customer,
                     ServiceCatalog, Product, User, Agency, InventoryTransaction)
 from utils.service_utils import deduct_inventory_for_work_order
 
@@ -40,7 +40,7 @@ def list_work_orders(current_agency_id=None):
     user_role = session.get('role')
     user_id = session.get('user_id')
     
-    query = WorkOrder.query.join(Customer).join(Vehicle)
+    query = WorkOrder.query.join(Customer)
 
     # Agency-based filtering
     if user_role != 'super_admin':
@@ -55,8 +55,7 @@ def list_work_orders(current_agency_id=None):
         query = query.filter(WorkOrder.status == request.args['status'])
     if 'customer_id' in request.args:
         query = query.filter(WorkOrder.customer_id == request.args['customer_id'])
-    if 'vehicle_id' in request.args:
-        query = query.filter(WorkOrder.vehicle_id == request.args['vehicle_id'])
+    # vehicle filtering removed; work orders are linked to customer only
 
     page = request.args.get('page', 1, type=int)
     per_page = 20
@@ -67,7 +66,8 @@ def list_work_orders(current_agency_id=None):
         'id': wo.id,
         'job_number': wo.job_number,
         'customer_name': wo.customer.name,
-        'vehicle': f"{wo.vehicle.make} {wo.vehicle.model}",
+    # Vehicle removed: no direct vehicle data stored on work orders
+    'vehicle': '',
         'status': wo.status,
         'estimated_cost': float(wo.estimated_cost or 0),
         'actual_cost': float(wo.actual_cost or 0),
@@ -91,14 +91,8 @@ def create_work_order(current_agency_id=None):
         return jsonify({'error': 'Invalid JSON payload'}), 400
 
     customer_id = data.get('customer_id')
-    vehicle_id = data.get('vehicle_id')
-
-    if not all([customer_id, vehicle_id]):
-        return jsonify({'error': 'customer_id and vehicle_id are required'}), 400
-
-    vehicle = Vehicle.query.get(vehicle_id)
-    if not vehicle or vehicle.customer_id != customer_id:
-        return jsonify({'error': 'Vehicle does not belong to the specified customer'}), 400
+    if not customer_id:
+        return jsonify({'error': 'customer_id is required'}), 400
 
     try:
         job_number = generate_job_number(current_agency_id)
@@ -107,7 +101,6 @@ def create_work_order(current_agency_id=None):
             job_number=job_number,
             agency_id=current_agency_id,
             customer_id=customer_id,
-            vehicle_id=vehicle_id,
             assigned_technician_id=data.get('assigned_technician_id'),
             estimated_cost=Decimal(data.get('estimated_cost', 0)),
             status='Estimate',
@@ -182,12 +175,13 @@ def get_work_order(job_id, current_agency_id=None):
     
     work_order = query.first_or_404()
 
+    # Vehicle removed: respond with no vehicle data
     response = {
         'id': work_order.id,
         'job_number': work_order.job_number,
         'status': work_order.status,
         'customer': {'id': work_order.customer.id, 'name': work_order.customer.name},
-        'vehicle': {'id': work_order.vehicle.id, 'make': work_order.vehicle.make, 'model': work_order.vehicle.model, 'license_plate': work_order.vehicle.license_plate},
+    'vehicle': None,
         'assigned_technician': {'id': work_order.assigned_technician.id, 'name': work_order.assigned_technician.full_name} if work_order.assigned_technician else None,
         'line_items': [{
             'id': item.id,

@@ -99,8 +99,8 @@
                         </td>
                         <td>{{ wo.customer.name }}</td>
                         <td>
-                            <small>{{ wo.vehicle.year }} {{ wo.vehicle.make }} {{ wo.vehicle.model }}</small><br>
-                            <small class="text-muted">{{ wo.vehicle.license_plate }}</small>
+                            {# Vehicle removed from model; show placeholder #}
+                            <small>N/A</small>
                         </td>
                         <td><small>{{ wo.created_at.strftime('%d %b %Y') }}</small></td>
                         <td>₹{{ "{:,.2f}".format(wo.estimated_cost) }}</td>

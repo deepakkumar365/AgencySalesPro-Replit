@@ -54,10 +54,10 @@ def run_migration():
         
         # Import models to ensure they're registered
         print("Importing models...")
-        from models import Vehicle, ServiceCatalog, WorkOrder, WorkOrderLineItem, User
+        from models import ServiceCatalog, WorkOrder, WorkOrderLineItem, User
         print("✓ Service Module models imported")
         print()
-        
+
         # Check if tables already exist
         from sqlalchemy import inspect
         inspector = inspect(db.engine)
@@ -76,7 +76,7 @@ def run_migration():
                 print("Migration cancelled.")
                 sys.exit(0)
             print()
-        
+
         # Create all tables
         print("Creating database tables...")
         try:
@@ -84,11 +84,11 @@ def run_migration():
             db.create_all()
             print("✓ Database tables for Service Module created successfully!")
             print()
-            
+
             # Verify tables were created
             inspector = inspect(db.engine)
             current_tables = inspector.get_table_names()
-            
+
             print("Verifying table creation:")
             all_found = True
             for table in service_tables:
@@ -98,7 +98,7 @@ def run_migration():
                     print(f"   ❌ {table} - NOT FOUND")
                     all_found = False
             print()
-            
+
             if all_found:
                 print("=" * 60)
                 print("✅ Migration completed successfully!")
@@ -107,7 +107,37 @@ def run_migration():
                 print("=" * 60)
                 print("❌ Migration finished, but some tables were not created.")
                 print("=" * 60)
-            
+            # Ensure 'service_type' column exists on ASP_service_catalog (non-destructive)
+            from sqlalchemy import text
+            inspector = inspect(db.engine)
+            cols = [c['name'] for c in inspector.get_columns('ASP_service_catalog')] if 'ASP_service_catalog' in inspector.get_table_names() else []
+            if 'service_type' not in cols:
+                print("Adding 'service_type' column to 'ASP_service_catalog' table (safe, dialect-aware)...")
+                try:
+                    dialect = db.engine.dialect.name.lower()
+                    # Use dialect appropriate ALTER TABLE. Keep column nullable to avoid destructive changes.
+                    if dialect in ('postgresql', 'postgres'):
+                        # Use quoted identifier to preserve original casing if table was created with quotes
+                        alter_sql = """ALTER TABLE "ASP_service_catalog" ADD COLUMN service_type VARCHAR(50) DEFAULT 'garage';"""
+                    elif dialect in ('mysql', 'mariadb'):
+                        alter_sql = "ALTER TABLE ASP_service_catalog ADD COLUMN service_type VARCHAR(50) DEFAULT 'garage';"
+                    else:
+                        # SQLite and others: add column without DEFAULT to avoid compatibility issues
+                        alter_sql = "ALTER TABLE ASP_service_catalog ADD COLUMN service_type VARCHAR(50);"
+
+                    db.session.execute(text(alter_sql))
+                    # Backfill existing rows to 'garage' for consistency
+                    if dialect in ('postgresql', 'postgres'):
+                        update_sql = """UPDATE "ASP_service_catalog" SET service_type = 'garage' WHERE service_type IS NULL OR service_type = '';"""
+                    else:
+                        update_sql = "UPDATE ASP_service_catalog SET service_type = 'garage' WHERE service_type IS NULL OR service_type = '';"
+                    db.session.execute(text(update_sql))
+                    db.session.commit()
+                    print("✓ 'service_type' column added and backfilled with 'garage'")
+                except Exception as e:
+                    print(f"⚠️ Could not add or backfill 'service_type' automatically: {e}")
+                    db.session.rollback()
+
         except Exception as e:
             print(f"❌ ERROR during migration: {str(e)}")
             import traceback

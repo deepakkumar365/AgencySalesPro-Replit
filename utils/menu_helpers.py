@@ -31,15 +31,7 @@ def get_service_menu_items(user_role):
                         {'label': 'Pending Approvals', 'url': 'service.list_work_orders', 'params': {'status': 'Estimate'}, 'icon': 'fas fa-hourglass-start'},
                     ]
                 },
-                {
-                    'label': 'Vehicles',
-                    'icon': 'fas fa-car',
-                    'submenu': [
-                        {'label': 'All Vehicles', 'url': 'service.list_vehicles', 'icon': 'fas fa-car'},
-                        {'label': 'Register Vehicle', 'url': 'service.register_vehicle', 'icon': 'fas fa-plus-circle'},
-                        {'label': 'Service History', 'url': 'service.list_vehicles', 'icon': 'fas fa-history'},
-                    ]
-                },
+                # Vehicles removed from UI (vehicle management disabled)
                 {
                     'label': 'Technicians',
                     'icon': 'fas fa-user-tie',
@@ -119,15 +111,7 @@ def get_service_menu_items(user_role):
                         {'label': 'Completed', 'url': 'service.list_work_orders', 'params': {'status': 'Completed'}, 'icon': 'fas fa-check-circle'},
                     ]
                 },
-                {
-                    'label': 'Vehicles',
-                    'icon': 'fas fa-car',
-                    'submenu': [
-                        {'label': 'All Vehicles', 'url': 'service.list_vehicles', 'icon': 'fas fa-car'},
-                        {'label': 'Register New Vehicle', 'url': 'service.register_vehicle', 'icon': 'fas fa-plus-circle'},
-                        {'label': 'Service History', 'url': 'service.list_vehicles', 'icon': 'fas fa-history'},
-                    ]
-                },
+                # Vehicles removed from UI (vehicle management disabled)
                 {
                     'label': 'Customer Info',
                     'icon': 'fas fa-user-friends',

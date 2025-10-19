@@ -7,11 +7,41 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1><i class="fas fa-wrench me-2"></i>Service Catalog</h1>
-                    <p class="text-muted">Manage available services</p>
+                <div class="d-flex align-items-center">
+                    <div>
+                        <h1><i class="fas fa-wrench me-2"></i>Service Catalog</h1>
+                        <p class="text-muted">Manage available services</p>
+                    </div>
+                    <div class="ms-4 d-flex align-items-end">
+                        <form id="serviceFilters" class="d-flex" method="get" action="">
+                            <div class="me-2">
+                                <label for="serviceTypeFilter" class="form-label mb-1 small">Service Type</label>
+                                <select id="serviceTypeFilter" name="service_type" class="form-select">
+                                    <option value="all" {% if service_type == 'all' %}selected{% endif %}>All</option>
+                                    <option value="garage" {% if service_type == 'garage' %}selected{% endif %}>Garage</option>
+                                    <option value="chitfund" {% if service_type == 'chitfund' %}selected{% endif %}>Chit Fund</option>
+                                    <option value="subscription" {% if service_type == 'subscription' %}selected{% endif %}>Subscription</option>
+                                </select>
+                            </div>
+                            <div class="me-2">
+                                <label for="isActiveFilter" class="form-label mb-1 small">Status</label>
+                                <select id="isActiveFilter" name="is_active" class="form-select">
+                                    <option value="all" {% if is_active == 'all' %}selected{% endif %}>All</option>
+                                    <option value="true" {% if is_active == 'true' %}selected{% endif %}>Active</option>
+                                    <option value="false" {% if is_active == 'false' %}selected{% endif %}>Inactive</option>
+                                </select>
+                            </div>
+                            <div class="me-2">
+                                <label for="q" class="form-label mb-1 small">Search</label>
+                                <input id="q" name="q" class="form-control" value="{{ q or '' }}" placeholder="Search services">
+                            </div>
+                            <div class="align-self-end">
+                                <button type="submit" class="btn btn-outline-secondary">Filter</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-                <a href="{{ url_for('service.create_service') }}" class="btn btn-primary btn-lg">
+                <a href="{{ url_for('service.create_service', service_type=service_type if service_type != 'all' else None) }}" class="btn btn-primary btn-lg">
                     <i class="fas fa-plus-circle me-2"></i>Add Service
                 </a>
             </div>
@@ -65,5 +95,27 @@
         </div>
         {% endif %}
     </div>
+
+        {# Pagination controls #}
+        {% if total_pages and total_pages > 1 %}
+        <nav aria-label="Service pagination">
+            <ul class="pagination justify-content-center mt-4">
+                <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+                    <a class="page-link" href="?service_type={{ service_type }}&is_active={{ is_active }}&q={{ q }}&page={{ page-1 }}&per_page={{ per_page }}">Previous</a>
+                </li>
+                <li class="page-item disabled"><span class="page-link">Page {{ page }} of {{ total_pages }}</span></li>
+                <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                    <a class="page-link" href="?service_type={{ service_type }}&is_active={{ is_active }}&q={{ q }}&page={{ page+1 }}&per_page={{ per_page }}">Next</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
 </div>
 {% endblock %}
+
+<script>
+// Keep the current filters when changing service type via select in case JS is used
+document.getElementById('serviceTypeFilter')?.addEventListener('change', function(){
+        document.getElementById('serviceFilters').submit();
+});
+</script>

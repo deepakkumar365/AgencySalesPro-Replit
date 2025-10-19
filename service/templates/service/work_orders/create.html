@@ -14,29 +14,21 @@
     <div class="row">
         <div class="col-lg-8">
             <form method="POST" class="needs-validation" novalidate>
-                <!-- Customer & Vehicle Selection -->
+                <!-- Customer Selection -->
                 <div class="card mb-3">
                     <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-user me-2"></i>Customer & Vehicle</h5>
+                        <h5 class="mb-0"><i class="fas fa-user me-2"></i>Customer</h5>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
                             <label for="customerId" class="form-label">Customer <span class="text-danger">*</span></label>
-                            <select id="customerId" name="customer_id" class="form-select" required onchange="loadCustomerVehicles()">
+                            <select id="customerId" name="customer_id" class="form-select" required>
                                 <option value="">-- Select Customer --</option>
                                 {% for customer in customers %}
                                 <option value="{{ customer.id }}">{{ customer.name }}</option>
                                 {% endfor %}
                             </select>
                             <div class="invalid-feedback">Please select a customer.</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="vehicleId" class="form-label">Vehicle <span class="text-danger">*</span></label>
-                            <select id="vehicleId" name="vehicle_id" class="form-select" required>
-                                <option value="">-- Select Vehicle --</option>
-                            </select>
-                            <div class="invalid-feedback">Please select a vehicle.</div>
                         </div>
                     </div>
                 </div>
@@ -47,6 +39,14 @@
                         <h5 class="mb-0"><i class="fas fa-wrench me-2"></i>Services</h5>
                     </div>
                     <div class="card-body">
+                        <div class="mb-3">
+                            <label for="workOrderServiceType" class="form-label">Service Type</label>
+                            <select id="workOrderServiceType" class="form-select mb-3" onchange="onWorkOrderServiceTypeChange()">
+                                <option value="garage" {% if request.args.get('service_type', 'garage') == 'garage' %}selected{% endif %}>Garage</option>
+                                <option value="chitfund" {% if request.args.get('service_type') == 'chitfund' %}selected{% endif %}>Chit Fund</option>
+                                <option value="subscription" {% if request.args.get('service_type') == 'subscription' %}selected{% endif %}>Subscription</option>
+                            </select>
+                        </div>
                         <div id="servicesContainer">
                             <p class="text-muted">Add services by clicking the add button below</p>
                         </div>
@@ -129,7 +129,7 @@
                 <div class="card-body small">
                     <h6>Creating a Work Order</h6>
                     <ol class="ps-3 mb-3">
-                        <li>Select a customer and their vehicle</li>
+                        <li>Select a customer (vehicle optional)</li>
                         <li>Add services from the catalog or custom services</li>
                         <li>Add any parts/materials needed</li>
                         <li>Assign a technician (optional)</li>
@@ -163,19 +163,7 @@
 let serviceCount = 0;
 let productCount = 0;
 
-function loadCustomerVehicles() {
-    const customerId = document.getElementById('customerId').value;
-    const vehicleSelect = document.getElementById('vehicleId');
-    
-    if (!customerId) {
-        vehicleSelect.innerHTML = '<option value="">-- Select Vehicle --</option>';
-        return;
-    }
-
-    // In production, this would call an AJAX endpoint
-    // For now, we'll keep it simple
-    vehicleSelect.innerHTML = '<option value="">Loading...</option>';
-}
+// vehicle selection removed; no client-side vehicle loader required
 
 function addServiceRow() {
     const container = document.getElementById('servicesContainer');
@@ -210,6 +198,14 @@ function addServiceRow() {
     
     container.appendChild(row);
     serviceCount++;
+}
+
+function onWorkOrderServiceTypeChange(){
+    const sel = document.getElementById('workOrderServiceType');
+    const val = sel.value;
+    const url = new URL(window.location.href);
+    url.searchParams.set('service_type', val);
+    window.location.href = url.toString();
 }
 
 function addProductRow() {

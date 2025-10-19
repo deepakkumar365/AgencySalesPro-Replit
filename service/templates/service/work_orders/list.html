@@ -79,8 +79,10 @@
                             </td>
                             <td>{{ wo.customer.name }}</td>
                             <td>
-                                <small>{{ wo.vehicle.year }} {{ wo.vehicle.make }} {{ wo.vehicle.model }}</small><br>
-                                <small class="text-muted">{{ wo.vehicle.license_plate }}</small>
+                                {# Vehicle removed from model; show placeholders #}
+                                {% set v = None %}
+                                <small>N/A</small><br>
+                                <small class="text-muted"></small>
                             </td>
                             <td>
                                 {% if wo.assigned_technician %}

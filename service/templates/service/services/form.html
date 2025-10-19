@@ -48,6 +48,15 @@
                             </div>
                         </div>
 
+                        <div class="mb-3">
+                            <label for="serviceType" class="form-label">Service Type</label>
+                            <select id="serviceType" name="service_type" class="form-select">
+                                <option value="garage" {% if service and service.service_type == 'garage' %}selected{% endif %}>Garage</option>
+                                <option value="chitfund" {% if service and service.service_type == 'chitfund' %}selected{% endif %}>Chit Fund</option>
+                                <option value="subscription" {% if service and service.service_type == 'subscription' %}selected{% endif %}>Subscription</option>
+                            </select>
+                        </div>
+
                         {% if service %}
                         <div class="mb-3">
                             <div class="form-check">
@@ -61,7 +70,7 @@
                     </div>
                     <div class="card-footer bg-light">
                         <div class="d-grid gap-2 d-sm-flex justify-content-sm-end">
-                            <a href="{{ url_for('service.list_services') }}" class="btn btn-secondary">
+                            <a href="{{ url_for('service.list_services', service_type=service.service_type if service else request.args.get('service_type', 'garage')) }}" class="btn btn-secondary">
                                 <i class="fas fa-times me-1"></i>Cancel
                             </a>
                             <button type="submit" class="btn btn-primary">

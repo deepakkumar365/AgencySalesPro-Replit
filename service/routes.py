@@ -5,14 +5,16 @@ Focus: Work Orders, Vehicles, Services, and Technician Management
 
 from flask import render_template, request, redirect, url_for, flash, session, jsonify
 from sqlalchemy import func, or_, and_
+import math
 from decimal import Decimal
 from datetime import datetime, timedelta
 
 from extensions import db
 from models import (
-    WorkOrder, WorkOrderLineItem, Vehicle, ServiceCatalog, Customer, 
+    WorkOrder, WorkOrderLineItem, ServiceCatalog, Customer, 
     User, Agency, Product, InventoryTransaction, Location
 )
+    
 from auth.utils import login_required, permission_required
 from utils.decorators import log_activity
 from utils.service_utils import deduct_inventory_for_work_order
@@ -172,7 +174,6 @@ def create_work_order(**kwargs):
     if request.method == 'POST':
         try:
             customer_id = request.form.get('customer_id', type=int)
-            vehicle_id = request.form.get('vehicle_id', type=int)
             technician_id = request.form.get('technician_id', type=int)
             estimated_cost = Decimal(request.form.get('estimated_cost', 0))
             notes = request.form.get('notes', '')
@@ -182,18 +183,14 @@ def create_work_order(**kwargs):
             if not customer:
                 flash('Invalid customer selected', 'danger')
                 return redirect(url_for('service.create_work_order'))
-            
-            vehicle = Vehicle.query.get(vehicle_id)
-            if not vehicle or vehicle.customer_id != customer_id:
-                flash('Invalid vehicle selected', 'danger')
-                return redirect(url_for('service.create_work_order'))
+
+            # Vehicle handling removed - work orders map to customer only
             
             # Create work order
             work_order = WorkOrder(
                 job_number=generate_work_order_number(current_agency_id),
                 agency_id=current_agency_id,
                 customer_id=customer_id,
-                vehicle_id=vehicle_id,
                 assigned_technician_id=technician_id,
                 estimated_cost=estimated_cost,
                 notes=notes,
@@ -251,7 +248,11 @@ def create_work_order(**kwargs):
     customers = Customer.query.join(Location).filter(
         Location.agency_id == current_agency_id
     ).all()
-    services = ServiceCatalog.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+    # Allow selecting which service_type to use when creating a work order
+    service_type = request.args.get('service_type', 'garage')
+    services = ServiceCatalog.query.filter_by(
+        agency_id=current_agency_id, is_active=True, service_type=service_type
+    ).all()
     products = Product.query.all()
     technicians = User.query.filter(
         User.agency_id == current_agency_id,
@@ -287,10 +288,13 @@ def view_work_order(work_order_id, **kwargs):
         flash('Unauthorized access', 'danger')
         return redirect(url_for('service.list_work_orders'))
     
-    # Get inventory transactions for this work order
-    inventory_transactions = InventoryTransaction.query.filter_by(
-        work_order_id=work_order.id
-    ).all()
+    # Get inventory transactions for this work order by line items
+    line_item_ids = [li.id for li in work_order.line_items]
+    inventory_transactions = []
+    if line_item_ids:
+        inventory_transactions = InventoryTransaction.query.filter(
+            InventoryTransaction.work_order_line_item_id.in_(line_item_ids)
+        ).order_by(InventoryTransaction.created_at.desc()).all()
     
     return render_template(
         'service/work_orders/view.html',
@@ -423,93 +427,8 @@ def deliver_work_order(work_order_id, **kwargs):
     return redirect(url_for('service.view_work_order', work_order_id=work_order_id))
 
 
-# ==================== VEHICLE MANAGEMENT ====================
-
-@service_bp.route('/vehicles')
-@login_required
-@permission_required(roles=['service_manager', 'service_advisor'])
-def list_vehicles(**kwargs):
-    """List all vehicles for current agency."""
-    current_agency_id = kwargs.get('current_agency_id')
-    
-    vehicles = Vehicle.query.filter_by(
-        agency_id=current_agency_id
-    ).order_by(Vehicle.created_at.desc()).all()
-    
-    return render_template(
-        'service/vehicles/list.html',
-        vehicles=vehicles
-    )
-
-
-@service_bp.route('/vehicles/register', methods=['GET', 'POST'])
-@login_required
-@permission_required(roles=['service_manager', 'service_advisor'])
-@log_activity('Register vehicle')
-def register_vehicle(**kwargs):
-    """Register new vehicle for customer."""
-    current_agency_id = kwargs.get('current_agency_id')
-    
-    if request.method == 'POST':
-        try:
-            customer_id = request.form.get('customer_id', type=int)
-            make = request.form.get('make')
-            model = request.form.get('model')
-            year = request.form.get('year')
-            vin = request.form.get('vin')
-            license_plate = request.form.get('license_plate')
-            color_code = request.form.get('color_code')
-            
-            vehicle = Vehicle(
-                customer_id=customer_id,
-                agency_id=current_agency_id,
-                make=make,
-                model=model,
-                year=year,
-                vin=vin,
-                license_plate=license_plate,
-                color_code=color_code,
-                is_active=True
-            )
-            db.session.add(vehicle)
-            db.session.commit()
-            flash(f'Vehicle {year} {make} {model} registered successfully', 'success')
-            return redirect(url_for('service.list_vehicles'))
-        
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error registering vehicle: {str(e)}', 'danger')
-    
-    customers = Customer.query.join(Location).filter(
-        Location.agency_id == current_agency_id
-    ).all()
-    return render_template(
-        'service/vehicles/register.html',
-        customers=customers
-    )
-
-
-@service_bp.route('/vehicles/<int:vehicle_id>/history')
-@login_required
-@permission_required(roles=['service_manager', 'service_advisor'])
-def vehicle_history(vehicle_id, **kwargs):
-    """View service history for a vehicle."""
-    current_agency_id = kwargs.get('current_agency_id')
-    
-    vehicle = Vehicle.query.filter_by(
-        id=vehicle_id,
-        agency_id=current_agency_id
-    ).first_or_404()
-    
-    work_orders = WorkOrder.query.filter_by(
-        vehicle_id=vehicle_id
-    ).order_by(WorkOrder.created_at.desc()).all()
-    
-    return render_template(
-        'service/vehicles/history.html',
-        vehicle=vehicle,
-        work_orders=work_orders
-    )
+# VEHICLE MANAGEMENT endpoints removed from UI (Vehicle model retained for data).
+# If you need to re-enable vehicle pages, restore the functions below.
 
 
 # ==================== SERVICE CATALOG ====================
@@ -520,14 +439,49 @@ def vehicle_history(vehicle_id, **kwargs):
 def list_services(**kwargs):
     """List all available services."""
     current_agency_id = kwargs.get('current_agency_id')
-    
-    services = ServiceCatalog.query.filter_by(
-        agency_id=current_agency_id
-    ).order_by(ServiceCatalog.name).all()
-    
+    # Allow filtering by service_type (garage, chitfund, subscription) or 'all'
+    service_type = request.args.get('service_type', 'all')
+    # Active filter: 'all' (default), 'true' (only active), 'false' (only inactive)
+    is_active = request.args.get('is_active', 'all')
+    # Free-text search
+    q = request.args.get('q', '').strip()
+    # Pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 24, type=int)
+
+    # Base query
+    query = ServiceCatalog.query.filter(ServiceCatalog.agency_id == current_agency_id)
+
+    if service_type and service_type != 'all':
+        query = query.filter(ServiceCatalog.service_type == service_type)
+
+    if is_active == 'true':
+        query = query.filter(ServiceCatalog.is_active == True)
+    elif is_active == 'false':
+        query = query.filter(ServiceCatalog.is_active == False)
+
+    if q:
+        likeq = f"%{q}%"
+        query = query.filter(or_(
+            ServiceCatalog.name.ilike(likeq),
+            ServiceCatalog.description.ilike(likeq)
+        ))
+
+    total = query.count()
+    total_pages = max(1, math.ceil(total / per_page))
+
+    services = query.order_by(ServiceCatalog.name).offset((page - 1) * per_page).limit(per_page).all()
+
     return render_template(
         'service/services/list.html',
-        services=services
+        services=services,
+        service_type=service_type,
+        is_active=is_active,
+        q=q,
+        page=page,
+        per_page=per_page,
+        total=total,
+        total_pages=total_pages
     )
 
 
@@ -545,22 +499,39 @@ def create_service(**kwargs):
             description = request.form.get('description')
             default_price = Decimal(request.form.get('default_price', 0))
             estimated_hours = request.form.get('estimated_hours', type=float)
-            
+            service_type = request.form.get('service_type', 'garage')
+
+            if not name or not name.strip():
+                flash('Service name is required', 'warning')
+                return redirect(url_for('service.create_service'))
+
+            # Check for existing service with same name (case-insensitive) in this agency
+            existing = ServiceCatalog.query.filter(
+                func.lower(ServiceCatalog.name) == name.strip().lower(),
+                ServiceCatalog.agency_id == current_agency_id,
+                ServiceCatalog.service_type == service_type
+            ).first()
+            if existing:
+                flash(f'A service named "{name}" already exists for this agency', 'warning')
+                return redirect(url_for('service.create_service'))
+
             service = ServiceCatalog(
                 agency_id=current_agency_id,
-                name=name,
+                name=name.strip(),
                 description=description,
                 default_price=default_price,
                 estimated_hours=estimated_hours,
-                is_active=True
+                is_active=True,
+                service_type=service_type
             )
             db.session.add(service)
             db.session.commit()
             flash(f'Service "{name}" added to catalog', 'success')
-            return redirect(url_for('service.list_services'))
-        
+            return redirect(url_for('service.list_services', service_type=service_type))
+
         except Exception as e:
             db.session.rollback()
+            # Friendly fallback for DB unique constraint or other integrity issues
             flash(f'Error creating service: {str(e)}', 'danger')
     
     return render_template('service/services/form.html')
@@ -581,15 +552,33 @@ def edit_service(service_id, **kwargs):
     
     if request.method == 'POST':
         try:
-            service.name = request.form.get('name')
+            new_name = request.form.get('name')
+            # Validate name
+            if not new_name or not new_name.strip():
+                flash('Service name is required', 'warning')
+                return redirect(url_for('service.edit_service', service_id=service_id))
+
+            # Check duplicates (excluding self)
+            duplicate = ServiceCatalog.query.filter(
+                func.lower(ServiceCatalog.name) == new_name.strip().lower(),
+                ServiceCatalog.agency_id == current_agency_id,
+                ServiceCatalog.id != service_id,
+                ServiceCatalog.service_type == request.form.get('service_type', service.service_type)
+            ).first()
+            if duplicate:
+                flash(f'Another service with name "{new_name}" already exists', 'warning')
+                return redirect(url_for('service.edit_service', service_id=service_id))
+
+            service.name = new_name.strip()
             service.description = request.form.get('description')
             service.default_price = Decimal(request.form.get('default_price', service.default_price))
             service.estimated_hours = request.form.get('estimated_hours', type=float)
             service.is_active = request.form.get('is_active') == 'on'
+            service.service_type = request.form.get('service_type', service.service_type)
             
             db.session.commit()
             flash(f'Service "{service.name}" updated', 'success')
-            return redirect(url_for('service.list_services'))
+            return redirect(url_for('service.list_services', service_type=service.service_type))
         
         except Exception as e:
             db.session.rollback()

@@ -164,7 +164,9 @@
                                         </a>
                                     </td>
                                     <td>{{ wo.customer.name }}</td>
-                                    <td>{{ wo.vehicle.year }} {{ wo.vehicle.make }} {{ wo.vehicle.model }}</td>
+                                    {# Vehicle removed: show placeholder #}
+                                    {% set v = None %}
+                                    <td>N/A</td>
                                     <td>
                                         <span class="badge
                                             {% if wo.status == 'Estimate' %}bg-secondary
@@ -209,9 +211,7 @@
                 <a href="{{ url_for('service.list_work_orders') }}" class="btn btn-outline-primary btn-lg">
                     <i class="fas fa-list me-2"></i>View All Work Orders
                 </a>
-                <a href="{{ url_for('service.list_vehicles') }}" class="btn btn-outline-primary btn-lg">
-                    <i class="fas fa-car me-2"></i>Manage Vehicles
-                </a>
+                <!-- Manage Vehicles removed from UI -->
             </div>
         </div>
     </div>
