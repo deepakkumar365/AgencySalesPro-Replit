@@ -77,12 +77,38 @@
                             <option value="agency_manager">Agency Manager</option>
                             <option value="staff">Staff</option>
                             <option value="salesperson">Salesperson</option>
+                            <option value="pos_user">POS User</option>
+                            <option value="service_manager">Service Manager</option>
+                            <option value="service_advisor">Service Advisor</option>
+                            <option value="technician">Technician</option>
+                            <option value="store_manager">Store Manager</option>
                             {% elif session.role == 'agency_manager' %}
                             <option value="agency_admin">Agency Admin</option>
                             <option value="staff">Staff</option>
                             <option value="salesperson">Salesperson</option>
+                            <option value="pos_user">POS User</option>
+                            <option value="service_manager">Service Manager</option>
+                            <option value="service_advisor">Service Advisor</option>
+                            <option value="technician">Technician</option>
+                            <option value="store_manager">Store Manager</option>
                             {% endif %}
                         </select>
+                    </div>
+
+                    <div class="alert alert-secondary mb-4" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Role Reference:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Agency Admin:</strong> Full administrative control over agency operations</li>
+                            <li><strong>Agency Manager:</strong> Manages agency operations and user assignments</li>
+                            <li><strong>Staff:</strong> Can manage agency operations, products, customers, and orders</li>
+                            <li><strong>Salesperson:</strong> Can view products, manage customers, and create orders</li>
+                            <li><strong>POS User:</strong> Can process point-of-sale transactions</li>
+                            <li><strong>Service Manager:</strong> Manages service operations and technicians</li>
+                            <li><strong>Service Advisor:</strong> Handles customer service requests</li>
+                            <li><strong>Technician:</strong> Performs service work</li>
+                            <li><strong>Store Manager:</strong> Manages inventory and stock</li>
+                        </ul>
                     </div>
                     
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">

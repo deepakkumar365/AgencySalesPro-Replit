@@ -64,7 +64,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))
-    role = db.Column(db.String(20), nullable=False)  # super_admin, agency_admin, agency_manager, staff, salesperson, pos_user
+    role = db.Column(db.String(20), nullable=False)  # super_admin, agency_admin, agency_manager, staff, salesperson, pos_user, service_manager, service_advisor, technician, store_manager
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), index=True)
     service_technician_id = db.Column(db.String(50), unique=True, nullable=True, index=True) # For service technicians
     is_active = db.Column(db.Boolean, default=True)
@@ -496,16 +496,17 @@ class InventoryTransaction(db.Model):
     customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=True, index=True)
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
-    transaction_type = db.Column(db.String(50), nullable=False, index=True)  # e.g., 'purchase', 'sale', 'adjustment', 'return'
+    transaction_type = db.Column(db.String(50), nullable=False, index=True)  # e.g., 'purchase', 'sale', 'adjustment', 'return', 'job_consumption'
     quantity_change = db.Column(db.Integer, nullable=False)  # Positive for increase, negative for decrease
     quantity_before = db.Column(db.Integer, nullable=False)
     quantity_after = db.Column(db.Integer, nullable=False)
     unit_cost = db.Column(db.Numeric(10, 2))
-    reference_id = db.Column(db.String(50), index=True)  # Order ID, PO ID, or other reference
-    reference_type = db.Column(db.String(50), index=True)  # e.g., 'order', 'purchase_order', 'manual_adjustment'
+    reference_id = db.Column(db.String(50), index=True)  # Order ID, PO ID, Work Order ID, or other reference
+    reference_type = db.Column(db.String(50), index=True)  # e.g., 'order', 'purchase_order', 'work_order', 'manual_adjustment'
     notes = db.Column(db.Text)
     created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    work_order_line_item_id = db.Column(db.Integer, db.ForeignKey('ASP_work_order_line_items.id'), index=True)  # Link to work order material
     
     # Relationships
     product = db.relationship('Product', backref='inventory_transactions')
@@ -1175,6 +1176,8 @@ class WorkOrderLineItem(db.Model):
     quantity = db.Column(db.Numeric(10, 2), nullable=False, default=1)
     unit_cost = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     total_cost = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    consumed_quantity = db.Column(db.Numeric(10, 2), default=0)  # Actual quantity consumed (for inventory tracking)
+    is_inventory_deducted = db.Column(db.Boolean, default=False)  # Flag to track if inventory was deducted
 
     # Foreign keys for linking to other entities
     product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=True, index=True) # For materials
@@ -1183,6 +1186,7 @@ class WorkOrderLineItem(db.Model):
     # Relationships
     product = db.relationship('Product', backref='work_order_items', lazy=True)
     service = db.relationship('ServiceCatalog', backref='work_order_items', lazy=True)
+    inventory_transactions = db.relationship('InventoryTransaction', backref='work_order_line_item', lazy=True)
 
     def __init__(self, **kwargs):
         super(WorkOrderLineItem, self).__init__(**kwargs)
@@ -1193,3 +1197,291 @@ class WorkOrderLineItem(db.Model):
             self.total_cost = self.quantity * self.unit_cost
         else:
             self.total_cost = 0
+
+# ============ PHASE 2: GARAGE EXTENSION MODELS ============
+
+# 1. ESTIMATION & BILLING MODELS
+
+class Estimate(db.Model):
+    """Estimates created from work orders"""
+    __tablename__ = 'ASP_estimates'
+    id = db.Column(db.Integer, primary_key=True)
+    work_order_id = db.Column(db.Integer, db.ForeignKey('ASP_work_orders.id'), nullable=False, index=True)
+    estimate_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    estimated_total = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    status = db.Column(db.String(20), default='Draft', index=True)  # Draft, Approved, Rejected
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    approved_at = db.Column(db.DateTime)
+    approved_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=True, index=True)
+    notes = db.Column(db.Text)
+    
+    # Relationships
+    work_order = db.relationship('WorkOrder', backref='estimates', lazy=True)
+    approver = db.relationship('User', foreign_keys=[approved_by], backref='approved_estimates', lazy=True)
+    items = db.relationship('EstimateItem', backref='estimate', lazy=True, cascade='all, delete-orphan')
+
+
+class EstimateItem(db.Model):
+    """Line items for estimates"""
+    __tablename__ = 'ASP_estimate_items'
+    id = db.Column(db.Integer, primary_key=True)
+    estimate_id = db.Column(db.Integer, db.ForeignKey('ASP_estimates.id'), nullable=False, index=True)
+    description = db.Column(db.Text, nullable=False)
+    quantity = db.Column(db.Numeric(10, 2), nullable=False, default=1)
+    unit_price = db.Column(db.Numeric(10, 2), nullable=False)
+    line_total = db.Column(db.Numeric(10, 2), nullable=False)
+
+
+class GarageInvoice(db.Model):
+    """Garage-specific invoices (separate from billing module invoices)"""
+    __tablename__ = 'ASP_garage_invoices'
+    id = db.Column(db.Integer, primary_key=True)
+    work_order_id = db.Column(db.Integer, db.ForeignKey('ASP_work_orders.id'), nullable=False, index=True)
+    invoice_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False, index=True)
+    
+    subtotal_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    tax_amount = db.Column(db.Numeric(12, 2), default=0)
+    discount = db.Column(db.Numeric(12, 2), default=0)
+    total_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    amount_paid = db.Column(db.Numeric(12, 2), default=0)
+    balance_due = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    
+    payment_status = db.Column(db.String(20), default='Pending', index=True)  # Pending, Partially Paid, Paid
+    payment_terms = db.Column(db.String(100))
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    issued_date = db.Column(db.DateTime, default=datetime.utcnow)
+    due_date = db.Column(db.DateTime)
+    paid_at = db.Column(db.DateTime)
+    notes = db.Column(db.Text)
+    
+    # Relationships
+    work_order = db.relationship('WorkOrder', backref='garage_invoices', lazy=True)
+    agency = db.relationship('Agency', backref='garage_invoices', lazy=True)
+    customer = db.relationship('Customer', backref='garage_invoices', lazy=True)
+    payments = db.relationship('GaragePayment', backref='garage_invoice', lazy=True, cascade='all, delete-orphan')
+    items = db.relationship('GarageInvoiceItem', backref='garage_invoice', lazy=True, cascade='all, delete-orphan')
+
+
+class GarageInvoiceItem(db.Model):
+    """Line items for garage invoices"""
+    __tablename__ = 'ASP_garage_invoice_items'
+    id = db.Column(db.Integer, primary_key=True)
+    garage_invoice_id = db.Column(db.Integer, db.ForeignKey('ASP_garage_invoices.id'), nullable=False, index=True)
+    description = db.Column(db.Text, nullable=False)
+    quantity = db.Column(db.Numeric(10, 2), nullable=False, default=1)
+    unit_price = db.Column(db.Numeric(10, 2), nullable=False)
+    tax_amount = db.Column(db.Numeric(10, 2), default=0)
+    line_total = db.Column(db.Numeric(10, 2), nullable=False)
+
+
+class GaragePayment(db.Model):
+    """Payments for garage invoices"""
+    __tablename__ = 'ASP_garage_payments'
+    id = db.Column(db.Integer, primary_key=True)
+    garage_invoice_id = db.Column(db.Integer, db.ForeignKey('ASP_garage_invoices.id'), nullable=False, index=True)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    payment_mode = db.Column(db.String(50), nullable=False)  # Cash, Card, UPI, BankTransfer
+    reference_number = db.Column(db.String(100))
+    payment_date = db.Column(db.DateTime, default=datetime.utcnow)
+    received_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    receiver = db.relationship('User', backref='garage_payments_received', lazy=True)
+
+
+# 2. CONTRACTOR & LABOUR MANAGEMENT MODELS
+
+class Contractor(db.Model):
+    """External contractors and service providers"""
+    __tablename__ = 'ASP_contractors'
+    id = db.Column(db.Integer, primary_key=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    name = db.Column(db.String(100), nullable=False)
+    specialty = db.Column(db.String(100))  # e.g., Electrical, Welding, Painting
+    contact_number = db.Column(db.String(20))
+    email = db.Column(db.String(120))
+    address = db.Column(db.Text)
+    rating = db.Column(db.Numeric(3, 1), default=0)  # 1-5 star rating
+    payment_terms = db.Column(db.String(100))  # e.g., Net 30, On completion
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    agency = db.relationship('Agency', backref='contractors', lazy=True)
+    assignments = db.relationship('ContractorAssignment', backref='contractor', lazy=True)
+
+
+class Labour(db.Model):
+    """Internal labour/employees"""
+    __tablename__ = 'ASP_labour'
+    id = db.Column(db.Integer, primary_key=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    name = db.Column(db.String(100), nullable=False)
+    employee_id = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    role = db.Column(db.String(100))  # e.g., Technician, Helper, Supervisor
+    contact_number = db.Column(db.String(20))
+    email = db.Column(db.String(120))
+    wage_rate = db.Column(db.Numeric(10, 2), nullable=False, default=0)  # Per day or hourly
+    wage_type = db.Column(db.String(20), default='daily')  # daily, hourly
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    agency = db.relationship('Agency', backref='labour', lazy=True)
+    attendance_records = db.relationship('Attendance', backref='labour', lazy=True)
+    assignments = db.relationship('LabourAssignment', backref='labour', lazy=True)
+
+
+class Attendance(db.Model):
+    """Labour attendance tracking"""
+    __tablename__ = 'ASP_attendance'
+    id = db.Column(db.Integer, primary_key=True)
+    labour_id = db.Column(db.Integer, db.ForeignKey('ASP_labour.id'), nullable=False, index=True)
+    attendance_date = db.Column(db.Date, nullable=False, index=True)
+    check_in_time = db.Column(db.Time)
+    check_out_time = db.Column(db.Time)
+    status = db.Column(db.String(20), nullable=False)  # Present, Absent, Half-Day, Leave
+    hours_worked = db.Column(db.Numeric(5, 2), default=0)
+    notes = db.Column(db.Text)
+    recorded_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    recorder = db.relationship('User', backref='recorded_attendance', lazy=True)
+    
+    __table_args__ = (
+        db.UniqueConstraint('labour_id', 'attendance_date', name='uq_labour_attendance_date'),
+    )
+
+
+class LabourAssignment(db.Model):
+    """Assignment of labour to specific work orders"""
+    __tablename__ = 'ASP_labour_assignments'
+    id = db.Column(db.Integer, primary_key=True)
+    work_order_id = db.Column(db.Integer, db.ForeignKey('ASP_work_orders.id'), nullable=False, index=True)
+    labour_id = db.Column(db.Integer, db.ForeignKey('ASP_labour.id'), nullable=False, index=True)
+    hours_worked = db.Column(db.Numeric(5, 2), nullable=False, default=0)
+    wage_amount = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    assignment_date = db.Column(db.Date, nullable=False)
+    remarks = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    work_order = db.relationship('WorkOrder', backref='labour_assignments', lazy=True)
+    
+    __table_args__ = (
+        db.UniqueConstraint('work_order_id', 'labour_id', 'assignment_date', name='uq_labour_work_order_date'),
+    )
+
+
+class ContractorAssignment(db.Model):
+    """Assignment of contractors to specific work orders"""
+    __tablename__ = 'ASP_contractor_assignments'
+    id = db.Column(db.Integer, primary_key=True)
+    work_order_id = db.Column(db.Integer, db.ForeignKey('ASP_work_orders.id'), nullable=False, index=True)
+    contractor_id = db.Column(db.Integer, db.ForeignKey('ASP_contractors.id'), nullable=False, index=True)
+    agreed_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    payment_status = db.Column(db.String(20), default='Pending', index=True)  # Pending, Partial, Paid
+    amount_paid = db.Column(db.Numeric(12, 2), default=0)
+    completion_date = db.Column(db.Date)
+    assignment_date = db.Column(db.Date, nullable=False)
+    remarks = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    work_order = db.relationship('WorkOrder', backref='contractor_assignments', lazy=True)
+    
+    __table_args__ = (
+        db.UniqueConstraint('work_order_id', 'contractor_id', name='uq_contractor_work_order'),
+    )
+
+
+# 3. PAYMENTS & ACCOUNTS MODELS
+
+class GarageExpense(db.Model):
+    """Garage expenses tracking"""
+    __tablename__ = 'ASP_garage_expenses'
+    id = db.Column(db.Integer, primary_key=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    work_order_id = db.Column(db.Integer, db.ForeignKey('ASP_work_orders.id'), nullable=True, index=True)
+    expense_type = db.Column(db.String(50), nullable=False)  # Labour, Material, Utilities, Consumables, Other
+    description = db.Column(db.Text, nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    expense_date = db.Column(db.DateTime, default=datetime.utcnow)
+    recorded_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    agency = db.relationship('Agency', backref='garage_expenses', lazy=True)
+    work_order = db.relationship('WorkOrder', backref='expenses', lazy=True)
+    recorder = db.relationship('User', backref='recorded_expenses', lazy=True)
+
+
+# 4. AUDIT & NOTIFICATION MODELS
+
+class AuditLog(db.Model):
+    """Comprehensive audit trail for all system changes"""
+    __tablename__ = 'ASP_audit_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    action = db.Column(db.String(50), nullable=False, index=True)  # Create, Update, Delete, Login
+    entity_name = db.Column(db.String(100), nullable=False, index=True)  # Table name or entity type
+    entity_id = db.Column(db.Integer, index=True)
+    old_value = db.Column(db.JSON)  # JSON representation of old values
+    new_value = db.Column(db.JSON)  # JSON representation of new values
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.Text)
+    
+    # Relationships
+    user = db.relationship('User', backref='audit_logs', lazy=True)
+
+
+class Notification(db.Model):
+    """In-app notifications for users"""
+    __tablename__ = 'ASP_notifications'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False, index=True)
+    message = db.Column(db.Text, nullable=False)
+    notification_type = db.Column(db.String(50), nullable=False, index=True)  # Alert, Info, Warning, Success
+    status = db.Column(db.String(20), default='Unread', index=True)  # Unread, Read
+    related_entity = db.Column(db.String(100))  # e.g., 'WorkOrder', 'Invoice'
+    related_entity_id = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    read_at = db.Column(db.DateTime)
+    
+    # Relationships
+    user = db.relationship('User', backref='notifications', lazy=True)
+
+
+# 5. SYSTEM ADMIN ENHANCEMENTS
+
+class Branch(db.Model):
+    """Branch-level segregation for multi-branch operations"""
+    __tablename__ = 'ASP_branches'
+    id = db.Column(db.Integer, primary_key=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    name = db.Column(db.String(100), nullable=False)
+    address = db.Column(db.Text)
+    city = db.Column(db.String(100))
+    state = db.Column(db.String(100))
+    phone = db.Column(db.String(20))
+    manager_id = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=True, index=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    agency = db.relationship('Agency', backref='branches', lazy=True)
+    branch_manager = db.relationship('User', foreign_keys=[manager_id], backref='managed_branches', lazy=True)
+    
+    __table_args__ = (
+        db.UniqueConstraint('name', 'agency_id', name='uq_branch_name_agency'),
+    )

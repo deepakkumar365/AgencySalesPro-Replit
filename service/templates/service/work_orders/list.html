@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Work Orders - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1><i class="fas fa-list me-2"></i>Work Orders</h1>
+                    <p class="text-muted">Manage all service work orders</p>
+                </div>
+                <a href="{{ url_for('service.create_work_order') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus-circle me-2"></i>New Work Order
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="statusFilter" class="form-label">Status</label>
+                    <select id="statusFilter" name="status" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="Estimate" {% if current_status == 'Estimate' %}selected{% endif %}>Estimate</option>
+                        <option value="Approved" {% if current_status == 'Approved' %}selected{% endif %}>Approved</option>
+                        <option value="In Progress" {% if current_status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                        <option value="Completed" {% if current_status == 'Completed' %}selected{% endif %}>Completed</option>
+                        <option value="Delivered" {% if current_status == 'Delivered' %}selected{% endif %}>Delivered</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="dateFrom" class="form-label">From Date</label>
+                    <input type="date" id="dateFrom" name="date_from" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label for="dateTo" class="form-label">To Date</label>
+                    <input type="date" id="dateTo" name="date_to" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label>&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-2"></i>Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Work Orders Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Work Order #</th>
+                        <th>Customer</th>
+                        <th>Vehicle</th>
+                        <th>Technician</th>
+                        <th>Status</th>
+                        <th>Estimated Cost</th>
+                        <th>Actual Cost</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if work_orders %}
+                        {% for wo in work_orders %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('service.view_work_order', work_order_id=wo.id) }}" class="text-decoration-none fw-bold">
+                                    {{ wo.job_number }}
+                                </a>
+                            </td>
+                            <td>{{ wo.customer.name }}</td>
+                            <td>
+                                <small>{{ wo.vehicle.year }} {{ wo.vehicle.make }} {{ wo.vehicle.model }}</small><br>
+                                <small class="text-muted">{{ wo.vehicle.license_plate }}</small>
+                            </td>
+                            <td>
+                                {% if wo.assigned_technician %}
+                                    {{ wo.assigned_technician.full_name }}
+                                {% else %}
+                                    <span class="badge bg-secondary">Unassigned</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge
+                                    {% if wo.status == 'Estimate' %}bg-secondary
+                                    {% elif wo.status == 'Approved' %}bg-info
+                                    {% elif wo.status == 'In Progress' %}bg-warning text-dark
+                                    {% elif wo.status == 'Completed' %}bg-success
+                                    {% elif wo.status == 'Delivered' %}bg-primary
+                                    {% else %}bg-dark
+                                    {% endif %}
+                                ">{{ wo.status }}</span>
+                            </td>
+                            <td>₹{{ "{:,.2f}".format(wo.estimated_cost) }}</td>
+                            <td>
+                                {% if wo.actual_cost %}
+                                    ₹{{ "{:,.2f}".format(wo.actual_cost) }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ wo.created_at.strftime('%d %b %Y') }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{{ url_for('service.view_work_order', work_order_id=wo.id) }}" class="btn btn-outline-primary" title="View">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if wo.status == 'Estimate' %}
+                                    <form method="POST" action="{{ url_for('service.approve_work_order', work_order_id=wo.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-outline-success btn-sm" title="Approve">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            No work orders found. <a href="{{ url_for('service.create_work_order') }}">Create a new one</a>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if paginated.pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if paginated.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ paginated.prev_num }}">Previous</a>
+            </li>
+            {% endif %}
+
+            {% for page_num in paginated.iter_pages() %}
+                {% if page_num %}
+                    {% if page_num == paginated.page %}
+                    <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                    {% else %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_num }}">{{ page_num }}</a></li>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+
+            {% if paginated.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ paginated.next_num }}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ paginated.pages }}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

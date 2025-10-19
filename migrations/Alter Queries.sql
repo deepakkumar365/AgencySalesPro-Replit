@@ -186,3 +186,29 @@ DROP COLUMN IF EXISTS handling_charges;
 ALTER TABLE "ASP_products" 
 DROP COLUMN IF EXISTS hsn_code,
 DROP COLUMN IF EXISTS item_code;
+
+
+-- Add service_technician_id column to ASP_users table
+ALTER TABLE "ASP_users" ADD COLUMN IF NOT EXISTS "service_technician_id" VARCHAR(50) UNIQUE;
+CREATE INDEX IF NOT EXISTS "idx_users_service_technician_id" ON "ASP_users" ("service_technician_id");
+
+-- Add agency_type column to ASP_agencies table
+ALTER TABLE public."ASP_agencies" 
+ADD COLUMN IF NOT EXISTS agency_type VARCHAR(50) NOT NULL DEFAULT 'sales';
+
+-- Create an index on the new column
+CREATE INDEX IF NOT EXISTS idx_agency_type ON public."ASP_agencies" (agency_type);
+
+-- Backfill existing agencies with the default value
+UPDATE public."ASP_agencies" SET agency_type = 'sales' WHERE agency_type IS NULL;
+
+
+-- Add the work_order_line_item_id column to the inventory transactions table
+ALTER TABLE "ASP_inventory_transactions" ADD COLUMN work_order_line_item_id INTEGER;
+
+-- Add a foreign key constraint to link work_order_line_item_id to the work order line items table
+ALTER TABLE "ASP_inventory_transactions" ADD CONSTRAINT fk_inventory_transactions_work_order_line_item_id 
+FOREIGN KEY (work_order_line_item_id) REFERENCES "ASP_work_order_line_items" (id);
+
+-- Create an index on the new column for faster lookups
+CREATE INDEX ix_ASP_inventory_transactions_work_order_line_item_id ON "ASP_inventory_transactions" (work_order_line_item_id);

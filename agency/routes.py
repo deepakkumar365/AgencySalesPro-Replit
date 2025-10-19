@@ -61,6 +61,7 @@ def create_agency():
 
     if request.method == 'POST':
         name = request.form.get('name')
+        agency_type = request.form.get('agency_type', 'sales')
         # Get split address fields
         address1 = request.form.get('address1', '').strip()
         address2 = request.form.get('address2', '').strip()
@@ -110,6 +111,7 @@ def create_agency():
         agency = Agency(
             name=name,
             code=new_code,
+            agency_type=agency_type,
             address=address,
             address1=address1,
             address2=address2,
@@ -229,6 +231,7 @@ def edit_agency(agency_id):
     if request.method == 'POST':
         agency.name = request.form.get('name')
         agency.code = request.form.get('code')
+        agency.agency_type = request.form.get('agency_type', 'sales')
         
         # Get split address fields
         address1 = request.form.get('address1', '').strip()

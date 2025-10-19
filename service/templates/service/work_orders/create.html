@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block title %}Create Work Order - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1><i class="fas fa-plus-circle me-2"></i>Create Work Order</h1>
+            <p class="text-muted">Create a new service work order</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <form method="POST" class="needs-validation" novalidate>
+                <!-- Customer & Vehicle Selection -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-user me-2"></i>Customer & Vehicle</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="customerId" class="form-label">Customer <span class="text-danger">*</span></label>
+                            <select id="customerId" name="customer_id" class="form-select" required onchange="loadCustomerVehicles()">
+                                <option value="">-- Select Customer --</option>
+                                {% for customer in customers %}
+                                <option value="{{ customer.id }}">{{ customer.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">Please select a customer.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="vehicleId" class="form-label">Vehicle <span class="text-danger">*</span></label>
+                            <select id="vehicleId" name="vehicle_id" class="form-select" required>
+                                <option value="">-- Select Vehicle --</option>
+                            </select>
+                            <div class="invalid-feedback">Please select a vehicle.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Services -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-wrench me-2"></i>Services</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="servicesContainer">
+                            <p class="text-muted">Add services by clicking the add button below</p>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addServiceRow()">
+                            <i class="fas fa-plus me-1"></i>Add Service
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Materials/Parts -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-boxes me-2"></i>Parts & Materials</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="productsContainer">
+                            <p class="text-muted">Add parts by clicking the add button below</p>
+                        </div>
+                        <button type="button" class="btn btn-outline-success btn-sm" onclick="addProductRow()">
+                            <i class="fas fa-plus me-1"></i>Add Part
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Technician & Costs -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-user-tie me-2"></i>Assignment & Costs</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="technicianId" class="form-label">Assigned Technician</label>
+                                <select id="technicianId" name="technician_id" class="form-select">
+                                    <option value="">-- Unassigned --</option>
+                                    {% for tech in technicians %}
+                                    <option value="{{ tech.id }}">{{ tech.full_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="estimatedCost" class="form-label">Estimated Cost</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" id="estimatedCost" name="estimated_cost" class="form-control" step="0.01" value="0" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-sticky-note me-2"></i>Notes</h5>
+                    </div>
+                    <div class="card-body">
+                        <textarea name="notes" class="form-control" rows="4" placeholder="Add any special notes or instructions..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="d-grid gap-2 d-sm-flex justify-content-sm-end mb-5">
+                    <a href="{{ url_for('service.list_work_orders') }}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Create Work Order
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Help Panel -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Help</h5>
+                </div>
+                <div class="card-body small">
+                    <h6>Creating a Work Order</h6>
+                    <ol class="ps-3 mb-3">
+                        <li>Select a customer and their vehicle</li>
+                        <li>Add services from the catalog or custom services</li>
+                        <li>Add any parts/materials needed</li>
+                        <li>Assign a technician (optional)</li>
+                        <li>Set the estimated cost</li>
+                        <li>Add any notes or special instructions</li>
+                        <li>Click Create to save the work order as an Estimate</li>
+                    </ol>
+
+                    <h6>Work Order Status Flow</h6>
+                    <div class="timeline-mini">
+                        <div class="badge bg-secondary mb-2">Estimate</div> →
+                        <div class="badge bg-info mb-2">Approved</div> →
+                        <div class="badge bg-warning text-dark mb-2">In Progress</div> →
+                        <div class="badge bg-success mb-2">Completed</div> →
+                        <div class="badge bg-primary">Delivered</div>
+                    </div>
+
+                    <h6 class="mt-3">Tips</h6>
+                    <ul class="ps-3">
+                        <li>Register customer vehicles first</li>
+                        <li>Set up service catalog for quick selections</li>
+                        <li>Inventory is auto-deducted when work is completed</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let serviceCount = 0;
+let productCount = 0;
+
+function loadCustomerVehicles() {
+    const customerId = document.getElementById('customerId').value;
+    const vehicleSelect = document.getElementById('vehicleId');
+    
+    if (!customerId) {
+        vehicleSelect.innerHTML = '<option value="">-- Select Vehicle --</option>';
+        return;
+    }
+
+    // In production, this would call an AJAX endpoint
+    // For now, we'll keep it simple
+    vehicleSelect.innerHTML = '<option value="">Loading...</option>';
+}
+
+function addServiceRow() {
+    const container = document.getElementById('servicesContainer');
+    const isFirst = container.children.length === 1 && container.children[0].tagName === 'P';
+    
+    if (isFirst) {
+        container.innerHTML = '';
+    }
+
+    const row = document.createElement('div');
+    row.className = 'row g-2 mb-2 service-row';
+    row.innerHTML = `
+        <div class="col-md-6">
+            <select name="service_ids" class="form-select form-select-sm" onchange="updateServiceCost(this)">
+                <option value="">-- Select Service --</option>
+                {% for service in services %}
+                <option value="{{ service.id }}" data-price="{{ service.default_price }}">
+                    {{ service.name }} (₹{{ service.default_price }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <input type="number" name="service_qty_${serviceCount}" class="form-control form-control-sm" min="1" value="1" placeholder="Qty">
+        </div>
+        <div class="col-md-2">
+            <button type="button" class="btn btn-danger btn-sm w-100" onclick="this.parentElement.parentElement.remove()">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(row);
+    serviceCount++;
+}
+
+function addProductRow() {
+    const container = document.getElementById('productsContainer');
+    const isFirst = container.children.length === 1 && container.children[0].tagName === 'P';
+    
+    if (isFirst) {
+        container.innerHTML = '';
+    }
+
+    const row = document.createElement('div');
+    row.className = 'row g-2 mb-2 product-row';
+    row.innerHTML = `
+        <div class="col-md-4">
+            <select name="product_ids" class="form-select form-select-sm" onchange="updateProductCost(this)">
+                <option value="">-- Select Product --</option>
+                {% for product in products %}
+                <option value="{{ product.id }}" data-cost="{{ product.buy_price or 0 }}">
+                    {{ product.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <input type="number" name="product_qty_${productCount}" class="form-control form-control-sm" min="0.01" step="0.01" value="1" placeholder="Qty">
+        </div>
+        <div class="col-md-4">
+            <input type="number" name="product_cost_${productCount}" class="form-control form-control-sm" step="0.01" placeholder="Unit Cost" required>
+        </div>
+        <div class="col-md-2">
+            <button type="button" class="btn btn-danger btn-sm w-100" onclick="this.parentElement.parentElement.remove()">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(row);
+    productCount++;
+}
+
+function updateServiceCost(select) {
+    // This would calculate and update total costs
+}
+
+function updateProductCost(select) {
+    // This would calculate and update total costs
+}
+
+// Form validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.prototype.slice.call(forms).forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+</script>
+
+<style>
+.timeline-mini {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Vehicles - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1><i class="fas fa-car me-2"></i>Vehicles</h1>
+                    <p class="text-muted">Manage customer vehicles</p>
+                </div>
+                <a href="{{ url_for('service.register_vehicle') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus-circle me-2"></i>Register Vehicle
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>License Plate</th>
+                        <th>Year</th>
+                        <th>Make</th>
+                        <th>Model</th>
+                        <th>VIN</th>
+                        <th>Customer</th>
+                        <th>Color</th>
+                        <th>Registered</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if vehicles %}
+                        {% for vehicle in vehicles %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('service.vehicle_history', vehicle_id=vehicle.id) }}" class="text-decoration-none fw-bold">
+                                    {{ vehicle.license_plate }}
+                                </a>
+                            </td>
+                            <td>{{ vehicle.year }}</td>
+                            <td>{{ vehicle.make }}</td>
+                            <td>{{ vehicle.model }}</td>
+                            <td><small class="text-muted">{{ vehicle.vin or 'N/A' }}</small></td>
+                            <td>{{ vehicle.customer.name }}</td>
+                            <td>
+                                {% if vehicle.color_code %}
+                                <span class="badge" style="background-color: {{ vehicle.color_code }}; color: white;">
+                                    {{ vehicle.color_code }}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ vehicle.created_at.strftime('%d %b %Y') }}</small></td>
+                            <td>
+                                <a href="{{ url_for('service.vehicle_history', vehicle_id=vehicle.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-history"></i> History
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            No vehicles registered yet. <a href="{{ url_for('service.register_vehicle') }}">Register one now</a>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

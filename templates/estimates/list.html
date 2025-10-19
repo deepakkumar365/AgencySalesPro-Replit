@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Estimates{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="d-flex align-items-center gap-2">
+                <i class="bi bi-file-earmark-text"></i> Estimates
+            </h2>
+        </div>
+        <div class="col text-end">
+            <a href="#" class="btn btn-primary">
+                <i class="bi bi-plus"></i> New Estimate
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="">All Statuses</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">From Date</label>
+                    <input type="date" class="form-control" id="fromDate">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">To Date</label>
+                    <input type="date" class="form-control" id="toDate">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-secondary w-100" id="filterBtn">Filter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estimates Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Estimate #</th>
+                        <th>Work Order</th>
+                        <th>Customer</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for estimate in estimates %}
+                    <tr>
+                        <td><strong>{{ estimate.estimate_number }}</strong></td>
+                        <td>
+                            <a href="#" title="View Work Order">
+                                {{ estimate.work_order.job_number }}
+                            </a>
+                        </td>
+                        <td>{{ estimate.work_order.customer.name }}</td>
+                        <td class="text-end">₹{{ "%.2f"|format(estimate.estimated_total) }}</td>
+                        <td>
+                            {% if estimate.status == 'Draft' %}
+                                <span class="badge bg-warning">Draft</span>
+                            {% elif estimate.status == 'Approved' %}
+                                <span class="badge bg-success">Approved</span>
+                            {% elif estimate.status == 'Rejected' %}
+                                <span class="badge bg-danger">Rejected</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ estimate.created_at.strftime('%d-%b-%Y') }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ url_for('estimates.view_estimate', estimate_id=estimate.id) }}" 
+                                   class="btn btn-outline-primary" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if estimate.status == 'Draft' %}
+                                <a href="{{ url_for('estimates.edit_estimate', estimate_id=estimate.id) }}" 
+                                   class="btn btn-outline-secondary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-success" 
+                                        onclick="approveEstimate({{ estimate.id }})" title="Approve">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No estimates found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function approveEstimate(estimateId) {
+    if (confirm('Are you sure you want to approve this estimate?')) {
+        fetch(`/estimates/${estimateId}/approve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

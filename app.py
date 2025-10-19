@@ -121,8 +121,16 @@ def create_app():
         from job_accounting import job_accounting_bp
         from product_overrides import overrides_bp
         from finance import finance_bp
-        from service import service_bp
         from forecasting import forecasting_bp
+        from service import service_bp
+        
+        # Phase 2: Garage Extension Blueprints
+        from estimates import estimates_bp
+        from garage_billing import garage_billing_bp
+        from labour_management import labour_management_bp
+        from garage_expenses import garage_expenses_bp
+        from audit_notifications import audit_notifications_bp
+        from branch_management import branch_management_bp
 
         app.register_blueprint(auth_bp, url_prefix='/auth')
         app.register_blueprint(agency_bp, url_prefix='/agency')
@@ -141,10 +149,18 @@ def create_app():
         app.register_blueprint(masters_bp, url_prefix='/masters')
         app.register_blueprint(subscription_bp, url_prefix='/subscription')
         app.register_blueprint(job_accounting_bp, url_prefix='/job-accounting')
+        app.register_blueprint(service_bp, url_prefix='/service')
         app.register_blueprint(finance_bp, url_prefix='/billing') # Changed from /finance to /billing
         app.register_blueprint(overrides_bp)
-        app.register_blueprint(service_bp) # No prefix, as it's an API blueprint with its own prefix
         app.register_blueprint(forecasting_bp, url_prefix='/forecasting')
+        
+        # Register Phase 2 Blueprints
+        app.register_blueprint(estimates_bp)
+        app.register_blueprint(garage_billing_bp)
+        app.register_blueprint(labour_management_bp)
+        app.register_blueprint(garage_expenses_bp)
+        app.register_blueprint(audit_notifications_bp)
+        app.register_blueprint(branch_management_bp)
 
     register_blueprints(app)
     

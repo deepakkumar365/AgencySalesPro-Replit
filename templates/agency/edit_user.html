@@ -47,6 +47,11 @@
                             <select class="form-select" id="role" name="role" required>
                                 <option value="staff" {{ 'selected' if user.role == 'staff' else '' }}>Staff</option>
                                 <option value="salesperson" {{ 'selected' if user.role == 'salesperson' else '' }}>Salesperson</option>
+                                <option value="pos_user" {{ 'selected' if user.role == 'pos_user' else '' }}>POS User</option>
+                                <option value="service_manager" {{ 'selected' if user.role == 'service_manager' else '' }}>Service Manager</option>
+                                <option value="service_advisor" {{ 'selected' if user.role == 'service_advisor' else '' }}>Service Advisor</option>
+                                <option value="technician" {{ 'selected' if user.role == 'technician' else '' }}>Technician</option>
+                                <option value="store_manager" {{ 'selected' if user.role == 'store_manager' else '' }}>Store Manager</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
@@ -58,7 +63,16 @@
 
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        You can edit staff and salesperson users. Agency administrators cannot be modified by other agency administrators.
+                        You can edit users with various roles. Agency administrators cannot be modified by other agency administrators.
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Staff:</strong> Can manage agency operations, products, customers, and orders</li>
+                            <li><strong>Salesperson:</strong> Can view products, manage customers, and create orders</li>
+                            <li><strong>POS User:</strong> Can process point-of-sale transactions</li>
+                            <li><strong>Service Manager:</strong> Manages service operations and technicians</li>
+                            <li><strong>Service Advisor:</strong> Handles customer service requests</li>
+                            <li><strong>Technician:</strong> Performs service work</li>
+                            <li><strong>Store Manager:</strong> Manages inventory and stock</li>
+                        </ul>
                     </div>
 
                     <div class="d-flex justify-content-between">

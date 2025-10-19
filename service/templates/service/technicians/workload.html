@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}{{ technician.full_name }} - Workload - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="{{ url_for('service.list_technicians') }}" class="btn btn-outline-secondary btn-sm mb-3">
+                <i class="fas fa-arrow-left me-1"></i>Back to Technicians
+            </a>
+            <h1>
+                <i class="fas fa-user-tie me-2"></i>
+                {{ technician.full_name }}
+            </h1>
+            <p class="text-muted">{{ technician.email }}</p>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Total Assigned</p>
+                    <h3 class="mb-0">
+                        {% set total = work_orders_by_status | map(attribute=1) | map('length') | sum %}
+                        {{ total }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card border-warning">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">In Progress</p>
+                    <h3 class="mb-0">{{ work_orders_by_status.get('In Progress', [])|length }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card border-success">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Completed</p>
+                    <h3 class="mb-0">{{ work_orders_by_status.get('Completed', [])|length }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card border-info">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Pending Approval</p>
+                    <h3 class="mb-0">{{ work_orders_by_status.get('Estimate', [])|length }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Work Orders by Status -->
+    {% for status, work_orders in work_orders_by_status.items() %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <span class="badge
+                    {% if status == 'Estimate' %}bg-secondary
+                    {% elif status == 'Approved' %}bg-info
+                    {% elif status == 'In Progress' %}bg-warning text-dark
+                    {% elif status == 'Completed' %}bg-success
+                    {% elif status == 'Delivered' %}bg-primary
+                    {% else %}bg-dark
+                    {% endif %}
+                ">{{ status }}</span>
+                ({{ work_orders|length }} {{ 'order' if work_orders|length == 1 else 'orders' }})
+            </h5>
+        </div>
+        {% if work_orders %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Work Order #</th>
+                        <th>Customer</th>
+                        <th>Vehicle</th>
+                        <th>Created</th>
+                        <th>Est. Cost</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for wo in work_orders %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('service.view_work_order', work_order_id=wo.id) }}" class="text-decoration-none fw-bold">
+                                {{ wo.job_number }}
+                            </a>
+                        </td>
+                        <td>{{ wo.customer.name }}</td>
+                        <td>
+                            <small>{{ wo.vehicle.year }} {{ wo.vehicle.make }} {{ wo.vehicle.model }}</small><br>
+                            <small class="text-muted">{{ wo.vehicle.license_plate }}</small>
+                        </td>
+                        <td><small>{{ wo.created_at.strftime('%d %b %Y') }}</small></td>
+                        <td>₹{{ "{:,.2f}".format(wo.estimated_cost) }}</td>
+                        <td>
+                            <a href="{{ url_for('service.view_work_order', work_order_id=wo.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="card-body text-center text-muted py-4">
+            No work orders with status "{{ status }}"
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

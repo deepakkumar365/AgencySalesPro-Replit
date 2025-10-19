@@ -57,6 +57,10 @@
                                 <option value="staff" {{ 'selected' if user.role == 'staff' else '' }}>Staff</option>
                                 <option value="salesperson" {{ 'selected' if user.role == 'salesperson' else '' }}>Salesperson</option>
                                 <option value="pos_user" {{ 'selected' if user.role == 'pos_user' else '' }}>POS User</option>
+                                <option value="service_manager" {{ 'selected' if user.role == 'service_manager' else '' }}>Service Manager</option>
+                                <option value="service_advisor" {{ 'selected' if user.role == 'service_advisor' else '' }}>Service Advisor</option>
+                                <option value="technician" {{ 'selected' if user.role == 'technician' else '' }}>Technician</option>
+                                <option value="store_manager" {{ 'selected' if user.role == 'store_manager' else '' }}>Store Manager</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
@@ -104,7 +108,7 @@
         const roleSelect = document.getElementById('role');
         const agencySelect = document.getElementById('agency_id');
         // This list should match the server-side validation
-        const rolesRequiringAgency = ['agency_admin', 'staff', 'salesperson', 'pos_user'];
+        const rolesRequiringAgency = ['agency_admin', 'staff', 'salesperson', 'pos_user', 'service_manager', 'service_advisor', 'technician', 'store_manager'];
 
         function toggleAgencyRequirement() {
             if (agencySelect && rolesRequiringAgency.includes(roleSelect.value)) {

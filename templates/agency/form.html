@@ -19,6 +19,14 @@
                         <input type="text" class="form-control" id="name" name="name" value="{{ agency.name if agency else '' }}" required>
                     </div>
                     <div class="mb-3">
+                        <label for="agency_type" class="form-label">Agency Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="agency_type" name="agency_type" required>
+                            <option value="">-- Select Agency Type --</option>
+                            <option value="sales" {{ 'selected' if agency and agency.agency_type == 'sales' else 'selected' if not agency else '' }}>Sales</option>
+                            <option value="service" {{ 'selected' if agency and agency.agency_type == 'service' else '' }}>Service</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
                         <label for="code" class="form-label">Agency Code (Auto-generated)</label>
                         <input type="text" class="form-control" id="code" name="code" 
                                value="{{ agency.code if agency else '' }}" 

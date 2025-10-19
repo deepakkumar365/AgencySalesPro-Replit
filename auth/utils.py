@@ -199,6 +199,85 @@ def get_role_permissions(role):
             'can_manage_orders': True,
             'can_manage_customers': True,
             'can_view_inventory': True
+        },
+
+        'service_manager': {
+            # Garage/service management - full control over jobs, technicians, inventory
+            'can_manage_agencies': False,
+            'can_manage_users': True,
+            'can_view_all_data': False,
+            'can_access_pos': False,
+            'can_manage_inventory': True,
+            'can_manage_billing': True,
+            'can_view_reports': True,
+            'can_manage_roles': False,
+            'can_manage_orders': True,
+            'can_manage_customers': True,
+            'can_manage_locations': True,
+            'can_view_inventory': True,
+            'can_manage_jobs': True,
+            'can_assign_technicians': True,
+            'can_manage_services': True
+        },
+
+        'service_advisor': {
+            # Service advisor - can create and manage jobs, assign technicians
+            'can_manage_agencies': False,
+            'can_manage_users': False,
+            'can_view_all_data': False,
+            'can_access_pos': False,
+            'can_manage_inventory': False,
+            'can_manage_billing': False,
+            'can_view_reports': False,
+            'can_manage_roles': False,
+            'can_manage_orders': False,
+            'can_manage_customers': True,
+            'can_manage_locations': False,
+            'can_view_inventory': True,
+            'can_manage_jobs': True,
+            'can_assign_technicians': True,
+            'can_manage_services': False
+        },
+
+        'technician': {
+            # Technician - can view assigned jobs and update progress
+            'can_manage_agencies': False,
+            'can_manage_users': False,
+            'can_view_all_data': False,
+            'can_access_pos': False,
+            'can_manage_inventory': False,
+            'can_manage_billing': False,
+            'can_view_reports': False,
+            'can_manage_roles': False,
+            'can_manage_orders': False,
+            'can_manage_customers': False,
+            'can_manage_locations': False,
+            'can_view_inventory': True,
+            'can_manage_jobs': False,
+            'can_assign_technicians': False,
+            'can_manage_services': False,
+            'can_update_job_progress': True,
+            'can_view_assigned_jobs': True
+        },
+
+        'store_manager': {
+            # Store/inventory manager - manage inventory and track material usage
+            'can_manage_agencies': False,
+            'can_manage_users': False,
+            'can_view_all_data': False,
+            'can_access_pos': False,
+            'can_manage_inventory': True,
+            'can_manage_billing': False,
+            'can_view_reports': True,
+            'can_manage_roles': False,
+            'can_manage_orders': False,
+            'can_manage_customers': False,
+            'can_manage_locations': False,
+            'can_view_inventory': True,
+            'can_manage_jobs': False,
+            'can_assign_technicians': False,
+            'can_manage_services': False,
+            'can_track_material_usage': True
         }
     }
 

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}{% if service %}Edit{% else %}Add{% endif %} Service - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1>
+                <i class="fas fa-wrench me-2"></i>
+                {% if service %}Edit Service{% else %}Add Service{% endif %}
+            </h1>
+            <p class="text-muted">Manage service catalog entry</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <form method="POST" class="needs-validation" novalidate>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Service Name <span class="text-danger">*</span></label>
+                            <input type="text" id="name" name="name" class="form-control" value="{{ service.name if service else '' }}" placeholder="e.g., Oil Change, Engine Repair" required>
+                            <div class="invalid-feedback">Service name is required.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea id="description" name="description" class="form-control" rows="3" placeholder="Brief description of the service">{{ service.description if service else '' }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="defaultPrice" class="form-label">Default Price <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" id="defaultPrice" name="default_price" class="form-control" step="0.01" value="{{ service.default_price if service else 0 }}" required>
+                                </div>
+                                <div class="invalid-feedback">Price is required.</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="estimatedHours" class="form-label">Estimated Hours</label>
+                                <div class="input-group">
+                                    <input type="number" id="estimatedHours" name="estimated_hours" class="form-control" step="0.5" value="{{ service.estimated_hours if service else '' }}" placeholder="e.g., 1.5">
+                                    <span class="input-group-text">hrs</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if service %}
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="isActive" name="is_active" {{ 'checked' if service.is_active else '' }}>
+                                <label class="form-check-label" for="isActive">
+                                    Service is Active
+                                </label>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-light">
+                        <div class="d-grid gap-2 d-sm-flex justify-content-sm-end">
+                            <a href="{{ url_for('service.list_services') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Save Service
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-info-circle me-2"></i>Service Catalog</h5>
+                    <p class="card-text text-muted">
+                        Services form the basis of your work orders. Define services that you commonly perform, their typical duration, and default pricing.
+                    </p>
+
+                    <h6 class="mt-4">Best Practices</h6>
+                    <ul class="ps-3 small">
+                        <li>Use clear, descriptive names (e.g., "Basic Oil Change" instead of "Oil")</li>
+                        <li>Set realistic default prices based on your typical rates</li>
+                        <li>Estimate hours accurately for scheduling and labor cost calculations</li>
+                        <li>Group related services logically in your catalog</li>
+                        <li>Deactivate services that are no longer offered</li>
+                    </ul>
+
+                    <h6 class="mt-4">Examples</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Service</th>
+                                    <th>Price</th>
+                                    <th>Hours</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Oil Change</td>
+                                    <td>₹500</td>
+                                    <td>0.5</td>
+                                </tr>
+                                <tr>
+                                    <td>Tire Rotation</td>
+                                    <td>₹1,000</td>
+                                    <td>1</td>
+                                </tr>
+                                <tr>
+                                    <td>Engine Repair</td>
+                                    <td>₹5,000</td>
+                                    <td>4</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="alert alert-info mt-4" role="alert">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Tip:</strong> You can override prices when creating individual work orders. Default prices are suggested values.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Form validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.prototype.slice.call(forms).forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+</script>
+{% endblock %}

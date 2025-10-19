@@ -32,6 +32,7 @@
                         <tr>
                             <th>Agency Name</th>
                             <th>Code</th>
+                            <th>Type</th>
                             <th>Manager User Name</th>
                             <th class="text-center">Customer Count</th>
                             <th class="text-center">Login ID Count</th>
@@ -48,6 +49,15 @@
                                 <small class="text-muted">{{ agency.email }}</small>
                             </td>
                             <td>{{ agency.code }}</td>
+                            <td>
+                                {% if agency.agency_type == 'sales' %}
+                                    <span class="badge bg-primary">Sales</span>
+                                {% elif agency.agency_type == 'service' %}
+                                    <span class="badge bg-info">Service</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ agency.agency_type }}</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if manager_username %}
                                     <i class="fas fa-user-shield me-1 text-success"></i>{{ manager_username }}

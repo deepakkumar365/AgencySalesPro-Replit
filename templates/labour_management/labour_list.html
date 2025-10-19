@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Labour Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="d-flex align-items-center gap-2">
+                <i class="bi bi-people"></i> Labour Management
+            </h2>
+        </div>
+        <div class="col text-end">
+            <a href="{{ url_for('labour_management.create_labour') }}" class="btn btn-primary">
+                <i class="bi bi-plus"></i> Add Labour
+            </a>
+            <a href="{{ url_for('labour_management.attendance_dashboard') }}" class="btn btn-info">
+                <i class="bi bi-calendar-check"></i> Attendance
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" name="is_active">
+                        <option value="1" {% if is_active == '1' %}selected{% endif %}>Active</option>
+                        <option value="0" {% if is_active == '0' %}selected{% endif %}>Inactive</option>
+                        <option value="all" {% if is_active == 'all' %}selected{% endif %}>All</option>
+                    </select>
+                </div>
+                <div class="col-md-4"></div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Labour Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Contact</th>
+                        <th>Wage Rate</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for labour in labour_list %}
+                    <tr>
+                        <td><code>{{ labour.employee_id }}</code></td>
+                        <td><strong>{{ labour.name }}</strong></td>
+                        <td>{{ labour.role or '-' }}</td>
+                        <td>{{ labour.contact_number or '-' }}</td>
+                        <td class="text-end">₹{{ "%.2f"|format(labour.wage_rate) }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark">{{ labour.wage_type.title() }}</span>
+                        </td>
+                        <td>
+                            {% if labour.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ url_for('labour_management.edit_labour', labour_id=labour.id) }}" 
+                                   class="btn btn-outline-primary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-secondary" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#assignmentModal"
+                                        onclick="setLabourId({{ labour.id }})"
+                                        title="Assign to Work Order">
+                                    <i class="bi bi-plus-square"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            No labour found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

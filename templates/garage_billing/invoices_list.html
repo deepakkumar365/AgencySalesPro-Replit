@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Garage Invoices{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="d-flex align-items-center gap-2">
+                <i class="bi bi-receipt"></i> Garage Invoices
+            </h2>
+        </div>
+        <div class="col text-end">
+            <a href="{{ url_for('garage_billing.billing_report') }}" class="btn btn-info">
+                <i class="bi bi-graph-up"></i> Reports
+            </a>
+        </div>
+    </div>
+
+    <!-- Status Summary -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="text-muted">Total Invoiced</h5>
+                    <h3 class="text-primary">
+                        ₹{{ "%.2f"|format(invoices|sum(attribute='total_amount')) }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="text-muted">Amount Collected</h5>
+                    <h3 class="text-success">
+                        ₹{{ "%.2f"|format(invoices|sum(attribute='amount_paid')) }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="text-muted">Balance Pending</h5>
+                    <h3 class="text-warning">
+                        ₹{{ "%.2f"|format(invoices|sum(attribute='balance_due')) }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="text-muted">Total Invoices</h5>
+                    <h3 class="text-info">{{ invoices|length }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Payment Status</label>
+                    <select class="form-select" name="status">
+                        <option value="">All</option>
+                        <option value="Pending" {% if status == 'Pending' %}selected{% endif %}>Pending</option>
+                        <option value="Partially Paid" {% if status == 'Partially Paid' %}selected{% endif %}>Partially Paid</option>
+                        <option value="Paid" {% if status == 'Paid' %}selected{% endif %}>Paid</option>
+                    </select>
+                </div>
+                <div class="col-md-4"></div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Invoices Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Invoice #</th>
+                        <th>Work Order</th>
+                        <th>Customer</th>
+                        <th>Total</th>
+                        <th>Collected</th>
+                        <th>Balance</th>
+                        <th>Status</th>
+                        <th>Due Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for invoice in invoices %}
+                    <tr>
+                        <td><strong>{{ invoice.invoice_number }}</strong></td>
+                        <td>{{ invoice.work_order.job_number }}</td>
+                        <td>{{ invoice.customer.name }}</td>
+                        <td class="text-end">₹{{ "%.2f"|format(invoice.total_amount) }}</td>
+                        <td class="text-end text-success">₹{{ "%.2f"|format(invoice.amount_paid or 0) }}</td>
+                        <td class="text-end text-warning">₹{{ "%.2f"|format(invoice.balance_due) }}</td>
+                        <td>
+                            {% if invoice.payment_status == 'Pending' %}
+                                <span class="badge bg-warning">Pending</span>
+                            {% elif invoice.payment_status == 'Partially Paid' %}
+                                <span class="badge bg-info">Partially Paid</span>
+                            {% elif invoice.payment_status == 'Paid' %}
+                                <span class="badge bg-success">Paid</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if invoice.due_date %}
+                                {{ invoice.due_date.strftime('%d-%b-%Y') }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{{ url_for('garage_billing.view_invoice', invoice_id=invoice.id) }}" 
+                                   class="btn btn-outline-primary" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if invoice.balance_due > 0 %}
+                                <a href="{{ url_for('garage_billing.record_payment', invoice_id=invoice.id) }}" 
+                                   class="btn btn-outline-success" title="Record Payment">
+                                    <i class="bi bi-credit-card"></i>
+                                </a>
+                                {% endif %}
+                                <a href="{{ url_for('garage_billing.view_payments', invoice_id=invoice.id) }}" 
+                                   class="btn btn-outline-info" title="View Payments">
+                                    <i class="bi bi-list-check"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">
+                            No invoices found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

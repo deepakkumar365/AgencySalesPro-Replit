@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}{{ work_order.job_number }} - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <h1>{{ work_order.job_number }}</h1>
+                    <p class="text-muted">Work Order Details</p>
+                </div>
+                <span class="badge 
+                    {% if work_order.status == 'Estimate' %}bg-secondary
+                    {% elif work_order.status == 'Approved' %}bg-info
+                    {% elif work_order.status == 'In Progress' %}bg-warning text-dark
+                    {% elif work_order.status == 'Completed' %}bg-success
+                    {% elif work_order.status == 'Delivered' %}bg-primary
+                    {% else %}bg-dark
+                    {% endif %}
+                " style="font-size: 1.25rem; padding: 0.5rem 1rem;">{{ work_order.status }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row">
+        <!-- Left Column: Work Order Details -->
+        <div class="col-lg-8">
+            <!-- Customer & Vehicle Info -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-user me-2"></i>Customer & Vehicle</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="text-muted small mb-1">Customer</p>
+                            <h6 class="mb-3">
+                                <a href="{{ url_for('customer.view_customer', customer_id=work_order.customer_id) }}">
+                                    {{ work_order.customer.name }}
+                                </a>
+                            </h6>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="text-muted small mb-1">Vehicle</p>
+                            <h6 class="mb-3">
+                                {{ work_order.vehicle.year }} {{ work_order.vehicle.make }} {{ work_order.vehicle.model }}
+                                <br>
+                                <small class="text-muted">License: {{ work_order.vehicle.license_plate }}</small>
+                            </h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Services & Materials -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list me-2"></i>Work Order Items</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th class="text-end">Qty</th>
+                                <th class="text-end">Unit Cost</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in work_order.line_items %}
+                            <tr>
+                                <td>
+                                    <span class="badge
+                                        {% if item.line_type == 'service' %}bg-primary
+                                        {% elif item.line_type == 'material' %}bg-success
+                                        {% else %}bg-secondary
+                                        {% endif %}
+                                    ">{{ item.line_type.title() }}</span>
+                                </td>
+                                <td>{{ item.description }}</td>
+                                <td class="text-end">{{ item.quantity }}</td>
+                                <td class="text-end">₹{{ "{:,.2f}".format(item.unit_cost) }}</td>
+                                <td class="text-end fw-bold">₹{{ "{:,.2f}".format(item.total_cost) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th colspan="4" class="text-end">Estimated Total:</th>
+                                <th class="text-end">₹{{ "{:,.2f}".format(work_order.estimated_cost) }}</th>
+                            </tr>
+                            {% if work_order.actual_cost %}
+                            <tr>
+                                <th colspan="4" class="text-end">Actual Total:</th>
+                                <th class="text-end">₹{{ "{:,.2f}".format(work_order.actual_cost) }}</th>
+                            </tr>
+                            {% endif %}
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Inventory Transactions (if available) -->
+            {% if inventory_transactions %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-boxes me-2"></i>Inventory Usage</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-end">Quantity</th>
+                                <th>Type</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trans in inventory_transactions %}
+                            <tr>
+                                <td>{{ trans.product.name if trans.product else 'N/A' }}</td>
+                                <td class="text-end">
+                                    <span class="badge {% if trans.transaction_type == 'deduction' %}bg-danger{% else %}bg-success{% endif %}">
+                                        {{ trans.transaction_type }}
+                                    </span>
+                                </td>
+                                <td>{{ trans.quantity_change }}</td>
+                                <td>{{ trans.created_at.strftime('%d %b %Y %H:%M') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Notes -->
+            {% if work_order.notes %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-sticky-note me-2"></i>Notes</h5>
+                </div>
+                <div class="card-body">
+                    <p>{{ work_order.notes }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column: Status & Actions -->
+        <div class="col-lg-4">
+            <!-- Status Timeline -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Timeline</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <!-- Created -->
+                        <div class="timeline-item {% if work_order.created_at %}active{% endif %}">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <p class="small text-muted">Created</p>
+                                <p class="small">{{ work_order.created_at.strftime('%d %b %Y %H:%M') }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Approved -->
+                        <div class="timeline-item {% if work_order.approved_at %}active{% endif %}">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <p class="small text-muted">Approved</p>
+                                <p class="small">
+                                    {% if work_order.approved_at %}
+                                        {{ work_order.approved_at.strftime('%d %b %Y %H:%M') }}
+                                    {% else %}
+                                        <span class="text-muted">Pending</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- In Progress -->
+                        <div class="timeline-item {% if work_order.in_progress_at %}active{% endif %}">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <p class="small text-muted">In Progress</p>
+                                <p class="small">
+                                    {% if work_order.in_progress_at %}
+                                        {{ work_order.in_progress_at.strftime('%d %b %Y %H:%M') }}
+                                    {% else %}
+                                        <span class="text-muted">Pending</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Completed -->
+                        <div class="timeline-item {% if work_order.completed_at %}active{% endif %}">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <p class="small text-muted">Completed</p>
+                                <p class="small">
+                                    {% if work_order.completed_at %}
+                                        {{ work_order.completed_at.strftime('%d %b %Y %H:%M') }}
+                                    {% else %}
+                                        <span class="text-muted">Pending</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Delivered -->
+                        <div class="timeline-item {% if work_order.delivered_at %}active{% endif %}">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <p class="small text-muted">Delivered</p>
+                                <p class="small">
+                                    {% if work_order.delivered_at %}
+                                        {{ work_order.delivered_at.strftime('%d %b %Y %H:%M') }}
+                                    {% else %}
+                                        <span class="text-muted">Pending</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technician Info -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-user-tie me-2"></i>Technician</h5>
+                </div>
+                <div class="card-body">
+                    {% if work_order.assigned_technician %}
+                        <p class="mb-0"><strong>{{ work_order.assigned_technician.full_name }}</strong></p>
+                        <small class="text-muted">{{ work_order.assigned_technician.email }}</small>
+                    {% else %}
+                        <p class="text-muted mb-0">No technician assigned</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Actions</h5>
+                </div>
+                <div class="card-body d-grid gap-2">
+                    <!-- Approve (Estimate -> Approved) -->
+                    {% if work_order.status == 'Estimate' and user_role in ['service_manager'] %}
+                    <form method="POST" action="{{ url_for('service.approve_work_order', work_order_id=work_order.id) }}">
+                        <button type="submit" class="btn btn-success w-100" onclick="return confirm('Approve this work order?')">
+                            <i class="fas fa-check me-2"></i>Approve
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    <!-- Start Work (Approved/Estimate -> In Progress) -->
+                    {% if work_order.status in ['Approved', 'Estimate'] and user_role in ['service_manager', 'service_advisor', 'technician'] %}
+                    <form method="POST" action="{{ url_for('service.start_work_order', work_order_id=work_order.id) }}">
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="fas fa-play me-2"></i>Start Work
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    <!-- Complete Work (In Progress -> Completed) -->
+                    {% if work_order.status == 'In Progress' and user_role in ['service_manager', 'service_advisor', 'technician'] %}
+                    <form method="POST" action="{{ url_for('service.complete_work_order', work_order_id=work_order.id) }}">
+                        <button type="submit" class="btn btn-primary w-100" onclick="return confirm('Mark as completed? This will finalize the work order and deduct inventory.')">
+                            <i class="fas fa-check-circle me-2"></i>Complete Work
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    <!-- Deliver (Completed -> Delivered) -->
+                    {% if work_order.status == 'Completed' and user_role in ['service_manager', 'service_advisor'] %}
+                    <form method="POST" action="{{ url_for('service.deliver_work_order', work_order_id=work_order.id) }}">
+                        <button type="submit" class="btn btn-info w-100">
+                            <i class="fas fa-truck me-2"></i>Mark Delivered
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    <!-- Back to List -->
+                    <a href="{{ url_for('service.list_work_orders') }}" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-arrow-left me-2"></i>Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding: 10px 0;
+}
+
+.timeline-item {
+    display: flex;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.timeline-item.active {
+    opacity: 1;
+}
+
+.timeline-marker {
+    width: 12px;
+    height: 12px;
+    background-color: #ccc;
+    border-radius: 50%;
+    margin-right: 15px;
+    margin-top: 3px;
+    flex-shrink: 0;
+}
+
+.timeline-item.active .timeline-marker {
+    background-color: #0d6efd;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 20px;
+    bottom: 0;
+    width: 2px;
+    background-color: #dee2e6;
+}
+
+.timeline-item.active ~ .timeline-item::before,
+.timeline-item.active .timeline-marker ~ .timeline-item::before {
+    background-color: #0d6efd;
+}
+</style>
+{% endblock %}

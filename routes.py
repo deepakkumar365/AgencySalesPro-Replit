@@ -9,6 +9,7 @@ from auth.utils import login_required, permission_required
 from extensions import db
 from models import (WorkOrder, WorkOrderLineItem, Customer, Vehicle,
                     ServiceCatalog, Product, User, Agency, InventoryTransaction)
+from utils.service_utils import deduct_inventory_for_work_order
 
 from . import service_bp
 
@@ -228,6 +229,185 @@ def update_work_order(job_id, current_agency_id=None):
 
     db.session.commit()
     return jsonify({'message': 'Work order updated successfully'})
+
+
+@service_bp.route('/api/service/jobs/<int:job_id>/finalize', methods=['POST'])
+@permission_required(roles=['service_manager', 'service_advisor'])
+def finalize_work_order(job_id, current_agency_id=None):
+    """
+    Finalize a work order: mark as completed and deduct material inventory.
+    
+    Request body (optional):
+    {
+        'actual_cost': 1200.50,  # Final cost
+        'consumed_materials': [  # Override consumed quantities
+            {'line_item_id': 5, 'consumed_quantity': 2.5}
+        ]
+    }
+    
+    Returns:
+        {
+            'success': bool,
+            'message': str,
+            'work_order': {...},
+            'inventory_deduction': {...}
+        }
+    """
+    try:
+        query = WorkOrder.query.filter_by(id=job_id)
+        if session.get('role') != 'super_admin':
+            query = query.filter_by(agency_id=current_agency_id)
+        
+        work_order = query.first_or_404()
+        
+        # Check if already completed or cancelled
+        if work_order.status in ['Completed', 'Delivered', 'Cancelled']:
+            return jsonify({
+                'success': False,
+                'error': f'Cannot finalize a work order that is already {work_order.status}'
+            }), 400
+        
+        data = request.get_json() or {}
+        
+        # Update consumed quantities if provided
+        if 'consumed_materials' in data:
+            for consumed_item in data['consumed_materials']:
+                line_item_id = consumed_item.get('line_item_id')
+                consumed_qty = consumed_item.get('consumed_quantity')
+                
+                if line_item_id and consumed_qty is not None:
+                    line_item = WorkOrderLineItem.query.filter_by(
+                        id=line_item_id,
+                        work_order_id=job_id
+                    ).first()
+                    
+                    if line_item and line_item.line_type == 'material':
+                        line_item.consumed_quantity = Decimal(str(consumed_qty))
+        
+        # Update actual cost if provided
+        if 'actual_cost' in data:
+            work_order.actual_cost = Decimal(str(data['actual_cost']))
+        
+        # Mark as completed
+        work_order.status = 'Completed'
+        work_order.completed_at = datetime.utcnow()
+        
+        db.session.flush()  # Flush to ensure line items are updated
+        
+        # Deduct inventory for material items
+        inventory_result = deduct_inventory_for_work_order(work_order, session.get('user_id'))
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Work order finalized successfully',
+            'work_order': {
+                'id': work_order.id,
+                'job_number': work_order.job_number,
+                'status': work_order.status,
+                'completed_at': work_order.completed_at.isoformat(),
+                'actual_cost': float(work_order.actual_cost or 0)
+            },
+            'inventory_deduction': inventory_result
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': f'Failed to finalize work order: {str(e)}'
+        }), 500
+
+
+@service_bp.route('/api/service/jobs/<int:job_id>/inventory-consumption', methods=['GET'])
+@permission_required(roles=['service_manager', 'service_advisor', 'store_manager', 'technician'])
+def get_work_order_inventory_consumption(job_id, current_agency_id=None):
+    """
+    Get inventory consumption details and transactions for a work order.
+    
+    Returns:
+        {
+            'work_order_id': int,
+            'job_number': str,
+            'material_items': [
+                {
+                    'line_item_id': int,
+                    'product_id': int,
+                    'product_name': str,
+                    'estimated_quantity': float,
+                    'consumed_quantity': float,
+                    'unit_cost': float,
+                    'total_cost': float,
+                    'is_inventory_deducted': bool,
+                    'inventory_transactions': [
+                        {
+                            'transaction_id': int,
+                            'transaction_type': str,
+                            'quantity_change': int,
+                            'quantity_before': int,
+                            'quantity_after': int,
+                            'created_at': str
+                        }
+                    ]
+                }
+            ]
+        }
+    """
+    try:
+        query = WorkOrder.query.filter_by(id=job_id)
+        if session.get('role') != 'super_admin':
+            query = query.filter_by(agency_id=current_agency_id)
+        
+        work_order = query.first_or_404()
+        
+        # Get all material items
+        material_items = WorkOrderLineItem.query.filter_by(
+            work_order_id=job_id,
+            line_type='material'
+        ).all()
+        
+        items_data = []
+        for line_item in material_items:
+            # Get linked inventory transactions
+            transactions = InventoryTransaction.query.filter_by(
+                work_order_line_item_id=line_item.id
+            ).order_by(InventoryTransaction.created_at.desc()).all()
+            
+            item_data = {
+                'line_item_id': line_item.id,
+                'product_id': line_item.product_id,
+                'product_name': line_item.product.name if line_item.product else 'Unknown',
+                'estimated_quantity': float(line_item.quantity),
+                'consumed_quantity': float(line_item.consumed_quantity or 0),
+                'unit_cost': float(line_item.unit_cost),
+                'total_cost': float(line_item.total_cost),
+                'is_inventory_deducted': line_item.is_inventory_deducted,
+                'inventory_transactions': [{
+                    'transaction_id': t.id,
+                    'transaction_type': t.transaction_type,
+                    'quantity_change': t.quantity_change,
+                    'quantity_before': t.quantity_before,
+                    'quantity_after': t.quantity_after,
+                    'unit_cost': float(t.unit_cost) if t.unit_cost else None,
+                    'reference_type': t.reference_type,
+                    'created_at': t.created_at.isoformat()
+                } for t in transactions]
+            }
+            items_data.append(item_data)
+        
+        return jsonify({
+            'work_order_id': work_order.id,
+            'job_number': work_order.job_number,
+            'status': work_order.status,
+            'agency_id': work_order.agency_id,
+            'material_items': items_data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Failed to retrieve consumption details: {str(e)}'
+        }), 500
 
 
 @service_bp.route('/api/service/jobs/<int:job_id>', methods=['DELETE'])
