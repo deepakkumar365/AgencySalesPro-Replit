@@ -7,7 +7,8 @@ from extensions import db
 from sqlalchemy import func, or_, and_, literal_column
 from models import Product, Agency, ProductAgency, Category, UOM, TaxMaster
 from product import product_bp
-from auth.utils import login_required, permission_required
+from auth.utils import login_required, permission_required as role_permission_required
+from auth.rbac import permission_required as rbac_permission_required
 from utils.decorators import log_activity
 from utils.excel_utils import export_products_to_excel, import_products_from_excel
 from utils.sku import generate_sku
@@ -21,7 +22,8 @@ def _get_master_data():
     }
 
 @product_bp.route('/')
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson', 'pos_user'])
+@role_permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson', 'pos_user'])
+@rbac_permission_required('product.view')
 def list_products(current_agency_id=None):
     user_role = session.get('role')
     # For super_admin, the filter comes from the request args. For others, it's their session/current agency.
@@ -124,7 +126,8 @@ def list_products(current_agency_id=None):
                          })
 
 @product_bp.route('/create', methods=['GET', 'POST'])
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@role_permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@rbac_permission_required('product.create')
 @log_activity('create_product')
 def create_product(current_agency_id=None):
     master_data = _get_master_data()
@@ -298,7 +301,7 @@ def create_product(current_agency_id=None):
                         )
 
 @product_bp.route('/<int:product_id>/edit', methods=['GET', 'POST'])
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@role_permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('edit_product')
 def edit_product(product_id, current_agency_id=None):
     product = Product.query.get_or_404(product_id)
@@ -377,7 +380,7 @@ def api_generate_sku():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @product_bp.route('/<int:product_id>/toggle_status', methods=['POST'])
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@role_permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('toggle_product_status')
 def toggle_product_status(product_id):
     product = Product.query.get_or_404(product_id)
@@ -405,7 +408,7 @@ def toggle_product_status(product_id):
     return redirect(url_for('product.list_products'))
 
 @product_bp.route('/<int:product_id>/delete', methods=['POST'])
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@role_permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('delete_product')
 def delete_product(product_id, current_agency_id=None):
     product = Product.query.get_or_404(product_id)
@@ -443,7 +446,7 @@ def delete_product(product_id, current_agency_id=None):
     return redirect(url_for('product.list_products'))
 
 @product_bp.route('/export')
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@role_permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('export_products')
 def export_products():
     user_role = session.get('role')
@@ -466,7 +469,7 @@ def export_products():
     )
 
 @product_bp.route('/import', methods=['GET', 'POST'])
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@role_permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('import_products')
 def import_products(current_agency_id=None):
     if request.method == 'POST':

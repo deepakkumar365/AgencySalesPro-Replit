@@ -146,6 +146,76 @@ def manage_users():
         users = []
     return render_template('super_admin/users.html', users=users, agencies_for_filter=agencies_for_filter, current_agency_filter=agency_filter)
 
+
+@super_admin_bp.route('/roles')
+@role_required('super_admin')
+def list_roles():
+    from models import Role, Permission
+    roles = Role.query.order_by(Role.name).all()
+    permissions = Permission.query.order_by(Permission.code).all()
+    return render_template('super_admin/roles.html', roles=roles, permissions=permissions)
+
+
+@super_admin_bp.route('/roles/create', methods=['GET', 'POST'])
+@role_required('super_admin')
+def create_role():
+    from models import Role, Permission
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description')
+        perm_codes = request.form.getlist('permissions')
+        if not name:
+            flash('Role name required', 'error')
+            return redirect(url_for('super_admin.create_role'))
+        role = Role.query.filter_by(name=name).first()
+        if role:
+            flash('Role already exists', 'error')
+            return redirect(url_for('super_admin.list_roles'))
+        role = Role(name=name, description=description)
+        role.permissions = Permission.query.filter(Permission.code.in_(perm_codes)).all()
+        db.session.add(role)
+        db.session.commit()
+        flash('Role created', 'success')
+        return redirect(url_for('super_admin.list_roles'))
+    permissions = Permission.query.order_by(Permission.code).all()
+    return render_template('super_admin/role_form.html', permissions=permissions)
+
+
+@super_admin_bp.route('/roles/<int:role_id>/edit', methods=['GET', 'POST'])
+@role_required('super_admin')
+def edit_role(role_id):
+    from models import Role, Permission
+    role = Role.query.get_or_404(role_id)
+    if request.method == 'POST':
+        role.description = request.form.get('description')
+        perm_codes = request.form.getlist('permissions')
+        role.permissions = Permission.query.filter(Permission.code.in_(perm_codes)).all()
+        db.session.add(role)
+        db.session.commit()
+        flash('Role updated', 'success')
+        return redirect(url_for('super_admin.list_roles'))
+    permissions = Permission.query.order_by(Permission.code).all()
+    return render_template('super_admin/role_edit.html', role=role, permissions=permissions)
+
+
+@super_admin_bp.route('/users/<int:user_id>/assign_role', methods=['GET', 'POST'])
+@role_required('super_admin')
+def assign_role_to_user(user_id):
+    from models import User, Role
+    user = User.query.get_or_404(user_id)
+    if request.method == 'POST':
+        role_ids = request.form.getlist('roles')
+        roles = Role.query.filter(Role.id.in_(role_ids)).all()
+        user.roles = roles
+        # keep legacy string in sync with first role for compatibility
+        user.role = roles[0].name if roles else user.role
+        db.session.add(user)
+        db.session.commit()
+        flash('Roles updated for user', 'success')
+        return redirect(url_for('super_admin.manage_users'))
+    roles = Role.query.order_by(Role.name).all()
+    return render_template('super_admin/assign_role.html', user=user, roles=roles)
+
 @super_admin_bp.route('/users/create')
 @role_required('super_admin', 'agency_manager')
 def create_user():

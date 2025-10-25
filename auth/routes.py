@@ -36,6 +36,15 @@ def login():
             session['username'] = user.username
             session['role'] = user.role
             session['agency_id'] = user.agency_id
+            # Cache permissions and role names for quick checks
+            try:
+                from auth.rbac import get_permissions_for_user
+                perms = get_permissions_for_user(user)
+                session['permissions'] = list(perms) if perms else []
+                session['roles'] = [r.name for r in (user.roles or [])]
+            except Exception:
+                session['permissions'] = []
+                session['roles'] = []
             flash('Logged in successfully!', 'success')
 
             # Redirect to appropriate dashboard based on user role
@@ -49,6 +58,9 @@ def login():
 
 @auth_bp.route('/logout')
 def logout():
+    # Clear cached permissions as well
+    session.pop('permissions', None)
+    session.pop('roles', None)
     session.clear()
     flash('Logged out', 'info')
     return redirect(url_for('auth.login'))

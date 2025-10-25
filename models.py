@@ -73,6 +73,8 @@ class User(db.Model):
     
     # Relationships
     orders = db.relationship('Order', backref='salesperson', lazy=True)
+    # RBAC: relationship to Role (new). Keep legacy `role` string for backward compatibility.
+    roles = db.relationship('Role', secondary='ASP_user_roles', backref='users', lazy='joined')
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -83,6 +85,61 @@ class User(db.Model):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
+
+    def has_role(self, role_name):
+        """Check if the user has a given role name. Falls back to legacy `role` string."""
+        if getattr(self, 'role', None) == role_name:
+            return True
+        return any(r.name == role_name for r in (self.roles or []))
+
+    def has_perm(self, perm_code):
+        """Return True if user has the given permission code.
+
+        Quick-bypass for super_admin (legacy string or role).
+        """
+        # Legacy super_admin string or role
+        if getattr(self, 'role', None) == 'super_admin' or any(r.name == 'super_admin' for r in (self.roles or [])):
+            return True
+        for r in (self.roles or []):
+            for p in (r.permissions or []):
+                if p.code == perm_code:
+                    return True
+        return False
+
+
+# RBAC association tables and models
+user_roles = db.Table(
+    'ASP_user_roles',
+    db.Column('user_id', db.Integer, db.ForeignKey('ASP_users.id'), primary_key=True),
+    db.Column('role_id', db.Integer, db.ForeignKey('ASP_roles.id'), primary_key=True)
+)
+
+role_permissions = db.Table(
+    'ASP_role_permissions',
+    db.Column('role_id', db.Integer, db.ForeignKey('ASP_roles.id'), primary_key=True),
+    db.Column('permission_id', db.Integer, db.ForeignKey('ASP_permissions.id'), primary_key=True)
+)
+
+
+class Role(db.Model):
+    __tablename__ = 'ASP_roles'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False, unique=True, index=True)
+    description = db.Column(db.String(255))
+    permissions = db.relationship('Permission', secondary=role_permissions, backref='roles', lazy='joined')
+
+    def __repr__(self):
+        return f"<Role {self.name}>"
+
+
+class Permission(db.Model):
+    __tablename__ = 'ASP_permissions'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(100), nullable=False, unique=True, index=True)  # e.g. 'order.create'
+    description = db.Column(db.String(255))
+
+    def __repr__(self):
+        return f"<Perm {self.code}>"
 
 class Location(db.Model):
     __tablename__ = 'ASP_locations'
@@ -654,10 +711,9 @@ class Subscription(db.Model):
     invoices = db.relationship('SubscriptionInvoice', backref='subscription', lazy=True, cascade='all, delete-orphan')
     items = db.relationship('SubscriptionItem', backref='subscription', lazy=True, cascade='all, delete-orphan')
     
+    # Ensure exactly one of agency_id or customer_id is set. Use portable SQL for CHECK so sqlite works during tests.
     __table_args__ = (
-        db.CheckConstraint('num_nonnulls(agency_id, customer_id) = 1', name='chk_subscription_owner'),
-        # num_nonnulls is a postgres function. For other DBs, this might be:
-        # db.CheckConstraint('(agency_id IS NOT NULL AND customer_id IS NULL) OR (agency_id IS NULL AND customer_id IS NOT NULL)', name='chk_subscription_owner'),
+        db.CheckConstraint("(agency_id IS NOT NULL AND customer_id IS NULL) OR (agency_id IS NULL AND customer_id IS NOT NULL)", name='chk_subscription_owner'),
     )
     @property
     def owner(self):

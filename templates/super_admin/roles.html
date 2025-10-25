@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Roles & Permissions{% endblock %}
+{% block content %}
+<h1>Roles</h1>
+<p><a href="{{ url_for('super_admin.create_role') }}" class="btn btn-primary">Create Role</a></p>
+<table class="table table-striped">
+  <thead>
+    <tr><th>Name</th><th>Description</th><th>Permissions</th></tr>
+  </thead>
+  <tbody>
+    {% for r in roles %}
+    <tr>
+      <td>{{ r.name }}</td>
+      <td>{{ r.description or '' }}</td>
+      <td>
+        {% for p in r.permissions %}
+          <span class="badge bg-secondary">{{ p.code }}</span>
+        {% endfor %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Available Permissions</h2>
+<ul>
+  {% for p in permissions %}
+    <li>{{ p.code }} - {{ p.description or '' }}</li>
+  {% endfor %}
+</ul>
+{% endblock %}

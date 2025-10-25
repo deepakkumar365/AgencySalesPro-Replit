@@ -5,7 +5,8 @@ from sqlalchemy import or_, and_, func, union_all
 from extensions import db
 from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode, ProductAgency, InventoryTransaction, Job, DeliveryChallan
 from order import order_bp
-from auth.utils import login_required, permission_required, order_owner_required
+from auth.utils import login_required, permission_required as role_permission_required, order_owner_required
+from auth.rbac import permission_required as rbac_permission_required
 from utils.decorators import log_activity
 from utils.excel_utils import export_orders_to_excel
 
@@ -25,7 +26,7 @@ def get_tax_codes():
     })
 
 @order_bp.route('/')
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson'])
+@role_permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson'])
 def list_orders(current_agency_id=None):
     user_role = session.get('role')
     user_id = session.get('user_id')    
@@ -163,6 +164,7 @@ def view_cart():
 
 @order_bp.route('/create', methods=['GET', 'POST'])
 @login_required
+@rbac_permission_required('order.create')
 @log_activity('create_order')
 def create_order():
     """
@@ -931,7 +933,7 @@ def search_products():
 
 @order_bp.route('/<int:order_id>/create-delivery-challan', methods=['GET', 'POST'])
 @login_required
-@permission_required(roles=['agency_admin', 'agency_manager'])
+@role_permission_required(roles=['agency_admin', 'agency_manager'])
 @log_activity('create_delivery_challan')
 def create_delivery_challan(order_id):
     """Create a delivery challan for an order"""
@@ -1017,7 +1019,7 @@ def view_delivery_challan(challan_id):
 
 @order_bp.route('/delivery-challan/<int:challan_id>/update-status', methods=['POST'])
 @login_required
-@permission_required(roles=['agency_admin', 'agency_manager'])
+@role_permission_required(roles=['agency_admin', 'agency_manager'])
 @log_activity('update_delivery_challan_status')
 def update_delivery_challan_status(challan_id):
     """Update delivery challan status"""
@@ -1057,7 +1059,7 @@ def update_delivery_challan_status(challan_id):
 
 @order_bp.route('/bulk-upload', methods=['GET', 'POST'])
 @login_required
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@role_permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('bulk_order_upload')
 def bulk_order_upload():
     """Bulk order upload page for Sales Orders"""
@@ -1116,7 +1118,7 @@ def bulk_order_upload():
 
 @order_bp.route('/bulk-upload/results')
 @login_required
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@role_permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def bulk_order_results():
     """Display bulk order upload results"""
     results = session.pop('bulk_upload_results', None)
@@ -1130,7 +1132,7 @@ def bulk_order_results():
 
 @order_bp.route('/bulk-upload/download-template')
 @login_required
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@role_permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def download_bulk_order_template():
     """Download Excel template for bulk order upload"""
     from utils.excel_utils import generate_bulk_order_template
