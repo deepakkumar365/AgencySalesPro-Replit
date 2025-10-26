@@ -622,3 +622,34 @@ def download_bulk_purchase_order_template():
         as_attachment=True,
         download_name=f'bulk_purchase_order_template_{datetime.now().strftime("%Y%m%d")}.xlsx'
     )
+
+
+@purchase_order_bp.route("/<int:purchase_order_id>/delete", methods=["POST"])
+@login_required
+@permission_required(roles=["super_admin", "agency_admin", "agency_manager", "staff"])
+@log_activity("delete_purchase_order")
+def delete_purchase_order(purchase_order_id, current_agency_id=None):
+    """Delete purchase order (only pending orders)"""
+    purchase_order = PurchaseOrder.query.get_or_404(purchase_order_id)
+    user_role = session.get("role")
+    
+    # Permission check
+    if user_role != "super_admin" and purchase_order.agency_id != current_agency_id:
+        flash("You do not have permission to delete this purchase order.", "danger")
+        return redirect(url_for("purchase_order.list_purchase_orders"))
+    
+    # Only allow deletion of pending orders
+    if purchase_order.status != "pending":
+        flash(f"Cannot delete {purchase_order.status} purchase orders. Only pending purchase orders can be deleted.", "warning")
+        return redirect(url_for("purchase_order.view_purchase_order", purchase_order_id=purchase_order_id))
+    
+    try:
+        po_number = purchase_order.po_number
+        db.session.delete(purchase_order)
+        db.session.commit()
+        flash(f"Purchase Order {po_number} deleted successfully!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error deleting purchase order: {str(e)}", "danger")
+    
+    return redirect(url_for("purchase_order.list_purchase_orders"))

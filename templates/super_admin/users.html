@@ -90,11 +90,13 @@
                                 <td>
                                     {% set colors = {
                                         'super_admin': 'danger',
+                                        'support': 'warning',
                                         'agency_admin': 'primary',
                                         'agency_manager': 'success',
                                         'staff': 'info',
                                         'salesperson': 'secondary',
-                                        'pos_user': 'dark'
+                                        'pos_user': 'dark',
+                                        'accountant': 'info'
                                     } %}
                                     <span class="badge bg-{{ colors.get(user.role, 'light text-dark') }}">
                                         {{ user.role.replace('_', ' ').title() }}

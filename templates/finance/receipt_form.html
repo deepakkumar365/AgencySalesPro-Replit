@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Create Receipt - AgencySales Pro{% endblock %}
+{% block title %}{% if is_edit %}Edit Receipt{% else %}Create Receipt{% endif %} - AgencySales Pro{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-receipt me-2"></i>Create Receipt</h2>
+        <h2><i class="fas fa-receipt me-2"></i>{% if is_edit %}Edit Receipt{% else %}Create Receipt{% endif %}</h2>
         <a href="{{ url_for('finance.list_receipts') }}" class="btn btn-secondary">
             <i class="fas fa-arrow-left me-1"></i>Back to List
         </a>
@@ -15,7 +15,7 @@
         <div class="col-lg-8">
             <div class="card">
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('finance.create_receipt') }}" id="receiptForm">
+                    <form method="POST" action="{% if is_edit %}{{ url_for('finance.edit_receipt', receipt_id=receipt.id) }}{% else %}{{ url_for('finance.create_receipt') }}{% endif %}" id="receiptForm">
                         <!-- Basic Information -->
                         <div class="row g-3 mb-4">
                             {% if agencies %}
@@ -33,7 +33,7 @@
                             <div class="col-md-6">
                                 <label class="form-label">Receipt Date <span class="text-danger">*</span></label>
                                 <input type="date" name="receipt_date" class="form-control" 
-                                       value="" required>
+                                       value="{% if is_edit and receipt %}{{ receipt.receipt_date.strftime('%Y-%m-%d') }}{% endif %}" required>
                             </div>
 
                             <div class="col-md-6">
@@ -41,7 +41,8 @@
                                 <select name="customer_id" class="form-select" id="customerSelect" onchange="fillCustomerName()">
                                     <option value="">Select Customer (Optional)</option>
                                     {% for customer in customers %}
-                                    <option value="{{ customer.id }}" data-name="{{ customer.name }}">
+                                    <option value="{{ customer.id }}" data-name="{{ customer.name }}"
+                                            {% if is_edit and receipt and receipt.customer_id == customer.id %}selected{% endif %}>
                                         {{ customer.name }} - {{ customer.phone }}
                                     </option>
                                     {% endfor %}
@@ -51,53 +52,57 @@
                             <div class="col-md-6">
                                 <label class="form-label">Customer Name <span class="text-danger">*</span></label>
                                 <input type="text" name="customer_name" class="form-control" id="customerName" 
-                                       placeholder="Enter customer/payer name" required>
+                                       placeholder="Enter customer/payer name" 
+                                       value="{% if is_edit and receipt %}{{ receipt.customer_name }}{% endif %}" required>
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label">Amount <span class="text-danger">*</span></label>
                                 <input type="number" name="amount" class="form-control" step="0.01" 
-                                       placeholder="0.00" required>
+                                       placeholder="0.00" 
+                                       value="{% if is_edit and receipt %}{{ receipt.amount }}{% endif %}" required>
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label">Mode of Receipt <span class="text-danger">*</span></label>
                                 <select name="mode_of_receipt" class="form-select" required>
-                                    <option value="cash">Cash</option>
-                                    <option value="bank_transfer">Bank Transfer</option>
-                                    <option value="check">Check</option>
-                                    <option value="card">Card</option>
-                                    <option value="upi">UPI</option>
-                                    <option value="other">Other</option>
+                                    <option value="cash" {% if is_edit and receipt and receipt.mode_of_receipt == 'cash' %}selected{% endif %}>Cash</option>
+                                    <option value="bank_transfer" {% if is_edit and receipt and receipt.mode_of_receipt == 'bank_transfer' %}selected{% endif %}>Bank Transfer</option>
+                                    <option value="check" {% if is_edit and receipt and receipt.mode_of_receipt == 'check' %}selected{% endif %}>Check</option>
+                                    <option value="card" {% if is_edit and receipt and receipt.mode_of_receipt == 'card' %}selected{% endif %}>Card</option>
+                                    <option value="upi" {% if is_edit and receipt and receipt.mode_of_receipt == 'upi' %}selected{% endif %}>UPI</option>
+                                    <option value="other" {% if is_edit and receipt and receipt.mode_of_receipt == 'other' %}selected{% endif %}>Other</option>
                                 </select>
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label">Account Type <span class="text-danger">*</span></label>
                                 <select name="account_type" class="form-select" required>
-                                    <option value="cash">Cash</option>
-                                    <option value="bank">Bank</option>
+                                    <option value="cash" {% if is_edit and receipt and receipt.account_type == 'cash' %}selected{% endif %}>Cash</option>
+                                    <option value="bank" {% if is_edit and receipt and receipt.account_type == 'bank' %}selected{% endif %}>Bank</option>
                                 </select>
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label">Reference Number</label>
                                 <input type="text" name="reference_number" class="form-control" 
-                                       placeholder="Transaction/Check number">
+                                       placeholder="Transaction/Check number"
+                                       value="{% if is_edit and receipt %}{{ receipt.reference_number }}{% endif %}">
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label">Status</label>
-                                <select name="status" class="form-select">
-                                    <option value="confirmed">Confirmed</option>
-                                    <option value="pending">Pending</option>
+                                <select name="status" class="form-select" {% if is_edit %}disabled{% endif %}>
+                                    <option value="confirmed" {% if not is_edit or (receipt and receipt.status == 'confirmed') %}selected{% endif %}>Confirmed</option>
+                                    <option value="pending" {% if is_edit and receipt and receipt.status == 'pending' %}selected{% endif %}>Pending</option>
                                 </select>
+                                {% if is_edit %}<input type="hidden" name="status" value="{{ receipt.status }}">{% endif %}
                             </div>
 
                             <div class="col-12">
                                 <label class="form-label">Notes</label>
                                 <textarea name="notes" class="form-control" rows="3" 
-                                          placeholder="Additional notes..."></textarea>
+                                          placeholder="Additional notes...">{% if is_edit and receipt %}{{ receipt.notes }}{% endif %}</textarea>
                             </div>
                         </div>
 
@@ -121,7 +126,7 @@
                         <!-- Submit Buttons -->
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-success">
-                                <i class="fas fa-save me-1"></i>Create Receipt
+                                <i class="fas fa-save me-1"></i>{% if is_edit %}Update Receipt{% else %}Create Receipt{% endif %}
                             </button>
                             <a href="{{ url_for('finance.list_receipts') }}" class="btn btn-secondary">
                                 <i class="fas fa-times me-1"></i>Cancel
@@ -153,6 +158,7 @@
 
 <script>
 const salesOrders = {{ sales_orders|tojson|safe }};
+const linkedSOs = {{ linked_sos|tojson|safe if linked_sos else '[]' }};
 
 function fillCustomerName() {
     const select = document.getElementById('customerSelect');
@@ -166,7 +172,7 @@ function fillCustomerName() {
 
 let soLinkCounter = 0;
 
-function addSOLink() {
+function addSOLink(soId = null, amount = null) {
     const container = document.getElementById('soContainer');
     const linkDiv = document.createElement('div');
     linkDiv.className = 'row g-2 mb-2 so-link';
@@ -174,10 +180,10 @@ function addSOLink() {
     
     linkDiv.innerHTML = `
         <div class="col-md-6">
-            <select name="so_ids[]" class="form-select form-select-sm">
+            <select name="so_ids[]" class="form-select form-select-sm" required>
                 <option value="">Select Sales Order</option>
                 ${salesOrders.map(so => `
-                    <option value="${so.id}">
+                    <option value="${so.id}" ${soId === so.id ? 'selected' : ''}>
                         ${so.order_number} - ₹${parseFloat(so.total_amount).toFixed(2)}
                     </option>
                 `).join('')}
@@ -185,7 +191,7 @@ function addSOLink() {
         </div>
         <div class="col-md-4">
             <input type="number" name="so_amounts[]" class="form-control form-control-sm" 
-                   placeholder="Amount" step="0.01">
+                   placeholder="Amount" step="0.01" value="${amount || ''}" required>
         </div>
         <div class="col-md-2">
             <button type="button" class="btn btn-sm btn-danger w-100" 
@@ -205,5 +211,15 @@ function removeSOLink(id) {
         linkDiv.remove();
     }
 }
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    // Pre-populate linked SOs if editing
+    if (linkedSOs && linkedSOs.length > 0) {
+        linkedSOs.forEach(so => {
+            addSOLink(so.id, so.amount);
+        });
+    }
+});
 </script>
 {% endblock %}

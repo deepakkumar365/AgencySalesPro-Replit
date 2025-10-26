@@ -47,6 +47,7 @@
                             <select class="form-select" id="role" name="role" required>
                                 <option value="staff" {{ 'selected' if user.role == 'staff' else '' }}>Staff</option>
                                 <option value="salesperson" {{ 'selected' if user.role == 'salesperson' else '' }}>Salesperson</option>
+                                <option value="accountant" {{ 'selected' if user.role == 'accountant' else '' }}>Accountant</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">

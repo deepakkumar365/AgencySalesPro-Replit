@@ -499,6 +499,27 @@
                        placeholder="0.00">
                 <small class="text-muted">Additional charges</small>
             </div>
+
+            <!-- Sale Order Date -->
+            <div class="col-6">
+                <label for="order-date" class="form-label">
+                    <i class="fas fa-calendar me-1"></i>Sale Order Date
+                </label>
+                <input type="date" id="order-date" class="form-control" 
+                       value="{{ default_delivery_date.strftime('%Y-%m-%d') }}"
+                       required>
+                <small class="text-muted">Date of sale order creation</small>
+            </div>
+
+            <!-- Delivery Date (if needed) -->
+            <div class="col-6">
+                <label for="expected-delivery-date" class="form-label">
+                    <i class="fas fa-box me-1"></i>Expected Delivery Date
+                </label>
+                <input type="date" id="expected-delivery-date" class="form-control" 
+                       value="{{ default_delivery_date.strftime('%Y-%m-%d') }}">
+                <small class="text-muted">Expected delivery date</small>
+            </div>
         </div>
     </div>
 
@@ -695,9 +716,16 @@
             return;
         }
 
+        const orderDate = document.getElementById('order-date').value;
+        if (!orderDate) {
+            alert('Please enter the Sale Order Date');
+            return;
+        }
+
         const orderData = {
             customer_id: selectedCustomer.id,
-            delivery_date: document.getElementById('delivery-date').value,
+            order_date: orderDate,
+            delivery_date: document.getElementById('expected-delivery-date').value,
             notes: document.getElementById('order-notes').value,
             tax: 0,
             discount: parseFloat(document.getElementById('order-discount').value) || 0,

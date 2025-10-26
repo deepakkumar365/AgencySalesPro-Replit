@@ -208,7 +208,7 @@ def create_order():
                 status='pending',
                 payment_status='pending',
                 notes=data.get('notes'),
-                order_date=datetime.utcnow(),
+                order_date=datetime.strptime(data['order_date'], '%Y-%m-%d') if data.get('order_date') else datetime.utcnow(),
                 tax=tax_amount,
                 discount=discount_amount,
                 payment_mode=payment_mode,
@@ -714,35 +714,6 @@ def update_order_status(order_id):
     
     return redirect(url_for('order.view_order', order_id=order_id))
 
-@order_bp.route('/<int:order_id>/delete', methods=['POST'])
-@login_required
-@log_activity('delete_order')
-def delete_order(order_id):
-    order = Order.query.get_or_404(order_id)
-    
-    user_role = session.get('role')
-    current_agency_id = session.get('agency_id')
-    user_id = session.get('user_id')
-    
-    # Check permissions
-    if user_role == 'salesperson' and order.salesperson_id != user_id:
-        flash('You can only delete your own orders', 'error')
-        return redirect(url_for('order.list_orders'))
-    elif user_role not in ['super_admin', 'agency_admin'] and order.agency_id != current_agency_id:
-        flash('You do not have permission to delete orders', 'error')
-        return redirect(url_for('order.list_orders'))
-    
-    # Can only delete pending or cancelled orders
-    if order.status not in ['pending', 'cancelled']:
-        flash('Can only delete pending or cancelled orders', 'error')
-        return redirect(url_for('order.view_order', order_id=order_id))
-    
-    db.session.delete(order)
-    db.session.commit()
-    
-    flash('Order deleted successfully!', 'success')
-    return redirect(url_for('order.list_orders'))
-
 @order_bp.route('/export')
 @login_required
 @log_activity('export_orders')
@@ -1143,3 +1114,35 @@ def download_bulk_order_template():
         as_attachment=True,
         download_name=f'bulk_sales_order_template_{datetime.now().strftime("%Y%m%d")}.xlsx'
     )
+
+
+# ==================== DELETE ROUTES ====================
+@order_bp.route('/<int:order_id>/delete', methods=['POST'])
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@log_activity('delete_order')
+def delete_order(order_id, current_agency_id=None):
+    """Delete sales order (only pending/cancelled orders)"""
+    order = Order.query.get_or_404(order_id)
+    user_role = session.get('role')
+    
+    # Permission check
+    if user_role != 'super_admin' and order.agency_id != current_agency_id:
+        flash("You do not have permission to delete this order.", "danger")
+        return redirect(url_for('order.list_orders'))
+    
+    # Only allow deletion of pending or cancelled orders
+    if order.status not in ['pending', 'cancelled']:
+        flash(f"Cannot delete {order.status} orders. Only pending or cancelled orders can be deleted.", "warning")
+        return redirect(url_for('order.view_order', order_id=order_id))
+    
+    try:
+        order_number = order.order_number
+        db.session.delete(order)
+        db.session.commit()
+        flash(f"Order {order_number} deleted successfully!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error deleting order: {str(e)}", "danger")
+    
+    return redirect(url_for('order.list_orders'))

@@ -63,7 +63,16 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))
-    role = db.Column(db.String(20), nullable=False)  # super_admin, agency_admin, agency_manager, staff, salesperson, pos_user
+    # Role can be: super_admin, support, agency_manager, agency_admin, staff, salesperson, pos_user, accountant
+    # - super_admin: Full Tenant/Agency/User Management (view-only), no Inventory/Sales/Reports/Forecasting
+    # - support: Full access to all features (support team)
+    # - agency_manager: Full control within managed agencies, View-only Tenant Management
+    # - agency_admin: Full agency operations, Limited Agency/Payment Config management
+    # - staff: Operational role - Full Inventory/Sales, View Forecasting, Limited Reports
+    # - salesperson: Sales-focused - manage orders, view inventory
+    # - pos_user: POS terminal user - access POS, billing, basic orders
+    # - accountant: Finance role - View Inventory/Sales, Full Reports, View Payment Config
+    role = db.Column(db.String(20), nullable=False)
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

@@ -104,101 +104,187 @@ def get_current_user():
     return None
 
 def get_role_permissions(role):
-    """Get permissions for a specific role"""
+    """
+    Get permissions for a specific role.
+    
+    Access levels used: Full (full CRUD), View (read-only), Limited (some actions), 
+    Partial (limited view), None (no access)
+    
+    Role Matrix:
+    - super_admin: Tenant Management (Full), Agency Management (Full), User Management (View only)
+    - support: Full access to everything
+    - agency_manager: Full most features except Tenant Management (View)
+    - agency_admin: Full within single agency, Limited Agency/Payment Configuration
+    - staff: Partial Dashboard, Full Inventory/Sales, View Forecasting, Limited Reports
+    - accountant: Partial Dashboard, View Inventory/Sales/Payment Config, Full Reports
+    """
     permissions = {
         'super_admin': {
-            # Full system control
+            # Full system control but focus on Tenant/Agency Management
+            # Dashboard: Full
+            'can_manage_agencies': True,          # Tenant Management: Full
+            'can_manage_users': False,            # User Management: View only (not edit/delete)
+            'can_view_users': True,               # User Management: View
+            'can_view_all_data': True,
+            'can_access_pos': False,              # Not for super admin
+            'can_manage_inventory': False,        # Inventory: None
+            'can_view_inventory': False,
+            'can_manage_billing': False,          # Payment Configuration: Full (but not shown in nav)
+            'can_view_billing': True,
+            'can_view_reports': False,            # Reports: None
+            'can_manage_reports': False,
+            'can_manage_roles': True,
+            'can_manage_orders': False,           # Sales: None
+            'can_manage_customers': True,
+            'can_manage_locations': True,
+            'view_forecasting': False             # Forecasting: None
+        },
+
+        'support': {
+            # Full access to everything - support team role
+            # All access levels: Full
             'can_manage_agencies': True,
             'can_manage_users': True,
+            'can_view_users': True,
             'can_view_all_data': True,
             'can_access_pos': True,
             'can_manage_inventory': True,
+            'can_view_inventory': True,
             'can_manage_billing': True,
+            'can_view_billing': True,
             'can_view_reports': True,
+            'can_manage_reports': True,
             'can_manage_roles': True,
             'can_manage_orders': True,
             'can_manage_customers': True,
             'can_manage_locations': True,
-            'can_view_inventory': True
+            'view_forecasting': True
         },
 
         'agency_manager': {
             # Full control within their managed agencies
+            # Tenant Management: View, Agency Management: Full, User Management: Full
             'can_manage_agencies': True,
             'can_manage_users': True,
+            'can_view_users': True,
             'can_view_all_data': True,
             'can_access_pos': True,
             'can_manage_inventory': True,
-            'can_manage_billing': True,
+            'can_view_inventory': True,
+            'can_manage_billing': True,           # Payment Configuration: View
+            'can_view_billing': True,
             'can_view_reports': True,
+            'can_manage_reports': False,
             'can_manage_roles': False,
             'can_manage_orders': True,
             'can_manage_customers': True,
             'can_manage_locations': True,
-            'can_view_inventory': True
+            'view_forecasting': True
         },
 
         'agency_admin': {
             # Manages users and operations within a single agency
+            # Agency Management: Limited, Payment Configuration: Limited
             'can_manage_agencies': False,
             'can_manage_users': True,
+            'can_view_users': True,
             'can_view_all_data': False,
             'can_access_pos': True,
             'can_manage_inventory': True,
-            'can_manage_billing': True,
+            'can_view_inventory': True,
+            'can_manage_billing': True,           # Limited - can view/manage but not configure
+            'can_view_billing': True,
             'can_view_reports': True,
+            'can_manage_reports': False,
             'can_manage_roles': False,
             'can_manage_orders': True,
             'can_manage_customers': True,
             'can_manage_locations': True,
-            'can_view_inventory': True
+            'view_forecasting': True
         },
 
         'staff': {
             # Operational role within an agency
+            # Dashboard: Partial, Inventory: Full, Sales: Full, 
+            # Forecasting: View, Reports: Limited
             'can_manage_agencies': False,
             'can_manage_users': False,
+            'can_view_users': False,
             'can_view_all_data': False,
             'can_access_pos': True,
             'can_manage_inventory': True,
-            'can_manage_billing': True,
-            'can_view_reports': False,
+            'can_view_inventory': True,
+            'can_manage_billing': False,
+            'can_view_billing': False,
+            'can_view_reports': False,            # Limited reports access (view only, no manage)
+            'can_manage_reports': False,
             'can_manage_roles': False,
             'can_manage_orders': True,
             'can_manage_customers': True,
             'can_manage_locations': True,
-            'can_view_inventory': True
+            'view_forecasting': True              # View only
         },
 
         'salesperson': {
             # Sales-focused role
             'can_manage_agencies': False,
             'can_manage_users': False,
+            'can_view_users': False,
             'can_view_all_data': False,
             'can_access_pos': False,
             'can_manage_inventory': False,
+            'can_view_inventory': True,
             'can_manage_billing': False,
+            'can_view_billing': False,
             'can_view_reports': False,
+            'can_manage_reports': False,
             'can_manage_roles': False,
             'can_manage_orders': True,
             'can_manage_customers': True,
             'can_manage_locations': True,
-            'can_view_inventory': True
+            'view_forecasting': False
         },
 
         'pos_user': {
             # POS-only role
             'can_manage_agencies': False,
             'can_manage_users': False,
+            'can_view_users': False,
             'can_view_all_data': False,
             'can_access_pos': True,
             'can_manage_inventory': False,
+            'can_view_inventory': True,
             'can_manage_billing': True,
+            'can_view_billing': True,
             'can_view_reports': False,
+            'can_manage_reports': False,
             'can_manage_roles': False,
             'can_manage_orders': True,
             'can_manage_customers': True,
-            'can_view_inventory': True
+            'can_manage_locations': True,
+            'view_forecasting': False
+        },
+
+        'accountant': {
+            # Accounting/Finance focused role
+            # Dashboard: Partial, Payment Configuration: View, 
+            # Inventory: View, Sales: View, Reports: Full
+            'can_manage_agencies': False,
+            'can_manage_users': False,
+            'can_view_users': False,
+            'can_view_all_data': False,
+            'can_access_pos': False,
+            'can_manage_inventory': False,
+            'can_view_inventory': True,           # View only
+            'can_manage_billing': False,
+            'can_view_billing': True,             # Payment Configuration: View
+            'can_view_reports': True,             # Reports: Full (can view and manage)
+            'can_manage_reports': True,
+            'can_manage_roles': False,
+            'can_manage_orders': False,           # Sales: View only (doesn't appear in nav)
+            'can_manage_customers': False,
+            'can_manage_locations': False,
+            'view_forecasting': False
         }
     }
 

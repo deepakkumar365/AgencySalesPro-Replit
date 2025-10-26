@@ -291,12 +291,108 @@ def view_payment(payment_id, current_agency_id=None):
     return render_template('finance/payment_view.html', payment=payment)
 
 
+@finance_bp.route('/payments/<int:payment_id>/edit', methods=['GET', 'POST'])
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@log_activity('edit_payment')
+def edit_payment(payment_id, current_agency_id=None):
+    """Edit existing payment"""
+    payment = FinancePayment.query.get_or_404(payment_id)
+    user_role = session.get('role')
+    
+    # Permission check
+    if user_role != 'super_admin' and payment.agency_id != current_agency_id:
+        flash("You do not have permission to edit this payment.", "danger")
+        return redirect(url_for('finance.list_payments'))
+    
+    # Only allow editing of pending payments
+    if payment.status != 'pending':
+        flash("Only pending payments can be edited.", "warning")
+        return redirect(url_for('finance.view_payment', payment_id=payment_id))
+    
+    if request.method == 'POST':
+        try:
+            data = request.form
+            
+            # Update payment fields
+            payment.payment_date = datetime.strptime(data.get('payment_date'), '%Y-%m-%d')
+            payment.payee_type = data.get('payee_type', 'other')
+            payment.payee_name = data.get('payee_name')
+            payment.amount = Decimal(data.get('amount'))
+            payment.mode_of_payment = data.get('mode_of_payment')
+            payment.account_type = data.get('account_type', 'cash')
+            payment.reference_number = data.get('reference_number')
+            payment.notes = data.get('notes')
+            payment.status = data.get('status', 'pending')
+            
+            if data.get('payee_id'):
+                payment.payee_id = int(data.get('payee_id'))
+            
+            # Update linked purchase orders
+            payment.purchase_orders.clear()
+            po_ids = request.form.getlist('po_ids[]')
+            po_amounts = request.form.getlist('po_amounts[]')
+            
+            for po_id, po_amount in zip(po_ids, po_amounts):
+                if po_id and po_amount:
+                    link = PaymentPurchaseOrder(
+                        payment_id=payment.id,
+                        purchase_order_id=int(po_id),
+                        amount=Decimal(po_amount)
+                    )
+                    db.session.add(link)
+            
+            db.session.commit()
+            flash(f"Payment {payment.payment_number} updated successfully!", "success")
+            return redirect(url_for('finance.view_payment', payment_id=payment_id))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error updating payment: {str(e)}", "danger")
+    
+    # GET request - load form data
+    if user_role == 'super_admin':
+        agencies = Agency.query.filter_by(is_active=True).all()
+        suppliers = Supplier.query.filter_by(is_active=True).all()
+        purchase_orders_query = PurchaseOrder.query.filter(
+            PurchaseOrder.status.in_(['pending', 'approved', 'received'])
+        ).all()
+    else:
+        agencies = None
+        suppliers = Supplier.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+        purchase_orders_query = PurchaseOrder.query.filter(
+            PurchaseOrder.agency_id == current_agency_id,
+            PurchaseOrder.status.in_(['pending', 'approved', 'received'])
+        ).all()
+
+    purchase_orders = [
+        {"id": po.id, "po_number": po.po_number, "total_amount": float(po.total_amount)}
+        for po in purchase_orders_query
+    ]
+    
+    # Get linked purchase orders for this payment
+    linked_pos = [
+        {"id": po_link.purchase_order_id, "po_number": po_link.purchase_order_ref.po_number, "amount": float(po_link.amount)}
+        for po_link in payment.purchase_orders
+    ]
+    
+    return render_template(
+        'finance/payment_form.html',
+        payment=payment,
+        agencies=agencies,
+        suppliers=suppliers,
+        purchase_orders=purchase_orders,
+        linked_pos=linked_pos,
+        is_edit=True
+    )
+
+
 @finance_bp.route('/payments/<int:payment_id>/delete', methods=['POST'])
 @login_required
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('delete_payment')
 def delete_payment(payment_id, current_agency_id=None):
-    """Delete payment"""
+    """Delete payment (only pending payments)"""
     payment = FinancePayment.query.get_or_404(payment_id)
     user_role = session.get('role')
     
@@ -304,6 +400,11 @@ def delete_payment(payment_id, current_agency_id=None):
     if user_role != 'super_admin' and payment.agency_id != current_agency_id:
         flash("You do not have permission to delete this payment.", "danger")
         return redirect(url_for('finance.list_payments'))
+    
+    # Only allow deletion of pending payments
+    if payment.status != 'pending':
+        flash(f"Cannot delete {payment.status} payments. Only pending payments can be deleted.", "warning")
+        return redirect(url_for('finance.view_payment', payment_id=payment_id))
     
     try:
         payment_number = payment.payment_number
@@ -453,12 +554,110 @@ def view_receipt(receipt_id, current_agency_id=None):
     return render_template('finance/receipt_view.html', receipt=receipt)
 
 
+@finance_bp.route('/receipts/<int:receipt_id>/edit', methods=['GET', 'POST'])
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@log_activity('edit_receipt')
+def edit_receipt(receipt_id, current_agency_id=None):
+    """Edit existing receipt"""
+    receipt = Receipt.query.get_or_404(receipt_id)
+    user_role = session.get('role')
+    
+    # Permission check
+    if user_role != 'super_admin' and receipt.agency_id != current_agency_id:
+        flash("You do not have permission to edit this receipt.", "danger")
+        return redirect(url_for('finance.list_receipts'))
+    
+    # Only allow editing of pending receipts
+    if receipt.status != 'pending':
+        flash("Only pending receipts can be edited.", "warning")
+        return redirect(url_for('finance.view_receipt', receipt_id=receipt_id))
+    
+    if request.method == 'POST':
+        try:
+            data = request.form
+            
+            # Update receipt fields
+            receipt.receipt_date = datetime.strptime(data.get('receipt_date'), '%Y-%m-%d')
+            receipt.customer_name = data.get('customer_name')
+            receipt.amount = Decimal(data.get('amount'))
+            receipt.mode_of_receipt = data.get('mode_of_receipt')
+            receipt.account_type = data.get('account_type', 'cash')
+            receipt.reference_number = data.get('reference_number')
+            receipt.notes = data.get('notes')
+            receipt.status = data.get('status', 'pending')
+            
+            if data.get('customer_id'):
+                receipt.customer_id = int(data.get('customer_id'))
+            
+            # Update linked sales orders
+            receipt.sales_orders.clear()
+            so_ids = request.form.getlist('so_ids[]')
+            so_amounts = request.form.getlist('so_amounts[]')
+            
+            for so_id, so_amount in zip(so_ids, so_amounts):
+                if so_id and so_amount:
+                    link = ReceiptSalesOrder(
+                        receipt_id=receipt.id,
+                        order_id=int(so_id),
+                        amount=Decimal(so_amount)
+                    )
+                    db.session.add(link)
+            
+            db.session.commit()
+            flash(f"Receipt {receipt.receipt_number} updated successfully!", "success")
+            return redirect(url_for('finance.view_receipt', receipt_id=receipt_id))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error updating receipt: {str(e)}", "danger")
+    
+    # GET request - load form data
+    if user_role == 'super_admin':
+        agencies = Agency.query.filter_by(is_active=True).all()
+        customers = Customer.query.filter_by(is_active=True).all()
+        sales_orders_query = Order.query.filter(
+            Order.status.in_(['pending', 'confirmed', 'shipped'])
+        ).all()
+    else:
+        agencies = None
+        customers = Customer.query.join(Customer.location).filter(
+            Customer.location.has(agency_id=current_agency_id),
+            Customer.is_active == True
+        ).all()
+        sales_orders_query = Order.query.filter(
+            Order.agency_id == current_agency_id,
+            Order.status.in_(['pending', 'confirmed', 'shipped'])
+        ).all()
+
+    sales_orders = [
+        {"id": so.id, "order_number": so.order_number, "total_amount": float(so.total_amount)}
+        for so in sales_orders_query
+    ]
+    
+    # Get linked sales orders for this receipt
+    linked_sos = [
+        {"id": so_link.order_id, "order_number": so_link.order_ref.order_number, "amount": float(so_link.amount)}
+        for so_link in receipt.sales_orders
+    ]
+    
+    return render_template(
+        'finance/receipt_form.html',
+        receipt=receipt,
+        agencies=agencies,
+        customers=customers,
+        sales_orders=sales_orders,
+        linked_sos=linked_sos,
+        is_edit=True
+    )
+
+
 @finance_bp.route('/receipts/<int:receipt_id>/delete', methods=['POST'])
 @login_required
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('delete_receipt')
 def delete_receipt(receipt_id, current_agency_id=None):
-    """Delete receipt"""
+    """Delete receipt (only pending receipts)"""
     receipt = Receipt.query.get_or_404(receipt_id)
     user_role = session.get('role')
     
@@ -466,6 +665,11 @@ def delete_receipt(receipt_id, current_agency_id=None):
     if user_role != 'super_admin' and receipt.agency_id != current_agency_id:
         flash("You do not have permission to delete this receipt.", "danger")
         return redirect(url_for('finance.list_receipts'))
+    
+    # Only allow deletion of pending receipts
+    if receipt.status != 'pending':
+        flash(f"Cannot delete {receipt.status} receipts. Only pending receipts can be deleted.", "warning")
+        return redirect(url_for('finance.view_receipt', receipt_id=receipt_id))
     
     try:
         receipt_number = receipt.receipt_number
