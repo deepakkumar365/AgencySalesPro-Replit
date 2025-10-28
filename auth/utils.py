@@ -323,11 +323,14 @@ def get_role_permissions(role):
 def inject_permissions():
     """Inject user permissions and menu into all templates"""
     if 'user_id' in session:
+        role = session.get('role', '')
         return {
+            'permissions': get_role_permissions(role),
             'user_menu': permission_service.get_user_menu(session['user_id']),
             'has_permission': permission_service.has_permission
         }
     return {
+        'permissions': {},
         'user_menu': [],
         'has_permission': lambda code: False
     }
