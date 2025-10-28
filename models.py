@@ -73,6 +73,8 @@ class User(db.Model):
     # - pos_user: POS terminal user - access POS, billing, basic orders
     # - accountant: Finance role - View Inventory/Sales, Full Reports, View Payment Config
     role = db.Column(db.String(20), nullable=False)
+    # New FK to normalized roles table (nullable for gradual migration)
+    role_id = db.Column(db.Integer, db.ForeignKey('ASP_roles.id'), nullable=True, index=True)
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -90,6 +92,64 @@ class User(db.Model):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
+
+# --- New RBAC models: Role, Permission, RolePermission, MenuItem ---
+class Role(db.Model):
+    __tablename__ = 'ASP_roles'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    is_system = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    permissions = db.relationship('Permission', secondary='ASP_role_permissions',
+                                  backref=db.backref('roles', lazy='dynamic'))
+
+    def __repr__(self):
+        return f"<Role {self.name}>"
+
+class Permission(db.Model):
+    __tablename__ = 'ASP_permissions'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    code = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    category = db.Column(db.String(50))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Permission {self.code}>"
+
+class RolePermission(db.Model):
+    __tablename__ = 'ASP_role_permissions'
+    id = db.Column(db.Integer, primary_key=True)
+    role_id = db.Column(db.Integer, db.ForeignKey('ASP_roles.id', ondelete='CASCADE'), nullable=False)
+    permission_id = db.Column(db.Integer, db.ForeignKey('ASP_permissions.id', ondelete='CASCADE'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('role_id', 'permission_id', name='uq_role_permission'),
+    )
+
+class MenuItem(db.Model):
+    __tablename__ = 'ASP_menu_items'
+    id = db.Column(db.Integer, primary_key=True)
+    parent_id = db.Column(db.Integer, db.ForeignKey('ASP_menu_items.id', ondelete='CASCADE'))
+    name = db.Column(db.String(100), nullable=False)
+    url = db.Column(db.String(255))
+    icon = db.Column(db.String(50))
+    order_index = db.Column(db.Integer, default=0)
+    # Option: reference permission by code for easier matching in templates
+    required_permission_code = db.Column(db.String(100), db.ForeignKey('ASP_permissions.code', ondelete='SET NULL'), nullable=True)
+    dashboard_for_role = db.Column(db.String(50))
+    is_active = db.Column(db.Boolean, default=True)
+
+    # Relationships
+    children = db.relationship('MenuItem', backref=db.backref('parent', remote_side=[id]), lazy='dynamic')
+
+    def __repr__(self):
+        return f"<MenuItem {self.name}>"
 
 class Location(db.Model):
     __tablename__ = 'ASP_locations'
