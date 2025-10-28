@@ -1,0 +1,100 @@
+================================================================================
+QUICK MIGRATION GUIDE - Fix Quantity Display Issue (1.5 showing as 2)
+================================================================================
+
+PROBLEM: Quantity 1.5 displays as 2 because database columns are INTEGER
+
+SOLUTION: Change database columns to NUMERIC(10,2)
+
+================================================================================
+STEP-BY-STEP INSTRUCTIONS
+================================================================================
+
+1. OPEN PGADMIN
+   - Launch pgAdmin application
+   - Connect to your PostgreSQL server (localhost)
+
+2. OPEN QUERY TOOL
+   - Expand Servers → PostgreSQL → Databases
+   - Right-click on "AgencySalesPro" database
+   - Select "Query Tool"
+
+3. COPY & PASTE THIS SQL
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ BEGIN;                                                                 │
+   │                                                                        │
+   │ ALTER TABLE "ASP_order_items"                                         │
+   │     ALTER COLUMN quantity TYPE NUMERIC(10, 2);                        │
+   │                                                                        │
+   │ ALTER TABLE "ASP_purchase_order_items"                                │
+   │     ALTER COLUMN quantity_ordered TYPE NUMERIC(10, 2);                │
+   │                                                                        │
+   │ ALTER TABLE "ASP_purchase_order_items"                                │
+   │     ALTER COLUMN quantity_received TYPE NUMERIC(10, 2);               │
+   │                                                                        │
+   │ COMMIT;                                                                │
+   └────────────────────────────────────────────────────────────────────────┘
+
+4. EXECUTE
+   - Click the "Execute/Run" button (▶) or press F5
+   - Wait for "Query returned successfully" message
+
+5. VERIFY (Optional)
+   Run this query to confirm changes:
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ SELECT table_name, column_name, data_type,                            │
+   │        numeric_precision, numeric_scale                                │
+   │ FROM information_schema.columns                                        │
+   │ WHERE table_name IN ('ASP_order_items',                               │
+   │                      'ASP_purchase_order_items')                       │
+   │   AND column_name IN ('quantity', 'quantity_ordered',                 │
+   │                       'quantity_received');                            │
+   └────────────────────────────────────────────────────────────────────────┘
+
+   Expected result: All three columns should show "numeric" with 
+   precision=10 and scale=2
+
+6. RESTART FLASK APP
+   - Stop the Flask server (Ctrl+C in terminal)
+   - Restart: python app.py
+
+7. TEST
+   - Create a new order with quantity 1.5
+   - View the order
+   - Verify it displays as "1.5" (not "2" or "1")
+
+================================================================================
+WHAT WAS CHANGED IN CODE (Already Done)
+================================================================================
+
+✓ models.py - Updated column definitions to db.Numeric(10, 2)
+✓ templates/order/view.html - Fixed display format
+✓ templates/pos/receipt.html - Fixed display format  
+✓ templates/purchase_order/view.html - Fixed display format
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: "permission denied for table"
+Solution: Make sure you're connected as a user with ALTER TABLE rights
+
+Problem: "relation does not exist"
+Solution: Check you're connected to the correct database (AgencySalesPro)
+
+Problem: Still showing wrong values after migration
+Solution: 
+  1. Verify migration completed (run verification query)
+  2. Restart Flask application
+  3. Clear browser cache (Ctrl+F5)
+  4. Try creating a NEW order (old data may have been truncated)
+
+================================================================================
+NEED MORE HELP?
+================================================================================
+
+See detailed documentation:
+  - MIGRATION_INSTRUCTIONS.md (detailed step-by-step guide)
+  - QUANTITY_FIX_SUMMARY.md (complete technical overview)
+
+================================================================================
