@@ -1,0 +1,7 @@
+*.pyc
+/instance/
+/.env
+*.sql
+*.md
+/RECEIPT_EXAMPLE.txt
+/venv311/
