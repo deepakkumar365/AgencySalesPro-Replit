@@ -47,6 +47,7 @@
                             <select class="form-select" id="role" name="role" required>
                                 {% if session.role == 'super_admin' %}
                                 <option value="super_admin" {{ 'selected' if user.role == 'super_admin' else '' }}>Super Admin</option>
+                                <option value="support" {{ 'selected' if user.role == 'support' else '' }}>Support</option>
                                 {% endif %}
                                 {% if session.role == 'super_admin' or session.role == 'agency_manager' %}
                                 <option value="agency_admin" {{ 'selected' if user.role == 'agency_admin' else '' }}>Agency Admin</option>                                
@@ -57,6 +58,7 @@
                                 <option value="staff" {{ 'selected' if user.role == 'staff' else '' }}>Staff</option>
                                 <option value="salesperson" {{ 'selected' if user.role == 'salesperson' else '' }}>Salesperson</option>
                                 <option value="pos_user" {{ 'selected' if user.role == 'pos_user' else '' }}>POS User</option>
+                                <option value="accountant" {{ 'selected' if user.role == 'accountant' else '' }}>Accountant</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
@@ -104,7 +106,9 @@
         const roleSelect = document.getElementById('role');
         const agencySelect = document.getElementById('agency_id');
         // This list should match the server-side validation
-        const rolesRequiringAgency = ['agency_admin', 'staff', 'salesperson', 'pos_user'];
+        // Roles that require an agency assignment: operational roles and accountant
+        // System-wide roles (super_admin, support) do NOT require agency
+        const rolesRequiringAgency = ['agency_admin', 'staff', 'salesperson', 'pos_user', 'accountant'];
 
         function toggleAgencyRequirement() {
             if (agencySelect && rolesRequiringAgency.includes(roleSelect.value)) {

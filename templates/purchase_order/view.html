@@ -96,12 +96,12 @@
                             {% for item in purchase_order.po_items %}
                             <tr>
                                 <td>
-                                    <strong>{{ item.product.name if item.product else 'Unknown Product' }}</strong>
+                                    <strong>{{ item.product_name or (item.product.name if item.product else 'Unknown Product') }}</strong>
                                     {% if item.product and item.product.sku %}
                                     <br><small class="text-muted">SKU: {{ item.product.sku }}</small>
                                     {% endif %}
                                 </td>
-                                <td class="text-end">{{ item.quantity_ordered }}</td>
+                                <td class="text-end">{{ "%g"|format(item.quantity_ordered|float) }}</td>
                                 <td class="text-end">₹{{ '%.2f'|format(item.unit_cost or 0) }}</td>
                                 <td class="text-end">₹{{ '%.2f'|format(item.total_cost or 0) }}</td>
                             </tr>

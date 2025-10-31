@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, session, jsonify
 from datetime import datetime, timedelta
 from decimal import Decimal
-from app import db
+from extensions import db
 from models import (
     Order, Customer, Agency, Location, User,
     Invoice, Payment, PaymentMethod, TaxRule

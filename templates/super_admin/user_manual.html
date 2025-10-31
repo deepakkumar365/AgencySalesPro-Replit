@@ -1,0 +1,973 @@
+{% extends "base.html" %}
+
+{% block title %}Super Admin User Manual - AgencySales Pro{% endblock %}
+
+{% block content %}
+<style>
+    .manual-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px 20px;
+        margin: -15px -15px 30px -15px;
+        border-radius: 5px 5px 0 0;
+    }
+    
+    .manual-header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+    
+    .manual-header p {
+        margin: 10px 0 0 0;
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+    
+    .toc-container {
+        background: #f8f9fa;
+        border-left: 4px solid #667eea;
+        padding: 20px;
+        margin-bottom: 30px;
+        border-radius: 5px;
+    }
+    
+    .toc-container h3 {
+        margin-top: 0;
+        color: #333;
+    }
+    
+    .toc-container ol {
+        margin: 0;
+        padding-left: 20px;
+    }
+    
+    .toc-container li {
+        margin-bottom: 8px;
+    }
+    
+    .toc-container a {
+        color: #667eea;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+    
+    .toc-container a:hover {
+        color: #764ba2;
+        text-decoration: underline;
+    }
+    
+    .section {
+        margin-bottom: 40px;
+        scroll-margin-top: 80px;
+    }
+    
+    .section h2 {
+        color: #333;
+        border-bottom: 3px solid #667eea;
+        padding-bottom: 10px;
+        margin-top: 40px;
+        margin-bottom: 20px;
+        font-size: 1.8rem;
+    }
+    
+    .section h3 {
+        color: #555;
+        margin-top: 25px;
+        margin-bottom: 15px;
+        font-size: 1.3rem;
+    }
+    
+    .section h4 {
+        color: #666;
+        margin-top: 20px;
+        margin-bottom: 10px;
+    }
+    
+    .info-box {
+        background: #e7f3ff;
+        border-left: 4px solid #2196F3;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 3px;
+    }
+    
+    .warning-box {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 3px;
+    }
+    
+    .success-box {
+        background: #d4edda;
+        border-left: 4px solid #28a745;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 3px;
+    }
+    
+    .danger-box {
+        background: #f8d7da;
+        border-left: 4px solid #dc3545;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 3px;
+    }
+    
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin: 20px 0;
+    }
+    
+    .feature-card {
+        background: white;
+        border: 1px solid #ddd;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .feature-card h4 {
+        margin-top: 0;
+        color: #667eea;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    table th {
+        background-color: #667eea;
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+    }
+    
+    table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    table tr:hover {
+        background-color: #f5f5f5;
+    }
+    
+    .code-block {
+        background: #272822;
+        color: #f8f8f2;
+        padding: 15px;
+        border-radius: 5px;
+        overflow-x: auto;
+        margin: 15px 0;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+    
+    .step-list {
+        list-style: decimal;
+        padding-left: 30px;
+    }
+    
+    .step-list li {
+        margin-bottom: 10px;
+        line-height: 1.6;
+    }
+    
+    .badge-role {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-right: 5px;
+    }
+    
+    .badge-role.super-admin {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .badge-role.agency-admin {
+        background: #007bff;
+        color: white;
+    }
+    
+    .badge-role.staff {
+        background: #28a745;
+        color: white;
+    }
+    
+    .badge-role.other {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .navbar-fixed-top {
+        position: sticky;
+        top: 0;
+        z-index: 999;
+        background: white;
+        border-bottom: 1px solid #ddd;
+        padding: 10px 0;
+        margin: -15px 0 20px 0;
+    }
+    
+    .manual-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .manual-nav a {
+        padding: 8px 15px;
+        background: #667eea;
+        color: white;
+        border-radius: 3px;
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: background 0.3s;
+    }
+    
+    .manual-nav a:hover {
+        background: #764ba2;
+    }
+    
+    .back-to-top {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: #667eea;
+        color: white;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        transition: background 0.3s;
+        font-size: 1.5rem;
+    }
+    
+    .back-to-top:hover {
+        background: #764ba2;
+    }
+    
+    .back-to-top.show {
+        display: flex;
+    }
+    
+    .workflow-diagram {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 20px 0;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .workflow-step {
+        background: #667eea;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        text-align: center;
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    .workflow-arrow {
+        color: #667eea;
+        font-size: 1.5rem;
+        flex: 0 0 30px;
+        text-align: center;
+    }
+    
+    .do-dont-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin: 20px 0;
+    }
+    
+    .do-list {
+        background: #d4edda;
+        padding: 20px;
+        border-radius: 5px;
+        border-left: 4px solid #28a745;
+    }
+    
+    .dont-list {
+        background: #f8d7da;
+        padding: 20px;
+        border-radius: 5px;
+        border-left: 4px solid #dc3545;
+    }
+    
+    .do-list h4, .dont-list h4 {
+        margin-top: 0;
+    }
+    
+    .do-list ul, .dont-list ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+    
+    .do-list li, .dont-list li {
+        margin-bottom: 8px;
+    }
+    
+    @media print {
+        .navbar-fixed-top, .back-to-top {
+            display: none;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .do-dont-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .manual-header h1 {
+            font-size: 1.8rem;
+        }
+        
+        .feature-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="manual-header">
+    <h1>📘 AgencySalesPro User Manual</h1>
+    <p>Complete Guide for Super Administrators</p>
+</div>
+
+<div class="navbar-fixed-top">
+    <div class="manual-nav">
+        <div>
+            <a href="{{ url_for('super_admin.dashboard') }}">← Back to Dashboard</a>
+        </div>
+        <div>
+            <button onclick="window.print()" class="btn btn-sm btn-outline-secondary">🖨️ Print Manual</button>
+            <button onclick="downloadManual()" class="btn btn-sm btn-outline-secondary">⬇️ Download</button>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-4">
+    <!-- Table of Contents -->
+    <div class="toc-container">
+        <h3>📑 Quick Navigation</h3>
+        <ol>
+            <li><a href="#getting-started">Getting Started</a></li>
+            <li><a href="#dashboard">Dashboard Overview</a></li>
+            <li><a href="#user-management">User Management</a></li>
+            <li><a href="#agency-management">Agency Management</a></li>
+            <li><a href="#core-modules">Core Modules</a></li>
+            <li><a href="#finance">Finance & Accounting</a></li>
+            <li><a href="#reports">Reports & Analytics</a></li>
+            <li><a href="#configuration">System Configuration</a></li>
+            <li><a href="#activity">Activity Monitoring</a></li>
+            <li><a href="#troubleshooting">Troubleshooting & Support</a></li>
+        </ol>
+    </div>
+
+    <!-- Getting Started Section -->
+    <div id="getting-started" class="section">
+        <h2>🚀 Getting Started</h2>
+        
+        <h3>What is AgencySalesPro?</h3>
+        <p>AgencySalesPro is a comprehensive multi-agency sales and business management system designed to help agencies manage:</p>
+        
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h4>🏢 Multiple Agencies</h4>
+                <p>Support for separate agency accounts within one system</p>
+            </div>
+            <div class="feature-card">
+                <h4>🛒 Sales & Orders</h4>
+                <p>Complete order management lifecycle</p>
+            </div>
+            <div class="feature-card">
+                <h4>👥 Customer Management</h4>
+                <p>Track customers across agencies</p>
+            </div>
+            <div class="feature-card">
+                <h4>💰 Financial Management</h4>
+                <p>Payment, receipts, invoicing, and accounting</p>
+            </div>
+            <div class="feature-card">
+                <h4>📋 Job Accounting</h4>
+                <p>Project-based income and expense tracking</p>
+            </div>
+            <div class="feature-card">
+                <h4>📦 Inventory</h4>
+                <p>Stock management and purchase orders</p>
+            </div>
+        </div>
+        
+        <h3>Your Role as Super Admin</h3>
+        <p>As a Super Admin, you have <strong>unrestricted access</strong> to the entire system. Your responsibilities include:</p>
+        
+        <div class="success-box">
+            <strong>Key Responsibilities:</strong>
+            <ul>
+                <li>✅ Creating and managing agencies</li>
+                <li>✅ Managing users across all agencies</li>
+                <li>✅ Viewing system-wide reports and analytics</li>
+                <li>✅ Configuring system settings and defaults</li>
+                <li>✅ Monitoring user activities and system health</li>
+                <li>✅ Managing global products and pricing</li>
+                <li>✅ Supporting agency administrators</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="dashboard" class="section">
+        <h2>📊 Dashboard Overview</h2>
+        
+        <p>The Super Admin Dashboard provides a quick overview of your entire system with key metrics and recent activity.</p>
+        
+        <h3>Key Metrics</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Total Agencies</strong></td>
+                    <td>Number of active agencies in the system</td>
+                </tr>
+                <tr>
+                    <td><strong>Total Users</strong></td>
+                    <td>Count of all users across all agencies</td>
+                </tr>
+                <tr>
+                    <td><strong>Total Orders</strong></td>
+                    <td>Sum of all orders system-wide</td>
+                </tr>
+                <tr>
+                    <td><strong>Total Customers</strong></td>
+                    <td>Number of customers across all agencies</td>
+                </tr>
+                <tr>
+                    <td><strong>Total Revenue</strong></td>
+                    <td>System-wide revenue total</td>
+                </tr>
+                <tr>
+                    <td><strong>Monthly Revenue</strong></td>
+                    <td>Revenue for current month</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- User Management Section -->
+    <div id="user-management" class="section">
+        <h2>👥 User Management</h2>
+        
+        <h3>User Roles & Permissions</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Role</th>
+                    <th>Description</th>
+                    <th>Access Level</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge-role super-admin">super_admin</span></td>
+                    <td>Full system access</td>
+                    <td>Unrestricted</td>
+                </tr>
+                <tr>
+                    <td><span class="badge-role agency-admin">agency_admin</span></td>
+                    <td>Complete agency control</td>
+                    <td>Their agency only</td>
+                </tr>
+                <tr>
+                    <td><span class="badge-role staff">staff</span></td>
+                    <td>General staff operations</td>
+                    <td>Their agency only</td>
+                </tr>
+                <tr>
+                    <td><span class="badge-role other">salesperson</span></td>
+                    <td>Sales activities</td>
+                    <td>Their agency, limited</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h3>Creating a New User</h3>
+        <ol class="step-list">
+            <li>Go to <strong>👥 Users</strong> → <strong>Add New User</strong></li>
+            <li>Fill in required fields:
+                <ul>
+                    <li><strong>Username</strong> - Unique identifier (no spaces)</li>
+                    <li><strong>Email</strong> - Valid email address</li>
+                    <li><strong>Password</strong> - Strong password (min 8 characters)</li>
+                    <li><strong>Full Name</strong> - User's complete name</li>
+                    <li><strong>Role</strong> - Select from available roles</li>
+                    <li><strong>Agency</strong> - Assign to an agency</li>
+                </ul>
+            </li>
+            <li>Click <strong>Create User</strong></li>
+        </ol>
+        
+        <div class="info-box">
+            <strong>💡 Pro Tip:</strong> For initial setup, set a temporary password and ask users to change it on first login.
+        </div>
+        
+        <h3>Bulk User Import</h3>
+        <p>For importing multiple users at once:</p>
+        <ol class="step-list">
+            <li>Go to <strong>👥 Users</strong> → <strong>Import Users</strong></li>
+            <li>Download the CSV template</li>
+            <li>Fill in user information in the template</li>
+            <li>Upload the CSV file</li>
+            <li>Review the preview and click <strong>Import</strong></li>
+        </ol>
+    </div>
+
+    <!-- Agency Management Section -->
+    <div id="agency-management" class="section">
+        <h2>🏢 Agency Management</h2>
+        
+        <h3>Creating an Agency</h3>
+        
+        <h4>Step 1: New Agency</h4>
+        <ol class="step-list">
+            <li>Navigate to <strong>🏢 Agencies</strong></li>
+            <li>Click <strong>Create New Agency</strong></li>
+            <li>Fill in basic information:
+                <ul>
+                    <li>Agency Name</li>
+                    <li>Description</li>
+                    <li>Contact Email</li>
+                    <li>Phone Number</li>
+                    <li>Address</li>
+                    <li>Website (optional)</li>
+                </ul>
+            </li>
+        </ol>
+        
+        <h4>Step 2: Create Agency Admin</h4>
+        <ol class="step-list">
+            <li>Go to <strong>👥 Users</strong> → <strong>Add New User</strong></li>
+            <li>Set Role to <strong>agency_admin</strong></li>
+            <li>Assign to the newly created agency</li>
+            <li>This user will manage the agency</li>
+        </ol>
+        
+        <h3>Agency Hierarchy</h3>
+        <div class="code-block">
+        🌍 Super Admin Dashboard
+           ├─ 🏢 Agency 1
+           │   ├─ 👤 Agency Admin 1
+           │   ├─ 📍 Location 1
+           │   │   ├─ 👥 Customers
+           │   │   └─ 🛒 Orders
+           │   └─ 📍 Location 2
+           │
+           └─ 🏢 Agency 2
+               ├─ 👤 Agency Admin 2
+               └─ 📍 Locations
+        </div>
+    </div>
+
+    <!-- Core Modules Section -->
+    <div id="core-modules" class="section">
+        <h2>📦 Core Modules</h2>
+        
+        <h3>Product Management</h3>
+        <p>All products are managed globally, but each agency can override pricing and availability.</p>
+        
+        <h4>Creating a Product</h4>
+        <ol class="step-list">
+            <li>Go to <strong>📦 Products</strong> → <strong>Add Product</strong></li>
+            <li>Fill in:
+                <ul>
+                    <li><strong>SKU</strong> - Unique code</li>
+                    <li><strong>Name</strong> - Product name</li>
+                    <li><strong>Description</strong> - Details</li>
+                    <li><strong>Category</strong> - Product category</li>
+                    <li><strong>Unit</strong> - Unit of measure</li>
+                    <li><strong>Base Price</strong> - Default price</li>
+                </ul>
+            </li>
+            <li>Click <strong>Create Product</strong></li>
+        </ol>
+        
+        <h3>Customer Management</h3>
+        
+        <h4>Creating a Customer</h4>
+        <ol class="step-list">
+            <li>Navigate to <strong>👤 Customers</strong></li>
+            <li>Click <strong>Add Customer</strong></li>
+            <li>Enter customer details:
+                <ul>
+                    <li>Name</li>
+                    <li>Email</li>
+                    <li>Phone</li>
+                    <li>Address</li>
+                    <li>Agency</li>
+                    <li>Location</li>
+                </ul>
+            </li>
+            <li>Click <strong>Create Customer</strong></li>
+        </ol>
+        
+        <h3>Order Management</h3>
+        
+        <h4>Order Status Workflow</h4>
+        <div class="workflow-diagram">
+            <div class="workflow-step">Draft</div>
+            <div class="workflow-arrow">→</div>
+            <div class="workflow-step">Pending</div>
+            <div class="workflow-arrow">→</div>
+            <div class="workflow-step">Confirmed</div>
+            <div class="workflow-arrow">→</div>
+            <div class="workflow-step">In Transit</div>
+            <div class="workflow-arrow">→</div>
+            <div class="workflow-step">Delivered</div>
+        </div>
+    </div>
+
+    <!-- Finance Section -->
+    <div id="finance" class="section">
+        <h2>💰 Finance & Accounting</h2>
+        
+        <h3>Payments (Cash Out)</h3>
+        <p>Record payments made to suppliers, vendors, and employees:</p>
+        
+        <ol class="step-list">
+            <li>Go to <strong>💰 Finance</strong> → <strong>Payments</strong></li>
+            <li>Click <strong>New Payment</strong></li>
+            <li>Fill in payment details</li>
+            <li>Optionally link to Purchase Orders</li>
+            <li>Click <strong>Create Payment</strong></li>
+        </ol>
+        
+        <h3>Receipts (Cash In)</h3>
+        <p>Record receipts from customers:</p>
+        
+        <ol class="step-list">
+            <li>Go to <strong>💰 Finance</strong> → <strong>Receipts</strong></li>
+            <li>Click <strong>New Receipt</strong></li>
+            <li>Fill in receipt details</li>
+            <li>Optionally link to Sales Orders</li>
+            <li>Click <strong>Create Receipt</strong></li>
+        </ol>
+        
+        <h3>Job Accounting</h3>
+        <p>Track project profitability with income and expense tracking.</p>
+        
+        <h4>Creating a Job</h4>
+        <ol class="step-list">
+            <li>Go to <strong>📋 Job Accounting</strong> → <strong>Jobs</strong> → <strong>New Job</strong></li>
+            <li>Enter job details (name, type, customer, dates, budget)</li>
+            <li>Click <strong>Create Job</strong></li>
+        </ol>
+        
+        <h4>Adding Income to Job</h4>
+        <p><strong>Income Categories:</strong> Deposit, Payment, Milestone, Bonus, Other</p>
+        
+        <h4>Adding Expenses to Job</h4>
+        <p><strong>Expense Categories:</strong> Materials, Labor, Overhead, Equipment, Travel, Marketing, Software, Subcontractor, Other</p>
+        
+        <h3>Financial Dashboard</h3>
+        <p>View key financial metrics by selecting a period:</p>
+        <ul>
+            <li>Daily - Today's transactions</li>
+            <li>Weekly - Current week</li>
+            <li>Monthly - Current month</li>
+            <li>Yearly - Current year</li>
+        </ul>
+    </div>
+
+    <!-- Reports Section -->
+    <div id="reports" class="section">
+        <h2>📊 Reports & Analytics</h2>
+        
+        <p>Access comprehensive system reports for analysis and decision making.</p>
+        
+        <h3>Available Reports</h3>
+        <ul>
+            <li><strong>Sales Analytics</strong> - Sales trends and agency performance</li>
+            <li><strong>Accounts Receivable (AR)</strong> - Outstanding invoices and customer aging</li>
+            <li><strong>Accounts Payable (AP)</strong> - Outstanding payments and supplier aging</li>
+            <li><strong>Job Profitability</strong> - Income and expense analysis by job</li>
+            <li><strong>Financial Statements</strong> - Complete financial overview</li>
+        </ul>
+        
+        <h3>Filtering & Export</h3>
+        <p>Most reports allow you to:</p>
+        <ul>
+            <li>Filter by Date Range</li>
+            <li>Filter by Agency or Customer</li>
+            <li>Export data as CSV or Excel</li>
+            <li>Print reports</li>
+        </ul>
+    </div>
+
+    <!-- Configuration Section -->
+    <div id="configuration" class="section">
+        <h2>⚙️ System Configuration</h2>
+        
+        <h3>Masters & Settings</h3>
+        
+        <h4>Product Categories</h4>
+        <ol class="step-list">
+            <li>Go to <strong>⚙️ Masters</strong> → <strong>Categories</strong></li>
+            <li>Click <strong>New Category</strong></li>
+            <li>Enter category name and description</li>
+            <li>Click <strong>Create Category</strong></li>
+        </ol>
+        
+        <h4>Tax Masters</h4>
+        <ol class="step-list">
+            <li>Go to <strong>⚙️ Masters</strong> → <strong>Tax Masters</strong></li>
+            <li>Click <strong>New Tax</strong></li>
+            <li>Enter tax name and rate</li>
+            <li>Click <strong>Create Tax</strong></li>
+        </ol>
+        
+        <h4>Units of Measure</h4>
+        <ol class="step-list">
+            <li>Go to <strong>⚙️ Masters</strong> → <strong>Units</strong></li>
+            <li>Click <strong>New Unit</strong></li>
+            <li>Enter unit code and name</li>
+            <li>Click <strong>Create Unit</strong></li>
+        </ol>
+    </div>
+
+    <!-- Activity Monitoring Section -->
+    <div id="activity" class="section">
+        <h2>📜 Activity Monitoring</h2>
+        
+        <h3>Activity Log</h3>
+        <p>Monitor all user actions in the system for compliance and security.</p>
+        
+        <h4>Accessing Activity Log</h4>
+        <ol class="step-list">
+            <li>Click <strong>📜 Activity Log</strong> in the main menu</li>
+            <li>View all user actions chronologically</li>
+            <li>Use filters to narrow down results</li>
+        </ol>
+        
+        <h3>Available Filters</h3>
+        <ul>
+            <li>Search by User</li>
+            <li>Filter by Action Type</li>
+            <li>Filter by Date Range</li>
+            <li>Pagination for large datasets</li>
+        </ul>
+        
+        <h3>Actions Tracked</h3>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h4>👤 User Management</h4>
+                <ul style="margin: 0; padding-left: 20px; font-size: 0.9rem;">
+                    <li>User login/logout</li>
+                    <li>User created</li>
+                    <li>User edited</li>
+                    <li>User deleted</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h4>🏢 Agency Management</h4>
+                <ul style="margin: 0; padding-left: 20px; font-size: 0.9rem;">
+                    <li>Agency created</li>
+                    <li>Agency edited</li>
+                    <li>Agency deleted</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h4>📦 Product & Orders</h4>
+                <ul style="margin: 0; padding-left: 20px; font-size: 0.9rem;">
+                    <li>Product created</li>
+                    <li>Product edited</li>
+                    <li>Order created</li>
+                    <li>Order confirmed</li>
+                </ul>
+            </div>
+            <div class="feature-card">
+                <h4>💰 Financial</h4>
+                <ul style="margin: 0; padding-left: 20px; font-size: 0.9rem;">
+                    <li>Payment created</li>
+                    <li>Receipt created</li>
+                    <li>Reports generated</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Troubleshooting Section -->
+    <div id="troubleshooting" class="section">
+        <h2>🔧 Troubleshooting & Support</h2>
+        
+        <h3>Common Issues & Solutions</h3>
+        
+        <h4>🔒 Login Issues</h4>
+        <div class="info-box">
+            <strong>Problem:</strong> Cannot log in<br>
+            <strong>Solutions:</strong>
+            <ul>
+                <li>Verify username/password is correct</li>
+                <li>Check if account is active (not deactivated)</li>
+                <li>Use "Forgot Password" link if needed</li>
+                <li>Check browser cookies are enabled</li>
+            </ul>
+        </div>
+        
+        <h4>👤 User Management Issues</h4>
+        <div class="info-box">
+            <strong>Problem:</strong> User cannot access certain features<br>
+            <strong>Solutions:</strong>
+            <ul>
+                <li>Check user role - ensure proper permissions</li>
+                <li>Verify user's agency assignment</li>
+                <li>Check if user is active (not deactivated)</li>
+                <li>Try refreshing page or re-logging in</li>
+            </ul>
+        </div>
+        
+        <h4>📦 Product Issues</h4>
+        <div class="info-box">
+            <strong>Problem:</strong> Cannot find product<br>
+            <strong>Solutions:</strong>
+            <ul>
+                <li>Check product name/SKU in search</li>
+                <li>Verify product is not deactivated</li>
+                <li>Check if product is mapped to user's agency</li>
+            </ul>
+        </div>
+        
+        <h4>💰 Finance Issues</h4>
+        <div class="info-box">
+            <strong>Problem:</strong> Cannot see Finance menu<br>
+            <strong>Solutions:</strong>
+            <ul>
+                <li>Check user role has finance access</li>
+                <li>Super admins always have access</li>
+                <li>Agency admins and staff should have access</li>
+            </ul>
+        </div>
+        
+        <h3>Best Practices</h3>
+        
+        <div class="do-dont-grid">
+            <div class="do-list">
+                <h4>✅ DO</h4>
+                <ul>
+                    <li>Use strong passwords</li>
+                    <li>Review Activity Log regularly</li>
+                    <li>Keep user info up-to-date</li>
+                    <li>Make regular backups</li>
+                    <li>Document configurations</li>
+                    <li>Deactivate unused accounts</li>
+                </ul>
+            </div>
+            <div class="dont-list">
+                <h4>❌ DON'T</h4>
+                <ul>
+                    <li>Share passwords</li>
+                    <li>Use weak/generic passwords</li>
+                    <li>Leave admin accounts inactive</li>
+                    <li>Delete historical data carelessly</li>
+                    <li>Create test data in production</li>
+                    <li>Ignore security warnings</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Section -->
+    <div style="margin-top: 60px; padding: 30px 0; border-top: 2px solid #667eea; text-align: center; color: #666;">
+        <h3>📚 Additional Resources</h3>
+        <p style="margin-bottom: 20px;">
+            <a href="{{ url_for('super_admin.dashboard') }}" class="btn btn-primary btn-sm">← Back to Dashboard</a>
+            <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">🖨️ Print Manual</button>
+        </p>
+        <p style="font-size: 0.9rem;">
+            <strong>Version:</strong> 1.0 | <strong>Last Updated:</strong> 2024<br>
+            © 2024 AgencySalesPro. All Rights Reserved.
+        </p>
+    </div>
+</div>
+
+<!-- Back to Top Button -->
+<div class="back-to-top" onclick="scrollToTop()">
+    ↑
+</div>
+
+<script>
+    // Show/hide back to top button
+    window.addEventListener('scroll', function() {
+        const backToTopBtn = document.querySelector('.back-to-top');
+        if (window.pageYOffset > 300) {
+            backToTopBtn.classList.add('show');
+        } else {
+            backToTopBtn.classList.remove('show');
+        }
+    });
+    
+    // Scroll to top function
+    function scrollToTop() {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    }
+    
+    // Download manual as text
+    function downloadManual() {
+        const element = document.createElement('a');
+        const text = document.body.innerText;
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', 'AgencySalesPro_Super_Admin_Manual.txt');
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    }
+    
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

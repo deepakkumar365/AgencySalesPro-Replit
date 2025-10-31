@@ -183,11 +183,11 @@
                     {% for item in order.order_items %}
                     <tr>
                         <td>
-                            <div class="item-name">{{ item.product.name }}</div>
+                            <div class="item-name">{{ item.product_name or item.product.name }}</div>
                             <div class="item-sku">{{ item.product.sku }}</div>
                         </td>
                         <td class="text-center">{{ item.uom if item.uom else 'pcs' }}</td>
-                        <td class="text-right">{{ "%.2f"|format(item.quantity) }}</td>
+                        <td class="text-right">{{ "%g"|format(item.quantity|float) }}</td>
                         <td class="text-right">₹{{ "%.2f"|format(item.unit_price) }}</td>
                         <td class="text-right">₹{{ "%.2f"|format(item.total_price) }}</td>
                     </tr>

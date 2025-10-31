@@ -1,4 +1,4 @@
-from app import db
+from extensions import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -29,9 +29,18 @@ class Agency(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     code = db.Column(db.String(20), unique=True, nullable=False)
-    address = db.Column(db.Text)
+    
+    # Address fields (Ticket #12)
+    address = db.Column(db.Text)  # Kept for backward compatibility
+    address1 = db.Column(db.String(255))
+    address2 = db.Column(db.String(255))
+    city = db.Column(db.String(100))
+    state = db.Column(db.String(100))
+    country = db.Column(db.String(100), default='India')
+    
     phone = db.Column(db.String(20))
     email = db.Column(db.String(120))
+    registration_number = db.Column(db.String(50))  # Ticket #12
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     agency_manager_id = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=True, index=True)
@@ -54,7 +63,18 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))
-    role = db.Column(db.String(20), nullable=False)  # super_admin, agency_admin, agency_manager, staff, salesperson, pos_user
+    # Role can be: super_admin, support, agency_manager, agency_admin, staff, salesperson, pos_user, accountant
+    # - super_admin: Full Tenant/Agency/User Management (view-only), no Inventory/Sales/Reports/Forecasting
+    # - support: Full access to all features (support team)
+    # - agency_manager: Full control within managed agencies, View-only Tenant Management
+    # - agency_admin: Full agency operations, Limited Agency/Payment Config management
+    # - staff: Operational role - Full Inventory/Sales, View Forecasting, Limited Reports
+    # - salesperson: Sales-focused - manage orders, view inventory
+    # - pos_user: POS terminal user - access POS, billing, basic orders
+    # - accountant: Finance role - View Inventory/Sales, Full Reports, View Payment Config
+    role = db.Column(db.String(20), nullable=False)
+    # New FK to normalized roles table (nullable for gradual migration)
+    role_id = db.Column(db.Integer, db.ForeignKey('ASP_roles.id'), nullable=True, index=True)
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -73,6 +93,64 @@ class User(db.Model):
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
 
+# --- New RBAC models: Role, Permission, RolePermission, MenuItem ---
+class Role(db.Model):
+    __tablename__ = 'ASP_roles'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    is_system = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    permissions = db.relationship('Permission', secondary='ASP_role_permissions',
+                                  backref=db.backref('roles', lazy='dynamic'))
+
+    def __repr__(self):
+        return f"<Role {self.name}>"
+
+class Permission(db.Model):
+    __tablename__ = 'ASP_permissions'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    code = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    category = db.Column(db.String(50))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Permission {self.code}>"
+
+class RolePermission(db.Model):
+    __tablename__ = 'ASP_role_permissions'
+    id = db.Column(db.Integer, primary_key=True)
+    role_id = db.Column(db.Integer, db.ForeignKey('ASP_roles.id', ondelete='CASCADE'), nullable=False)
+    permission_id = db.Column(db.Integer, db.ForeignKey('ASP_permissions.id', ondelete='CASCADE'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('role_id', 'permission_id', name='uq_role_permission'),
+    )
+
+class MenuItem(db.Model):
+    __tablename__ = 'ASP_menu_items'
+    id = db.Column(db.Integer, primary_key=True)
+    parent_id = db.Column(db.Integer, db.ForeignKey('ASP_menu_items.id', ondelete='CASCADE'))
+    name = db.Column(db.String(100), nullable=False)
+    url = db.Column(db.String(255))
+    icon = db.Column(db.String(50))
+    order_index = db.Column(db.Integer, default=0)
+    # Option: reference permission by code for easier matching in templates
+    required_permission_code = db.Column(db.String(100), db.ForeignKey('ASP_permissions.code', ondelete='SET NULL'), nullable=True)
+    dashboard_for_role = db.Column(db.String(50))
+    is_active = db.Column(db.Boolean, default=True)
+
+    # Relationships
+    children = db.relationship('MenuItem', backref=db.backref('parent', remote_side=[id]), lazy='dynamic')
+
+    def __repr__(self):
+        return f"<MenuItem {self.name}>"
+
 class Location(db.Model):
     __tablename__ = 'ASP_locations'
     id = db.Column(db.Integer, primary_key=True)
@@ -88,6 +166,11 @@ class Location(db.Model):
     
     # Relationships
     customers = db.relationship('Customer', backref='location', lazy=True)
+    
+    # Ticket #16: Unique constraint on location name per agency
+    __table_args__ = (
+        db.UniqueConstraint('name', 'agency_id', name='uq_location_name_agency'),
+    )
 
 class CustomerAgency(db.Model):
     """Mapping table for Customer-Agency many-to-many relationship"""
@@ -106,6 +189,7 @@ class Customer(db.Model):
     __tablename__ = 'ASP_customers'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    customer_code = db.Column(db.String(10), unique=True)  # Ticket #14: 6-digit alphanumeric code
     email = db.Column(db.String(120))
     phone = db.Column(db.String(20), nullable=False)
     address = db.Column(db.Text)
@@ -137,6 +221,10 @@ class Product(db.Model):
     mrp_price = db.Column(db.Numeric(10, 2))  # Maximum Retail Price
     margin = db.Column(db.Numeric(5, 2))  # Margin percentage
     
+    # Ticket #18: Additional fields for bulk upload
+    hsn_code = db.Column(db.String(20))  # HSN code for tax purposes
+    item_code = db.Column(db.String(50))  # Item code
+    
     # Foreign key relationships to master tables (global defaults)
     category_id = db.Column(db.Integer, db.ForeignKey('ASP_categories.id'), index=True)
     uom_id = db.Column(db.Integer, db.ForeignKey('ASP_uoms.id'), index=True)
@@ -156,6 +244,23 @@ class Product(db.Model):
         if self.buy_price and self.sell_price:
             return round(((self.sell_price - self.buy_price) / self.buy_price) * 100, 2)
         return 0
+    
+    def get_display_name_for_agency(self, agency_id):
+        """
+        Get the effective display name for this product in a specific agency.
+        Respects agency-specific overrides from ProductAgency.
+        
+        Args:
+            agency_id: The ID of the agency
+            
+        Returns:
+            The agency-specific display name if it exists, otherwise the global product name
+        """
+        if agency_id:
+            mapping = ProductAgency.query.filter_by(product_id=self.id, agency_id=agency_id).first()
+            if mapping and mapping.display_name:
+                return mapping.display_name
+        return self.name
     
     # Backward compatibility methods
     def sync_legacy_fields(self):
@@ -209,6 +314,12 @@ class Order(db.Model):
     delivery_date = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # Ticket #20, #23, #24: POS-specific fields
+    payment_mode = db.Column(db.String(20))  # cash, credit, credit_sale
+    order_type = db.Column(db.String(20))  # local, others
+    discount_percentage = db.Column(db.Numeric(5, 2), default=0)  # Discount percentage for entire order
+    handling_charges = db.Column(db.Numeric(10, 2), default=0)  # Additional handling charges
+    
     # Relationships
     order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
 
@@ -228,6 +339,7 @@ class OrderItem(db.Model):
     tax_amount = db.Column(db.Numeric(10, 2), default=0)  # Calculated tax amount
     line_total = db.Column(db.Numeric(10, 2), nullable=False)  # Final line amount with tax
     total_price = db.Column(db.Numeric(10, 2), nullable=False)  # For backward compatibility
+    product_name = db.Column(db.String(150))  # Effective product name at order creation (respects agency-specific overrides)
     
     def calculate_totals(self):
         """Calculate item totals after setting all values"""
@@ -241,6 +353,52 @@ class OrderItem(db.Model):
             self.line_total = (self.discounted_price * self.quantity) + self.tax_amount
             # For backward compatibility
             self.total_price = self.line_total
+
+class DeliveryChallan(db.Model):
+    """Delivery Challan for tracking shipments"""
+    __tablename__ = 'ASP_delivery_challans'
+    id = db.Column(db.Integer, primary_key=True)
+    challan_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False, index=True)
+    
+    # Delivery details
+    delivery_date = db.Column(db.DateTime)
+    delivery_address = db.Column(db.Text)
+    transporter_name = db.Column(db.String(100))
+    vehicle_number = db.Column(db.String(50))
+    lr_number = db.Column(db.String(50))  # Lorry Receipt Number
+    e_way_bill_number = db.Column(db.String(50))
+    
+    # Status
+    status = db.Column(db.String(20), default='pending', index=True)  # pending, in_transit, delivered, cancelled
+    
+    # Additional info
+    notes = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    order = db.relationship('Order', backref='delivery_challans', lazy=True)
+    agency = db.relationship('Agency', backref='delivery_challans', lazy=True)
+    customer = db.relationship('Customer', backref='delivery_challans', lazy=True)
+    creator = db.relationship('User', backref='created_challans', lazy=True)
+    items = db.relationship('DeliveryChallanItem', backref='challan', lazy=True, cascade='all, delete-orphan')
+
+class DeliveryChallanItem(db.Model):
+    """Line items for delivery challans with product name snapshot"""
+    __tablename__ = 'ASP_delivery_challan_items'
+    id = db.Column(db.Integer, primary_key=True)
+    challan_id = db.Column(db.Integer, db.ForeignKey('ASP_delivery_challans.id'), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
+    quantity = db.Column(db.Numeric(10, 3), nullable=False)
+    uom = db.Column(db.String(20), default='pcs')  # Unit of Measure: pcs, kg, ltr, etc.
+    product_name = db.Column(db.String(150))  # Effective product name at creation (respects agency-specific overrides)
+    
+    # Relationships
+    product = db.relationship('Product', backref='delivery_challan_items', lazy=True)
 
 class ActivityLog(db.Model):
     __tablename__ = 'ASP_activity_logs'
@@ -278,6 +436,22 @@ class Invoice(db.Model):
     order = db.relationship('Order', backref='invoice', lazy=True)
     customer = db.relationship('Customer', backref='invoices', lazy=True)
     payments = db.relationship('Payment', backref='invoice', lazy=True)
+    items = db.relationship('InvoiceItem', backref='invoice', lazy=True, cascade='all, delete-orphan')
+
+class InvoiceItem(db.Model):
+    """Line items for invoices with product name snapshot"""
+    __tablename__ = 'ASP_invoice_items'
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('ASP_invoices.id'), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
+    quantity = db.Column(db.Numeric(10, 3), nullable=False)
+    unit_price = db.Column(db.Numeric(10, 2), nullable=False)
+    tax_amount = db.Column(db.Numeric(10, 2), default=0)
+    total_price = db.Column(db.Numeric(10, 2), nullable=False)
+    product_name = db.Column(db.String(150))  # Effective product name at creation (respects agency-specific overrides)
+    
+    # Relationships
+    product = db.relationship('Product', backref='invoice_items', lazy=True)
 
 class Payment(db.Model):
     __tablename__ = 'ASP_payments'
@@ -373,10 +547,11 @@ class PurchaseOrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     po_id = db.Column(db.Integer, db.ForeignKey('ASP_purchase_orders.id'), nullable=False, index=True)
     product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
-    quantity_ordered = db.Column(db.Integer, nullable=False)
-    quantity_received = db.Column(db.Integer, default=0)
+    quantity_ordered = db.Column(db.Numeric(10, 2), nullable=False)  # Changed from Integer to Numeric to support decimal values
+    quantity_received = db.Column(db.Numeric(10, 2), default=0)  # Changed from Integer to Numeric to support decimal values
     unit_cost = db.Column(db.Numeric(10, 2), nullable=False)
     total_cost = db.Column(db.Numeric(10, 2), nullable=False)
+    product_name = db.Column(db.String(150))  # Effective product name at creation (respects agency-specific overrides)
     
     # Relationships
     product = db.relationship('Product', backref='po_items', lazy=True)
@@ -856,3 +1031,131 @@ class ReceiptSalesOrder(db.Model):
     
     # Relationships
     order_ref = db.relationship('Order', backref='receipt_links', lazy=True)
+
+class PaymentConfiguration(db.Model):
+    __tablename__ = 'ASP_payment_configurations'
+    id = db.Column(db.Integer, primary_key=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, unique=True)
+    billing_type = db.Column(db.String(50), nullable=False)  # 'fixed' or 'variable'
+
+    # Fields for 'fixed' type
+    fixed_period = db.Column(db.String(50))  # 'monthly', 'quarterly', 'half_yearly', 'yearly'
+    fixed_value = db.Column(db.Numeric(10, 2))
+    currency_code = db.Column(db.String(10))
+
+    # Fields for 'variable' type
+    variable_type = db.Column(db.String(50))  # 'user_based', 'order_based', 'invoice_value_percentage'
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    agency = db.relationship('Agency', backref=db.backref('payment_configuration', uselist=False), lazy=True)
+
+    def __repr__(self):
+        return f'<PaymentConfiguration {self.id} for Agency {self.agency_id}>'
+
+# Stock Forecasting & Profit Impact Analytics Models
+class StockForecast(db.Model):
+    """Stores weekly demand forecasts and shortage predictions"""
+    __tablename__ = 'ASP_stock_forecasts'
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('ASP_products.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    
+    # Forecast period
+    week_start_date = db.Column(db.Date, nullable=False, index=True)
+    week_end_date = db.Column(db.Date, nullable=False)
+    
+    # Forecast data
+    forecast_qty = db.Column(db.Numeric(10, 2), nullable=False)  # Predicted demand
+    actual_stock = db.Column(db.Numeric(10, 2), nullable=False)  # Current available stock
+    shortage_qty = db.Column(db.Numeric(10, 2), default=0)  # Shortage if forecast_qty > actual_stock
+    excess_qty = db.Column(db.Numeric(10, 2), default=0)  # Excess if actual_stock > forecast_qty
+    
+    # Profit impact analysis
+    profit_impact = db.Column(db.Numeric(12, 2), default=0)  # Estimated profit loss/gain
+    holding_cost = db.Column(db.Numeric(10, 2), default=0)  # Cost of holding excess inventory
+    opportunity_cost = db.Column(db.Numeric(10, 2), default=0)  # Lost sales due to shortage
+    
+    # Historical accuracy tracking
+    actual_sales_qty = db.Column(db.Numeric(10, 2))  # Actual sales during the week (updated after week ends)
+    forecast_accuracy = db.Column(db.Numeric(5, 2))  # Percentage accuracy (0-100)
+    
+    # Alert status
+    alert_triggered = db.Column(db.Boolean, default=False)
+    alert_sent_at = db.Column(db.DateTime)
+    
+    # Metadata
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    product = db.relationship('Product', backref='forecasts', lazy=True)
+    agency = db.relationship('Agency', backref='forecasts', lazy=True)
+    
+    __table_args__ = (
+        db.UniqueConstraint('product_id', 'agency_id', 'week_start_date', name='uq_forecast_product_agency_week'),
+        db.Index('idx_forecast_week_agency', 'week_start_date', 'agency_id'),
+    )
+
+class ForecastAlertConfig(db.Model):
+    """Configuration for forecast alert thresholds per agency"""
+    __tablename__ = 'ASP_forecast_alert_configs'
+    id = db.Column(db.Integer, primary_key=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    
+    # Alert thresholds
+    shortage_threshold_qty = db.Column(db.Numeric(10, 2), default=10)  # Trigger alert if shortage > this
+    shortage_threshold_percentage = db.Column(db.Numeric(5, 2), default=20)  # Or if shortage > X% of forecast
+    excess_threshold_qty = db.Column(db.Numeric(10, 2), default=50)  # Trigger alert if excess > this
+    excess_threshold_percentage = db.Column(db.Numeric(5, 2), default=30)  # Or if excess > X% of forecast
+    
+    # Category-specific thresholds (optional)
+    category_id = db.Column(db.Integer, db.ForeignKey('ASP_categories.id'), index=True)
+    
+    # Alert delivery preferences
+    email_alerts_enabled = db.Column(db.Boolean, default=True)
+    dashboard_alerts_enabled = db.Column(db.Boolean, default=True)
+    alert_recipients = db.Column(db.Text)  # Comma-separated email addresses
+    
+    # Metadata
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    agency = db.relationship('Agency', backref='forecast_alert_configs', lazy=True)
+    category = db.relationship('Category', backref='forecast_alert_configs', lazy=True)
+    
+    __table_args__ = (
+        db.UniqueConstraint('agency_id', 'category_id', name='uq_alert_config_agency_category'),
+    )
+
+class ForecastRefreshLog(db.Model):
+    """Logs forecast refresh operations"""
+    __tablename__ = 'ASP_forecast_refresh_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), index=True)
+    
+    # Refresh details
+    refresh_type = db.Column(db.String(20), nullable=False)  # 'manual', 'scheduled'
+    triggered_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), index=True)
+    
+    # Results
+    products_processed = db.Column(db.Integer, default=0)
+    forecasts_created = db.Column(db.Integer, default=0)
+    forecasts_updated = db.Column(db.Integer, default=0)
+    alerts_triggered = db.Column(db.Integer, default=0)
+    
+    # Status
+    status = db.Column(db.String(20), default='pending')  # pending, running, completed, failed
+    error_message = db.Column(db.Text)
+    
+    # Timing
+    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime)
+    duration_seconds = db.Column(db.Integer)
+    
+    # Relationships
+    agency = db.relationship('Agency', backref='forecast_refresh_logs', lazy=True)
+    user = db.relationship('User', backref='forecast_refresh_logs', lazy=True)

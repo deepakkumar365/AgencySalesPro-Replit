@@ -12,9 +12,9 @@
                 </h4>
             </div>
             <div class="card-body">
-                <form method="POST">
+                <form method="POST" id="locationForm">
                     <div class="mb-3">
-                        <label for="name" class="form-label">Location Name *</label>
+                        <label for="name" class="form-label">Location Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="name" name="name" 
                                value="{{ location.name if location else '' }}" required>
                     </div>
@@ -65,7 +65,7 @@
                     
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <a href="{{ url_for('location.list_locations') }}" class="btn btn-secondary">Cancel</a>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
                             <i class="fas fa-save me-2"></i>{{ 'Update' if location else 'Create' }} Location
                         </button>
                     </div>
@@ -74,4 +74,34 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('locationForm');
+    const submitBtn = document.getElementById('submitBtn');
+    let isSubmitting = false;
+    
+    // Ticket #16: Prevent duplicate location creation on multiple save clicks
+    form.addEventListener('submit', function(e) {
+        if (isSubmitting) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // Disable the submit button and show loading state
+        isSubmitting = true;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+        
+        // Re-enable after 5 seconds as a safety measure (in case of network issues)
+        setTimeout(function() {
+            isSubmitting = false;
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>{{ "Update" if location else "Create" }} Location';
+        }, 5000);
+    });
+});
+</script>
 {% endblock %}

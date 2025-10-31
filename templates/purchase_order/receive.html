@@ -51,7 +51,7 @@
                             {% for item in purchase_order.po_items %}
                             <tr>
                                 <td>
-                                    <strong>{{ item.product.name }}</strong>
+                                    <strong>{{ item.product_name or item.product.name }}</strong>
                                     <br><small class="text-muted">{{ item.product.sku }}</small>
                                 </td>
                                 <td class="text-center">{{ item.quantity_ordered }}</td>

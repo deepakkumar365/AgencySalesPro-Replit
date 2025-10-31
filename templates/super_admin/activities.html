@@ -11,6 +11,21 @@
     </div>
 </div>
 
+<!-- User Manual Link Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info d-flex justify-content-between align-items-center" role="alert">
+            <div>
+                <i class="fas fa-book me-2"></i>
+                <strong>Need Help?</strong> Access our comprehensive Super Admin User Manual to learn about all features and functionality.
+            </div>
+            <a href="{{ url_for('super_admin.user_manual') }}" class="btn btn-info btn-sm">
+                <i class="fas fa-external-link-alt me-1"></i>View User Manual
+            </a>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -39,7 +54,7 @@
                                 </td>
                                 <td>{{ activity.description or '-' }}</td>
                                 <td><code>{{ activity.ip_address or '-' }}</code></td>
-                                <td>{{ activity.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>{{ activity.created_at.strftime('%Y-%m-%d %H:%M:%S') if activity.created_at else '-' }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>

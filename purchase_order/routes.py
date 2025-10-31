@@ -5,7 +5,7 @@ import uuid
 from flask import render_template, request, redirect, url_for, flash, session, jsonify
 from sqlalchemy import or_, func
 
-from app import db
+from extensions import db
 from models import (
     PurchaseOrder,
     PurchaseOrderItem,
@@ -147,12 +147,18 @@ def create_purchase_order(current_agency_id=None):
             line_total = (quantity_value * unit_price_value).quantize(Decimal("0.01"))
             subtotal += line_total
 
+            # Fetch product to get effective display name
+            product = Product.query.get(product_id)
+            if not product:
+                continue
+            
             purchase_order_item = PurchaseOrderItem(
                 po_id=purchase_order.id,
                 product_id=product_id,
                 quantity_ordered=int(quantity_value),
                 unit_cost=unit_price_value,
                 total_cost=line_total,
+                product_name=product.get_display_name_for_agency(agency_id)  # Store effective product name respecting agency-specific overrides
             )
             db.session.add(purchase_order_item)
 
@@ -377,12 +383,18 @@ def edit_purchase_order(purchase_order_id, current_agency_id=None):
                 line_total = (quantity_value * unit_price_value).quantize(Decimal("0.01"))
                 subtotal += line_total
 
+                # Fetch product to get effective display name
+                product = Product.query.get(int(product_id))
+                if not product:
+                    continue
+                
                 purchase_order_item = PurchaseOrderItem(
                     po_id=purchase_order.id,
                     product_id=int(product_id),
                     quantity_ordered=int(quantity_value),
                     unit_cost=unit_price_value,
                     total_cost=line_total,
+                    product_name=product.get_display_name_for_agency(purchase_order.agency_id)  # Store effective product name respecting agency-specific overrides
                 )
                 db.session.add(purchase_order_item)
 
@@ -520,3 +532,124 @@ def search_suppliers(current_agency_id=None):
     ]
 
     return jsonify(results)
+
+
+@purchase_order_bp.route('/bulk-upload', methods=['GET', 'POST'])
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def bulk_purchase_order_upload(current_agency_id=None):
+    """Bulk purchase order upload page"""
+    if request.method == 'POST':
+        # Check if file was uploaded
+        if 'file' not in request.files:
+            flash('No file uploaded', 'danger')
+            return redirect(request.url)
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            flash('No file selected', 'danger')
+            return redirect(request.url)
+        
+        # Check file extension
+        if not (file.filename.lower().endswith('.xlsx') or file.filename.lower().endswith('.xls')):
+            flash('Invalid file format. Please upload an Excel file (.xlsx or .xls)', 'danger')
+            return redirect(request.url)
+        
+        try:
+            from utils.excel_utils import process_bulk_orders
+            from utils.decorators import log_activity
+            
+            user_role = session.get('role')
+            user_id = session.get('user_id')
+            agency_id = current_agency_id or session.get('agency_id')
+            
+            # Process the file
+            results = process_bulk_orders(file, 'purchase', agency_id, user_id, user_role)
+            
+            # Display results
+            success_count = len(results['success'])
+            error_count = len(results['errors'])
+            skipped_count = results['skipped']
+            
+            if success_count > 0:
+                flash(f'Successfully created {success_count} purchase order(s)', 'success')
+            
+            if error_count > 0:
+                flash(f'{error_count} error(s) occurred during processing', 'warning')
+            
+            if skipped_count > 0:
+                flash(f'{skipped_count} blank row(s) skipped', 'info')
+            
+            # Store results in session for display
+            session['bulk_upload_results'] = results
+            
+            return redirect(url_for('purchase_order.bulk_purchase_order_results'))
+            
+        except Exception as e:
+            flash(f'An error occurred while processing the file: {str(e)}', 'danger')
+            return redirect(request.url)
+    
+    return render_template('purchase_order/bulk_upload.html', order_type='purchase')
+
+
+@purchase_order_bp.route('/bulk-upload/results')
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def bulk_purchase_order_results():
+    """Display bulk purchase order upload results"""
+    results = session.pop('bulk_upload_results', None)
+    
+    if not results:
+        flash('No upload results found', 'warning')
+        return redirect(url_for('purchase_order.list_purchase_orders'))
+    
+    return render_template('purchase_order/bulk_upload_results.html', results=results, order_type='purchase')
+
+
+@purchase_order_bp.route('/bulk-upload/download-template')
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def download_bulk_purchase_order_template():
+    """Download Excel template for bulk purchase order upload"""
+    from utils.excel_utils import generate_bulk_order_template
+    
+    output = generate_bulk_order_template('purchase')
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'bulk_purchase_order_template_{datetime.now().strftime("%Y%m%d")}.xlsx'
+    )
+
+
+@purchase_order_bp.route("/<int:purchase_order_id>/delete", methods=["POST"])
+@login_required
+@permission_required(roles=["super_admin", "agency_admin", "agency_manager", "staff"])
+@log_activity("delete_purchase_order")
+def delete_purchase_order(purchase_order_id, current_agency_id=None):
+    """Delete purchase order (only pending orders)"""
+    purchase_order = PurchaseOrder.query.get_or_404(purchase_order_id)
+    user_role = session.get("role")
+    
+    # Permission check
+    if user_role != "super_admin" and purchase_order.agency_id != current_agency_id:
+        flash("You do not have permission to delete this purchase order.", "danger")
+        return redirect(url_for("purchase_order.list_purchase_orders"))
+    
+    # Only allow deletion of pending orders
+    if purchase_order.status != "pending":
+        flash(f"Cannot delete {purchase_order.status} purchase orders. Only pending purchase orders can be deleted.", "warning")
+        return redirect(url_for("purchase_order.view_purchase_order", purchase_order_id=purchase_order_id))
+    
+    try:
+        po_number = purchase_order.po_number
+        db.session.delete(purchase_order)
+        db.session.commit()
+        flash(f"Purchase Order {po_number} deleted successfully!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error deleting purchase order: {str(e)}", "danger")
+    
+    return redirect(url_for("purchase_order.list_purchase_orders"))

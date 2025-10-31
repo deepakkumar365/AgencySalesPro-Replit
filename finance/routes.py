@@ -4,10 +4,10 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta
 import calendar
 
-from app import db
+from extensions import db
 from models import (
     FinancePayment, Receipt, PaymentPurchaseOrder, ReceiptSalesOrder,
-    PurchaseOrder, Order, Customer, Supplier, Agency, User
+    PurchaseOrder, Order, Customer, Supplier, Agency, User, PaymentConfiguration
 )
 from . import finance_bp
 from auth.utils import login_required, permission_required
@@ -291,12 +291,108 @@ def view_payment(payment_id, current_agency_id=None):
     return render_template('finance/payment_view.html', payment=payment)
 
 
+@finance_bp.route('/payments/<int:payment_id>/edit', methods=['GET', 'POST'])
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@log_activity('edit_payment')
+def edit_payment(payment_id, current_agency_id=None):
+    """Edit existing payment"""
+    payment = FinancePayment.query.get_or_404(payment_id)
+    user_role = session.get('role')
+    
+    # Permission check
+    if user_role != 'super_admin' and payment.agency_id != current_agency_id:
+        flash("You do not have permission to edit this payment.", "danger")
+        return redirect(url_for('finance.list_payments'))
+    
+    # Only allow editing of pending payments
+    if payment.status != 'pending':
+        flash("Only pending payments can be edited.", "warning")
+        return redirect(url_for('finance.view_payment', payment_id=payment_id))
+    
+    if request.method == 'POST':
+        try:
+            data = request.form
+            
+            # Update payment fields
+            payment.payment_date = datetime.strptime(data.get('payment_date'), '%Y-%m-%d')
+            payment.payee_type = data.get('payee_type', 'other')
+            payment.payee_name = data.get('payee_name')
+            payment.amount = Decimal(data.get('amount'))
+            payment.mode_of_payment = data.get('mode_of_payment')
+            payment.account_type = data.get('account_type', 'cash')
+            payment.reference_number = data.get('reference_number')
+            payment.notes = data.get('notes')
+            payment.status = data.get('status', 'pending')
+            
+            if data.get('payee_id'):
+                payment.payee_id = int(data.get('payee_id'))
+            
+            # Update linked purchase orders
+            payment.purchase_orders.clear()
+            po_ids = request.form.getlist('po_ids[]')
+            po_amounts = request.form.getlist('po_amounts[]')
+            
+            for po_id, po_amount in zip(po_ids, po_amounts):
+                if po_id and po_amount:
+                    link = PaymentPurchaseOrder(
+                        payment_id=payment.id,
+                        purchase_order_id=int(po_id),
+                        amount=Decimal(po_amount)
+                    )
+                    db.session.add(link)
+            
+            db.session.commit()
+            flash(f"Payment {payment.payment_number} updated successfully!", "success")
+            return redirect(url_for('finance.view_payment', payment_id=payment_id))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error updating payment: {str(e)}", "danger")
+    
+    # GET request - load form data
+    if user_role == 'super_admin':
+        agencies = Agency.query.filter_by(is_active=True).all()
+        suppliers = Supplier.query.filter_by(is_active=True).all()
+        purchase_orders_query = PurchaseOrder.query.filter(
+            PurchaseOrder.status.in_(['pending', 'approved', 'received'])
+        ).all()
+    else:
+        agencies = None
+        suppliers = Supplier.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+        purchase_orders_query = PurchaseOrder.query.filter(
+            PurchaseOrder.agency_id == current_agency_id,
+            PurchaseOrder.status.in_(['pending', 'approved', 'received'])
+        ).all()
+
+    purchase_orders = [
+        {"id": po.id, "po_number": po.po_number, "total_amount": float(po.total_amount)}
+        for po in purchase_orders_query
+    ]
+    
+    # Get linked purchase orders for this payment
+    linked_pos = [
+        {"id": po_link.purchase_order_id, "po_number": po_link.purchase_order_ref.po_number, "amount": float(po_link.amount)}
+        for po_link in payment.purchase_orders
+    ]
+    
+    return render_template(
+        'finance/payment_form.html',
+        payment=payment,
+        agencies=agencies,
+        suppliers=suppliers,
+        purchase_orders=purchase_orders,
+        linked_pos=linked_pos,
+        is_edit=True
+    )
+
+
 @finance_bp.route('/payments/<int:payment_id>/delete', methods=['POST'])
 @login_required
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('delete_payment')
 def delete_payment(payment_id, current_agency_id=None):
-    """Delete payment"""
+    """Delete payment (only pending payments)"""
     payment = FinancePayment.query.get_or_404(payment_id)
     user_role = session.get('role')
     
@@ -304,6 +400,11 @@ def delete_payment(payment_id, current_agency_id=None):
     if user_role != 'super_admin' and payment.agency_id != current_agency_id:
         flash("You do not have permission to delete this payment.", "danger")
         return redirect(url_for('finance.list_payments'))
+    
+    # Only allow deletion of pending payments
+    if payment.status != 'pending':
+        flash(f"Cannot delete {payment.status} payments. Only pending payments can be deleted.", "warning")
+        return redirect(url_for('finance.view_payment', payment_id=payment_id))
     
     try:
         payment_number = payment.payment_number
@@ -453,12 +554,110 @@ def view_receipt(receipt_id, current_agency_id=None):
     return render_template('finance/receipt_view.html', receipt=receipt)
 
 
+@finance_bp.route('/receipts/<int:receipt_id>/edit', methods=['GET', 'POST'])
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@log_activity('edit_receipt')
+def edit_receipt(receipt_id, current_agency_id=None):
+    """Edit existing receipt"""
+    receipt = Receipt.query.get_or_404(receipt_id)
+    user_role = session.get('role')
+    
+    # Permission check
+    if user_role != 'super_admin' and receipt.agency_id != current_agency_id:
+        flash("You do not have permission to edit this receipt.", "danger")
+        return redirect(url_for('finance.list_receipts'))
+    
+    # Only allow editing of pending receipts
+    if receipt.status != 'pending':
+        flash("Only pending receipts can be edited.", "warning")
+        return redirect(url_for('finance.view_receipt', receipt_id=receipt_id))
+    
+    if request.method == 'POST':
+        try:
+            data = request.form
+            
+            # Update receipt fields
+            receipt.receipt_date = datetime.strptime(data.get('receipt_date'), '%Y-%m-%d')
+            receipt.customer_name = data.get('customer_name')
+            receipt.amount = Decimal(data.get('amount'))
+            receipt.mode_of_receipt = data.get('mode_of_receipt')
+            receipt.account_type = data.get('account_type', 'cash')
+            receipt.reference_number = data.get('reference_number')
+            receipt.notes = data.get('notes')
+            receipt.status = data.get('status', 'pending')
+            
+            if data.get('customer_id'):
+                receipt.customer_id = int(data.get('customer_id'))
+            
+            # Update linked sales orders
+            receipt.sales_orders.clear()
+            so_ids = request.form.getlist('so_ids[]')
+            so_amounts = request.form.getlist('so_amounts[]')
+            
+            for so_id, so_amount in zip(so_ids, so_amounts):
+                if so_id and so_amount:
+                    link = ReceiptSalesOrder(
+                        receipt_id=receipt.id,
+                        order_id=int(so_id),
+                        amount=Decimal(so_amount)
+                    )
+                    db.session.add(link)
+            
+            db.session.commit()
+            flash(f"Receipt {receipt.receipt_number} updated successfully!", "success")
+            return redirect(url_for('finance.view_receipt', receipt_id=receipt_id))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error updating receipt: {str(e)}", "danger")
+    
+    # GET request - load form data
+    if user_role == 'super_admin':
+        agencies = Agency.query.filter_by(is_active=True).all()
+        customers = Customer.query.filter_by(is_active=True).all()
+        sales_orders_query = Order.query.filter(
+            Order.status.in_(['pending', 'confirmed', 'shipped'])
+        ).all()
+    else:
+        agencies = None
+        customers = Customer.query.join(Customer.location).filter(
+            Customer.location.has(agency_id=current_agency_id),
+            Customer.is_active == True
+        ).all()
+        sales_orders_query = Order.query.filter(
+            Order.agency_id == current_agency_id,
+            Order.status.in_(['pending', 'confirmed', 'shipped'])
+        ).all()
+
+    sales_orders = [
+        {"id": so.id, "order_number": so.order_number, "total_amount": float(so.total_amount)}
+        for so in sales_orders_query
+    ]
+    
+    # Get linked sales orders for this receipt
+    linked_sos = [
+        {"id": so_link.order_id, "order_number": so_link.order_ref.order_number, "amount": float(so_link.amount)}
+        for so_link in receipt.sales_orders
+    ]
+    
+    return render_template(
+        'finance/receipt_form.html',
+        receipt=receipt,
+        agencies=agencies,
+        customers=customers,
+        sales_orders=sales_orders,
+        linked_sos=linked_sos,
+        is_edit=True
+    )
+
+
 @finance_bp.route('/receipts/<int:receipt_id>/delete', methods=['POST'])
 @login_required
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
 @log_activity('delete_receipt')
 def delete_receipt(receipt_id, current_agency_id=None):
-    """Delete receipt"""
+    """Delete receipt (only pending receipts)"""
     receipt = Receipt.query.get_or_404(receipt_id)
     user_role = session.get('role')
     
@@ -466,6 +665,11 @@ def delete_receipt(receipt_id, current_agency_id=None):
     if user_role != 'super_admin' and receipt.agency_id != current_agency_id:
         flash("You do not have permission to delete this receipt.", "danger")
         return redirect(url_for('finance.list_receipts'))
+    
+    # Only allow deletion of pending receipts
+    if receipt.status != 'pending':
+        flash(f"Cannot delete {receipt.status} receipts. Only pending receipts can be deleted.", "warning")
+        return redirect(url_for('finance.view_receipt', receipt_id=receipt_id))
     
     try:
         receipt_number = receipt.receipt_number
@@ -504,3 +708,237 @@ def get_customer_details(customer_id):
         'email': customer.email,
         'phone': customer.phone
     })
+
+
+# ==================== PAYMENT CONFIGURATION ====================
+@finance_bp.route('/payment_configurations', methods=['GET', 'POST'])
+@login_required
+@permission_required(roles=['super_admin', 'agency_manager'])
+@log_activity('manage_payment_configuration')
+def payment_configurations():
+    """
+    Create or update payment configurations for tenants (agencies).
+    Super Admin and Agency Manager can define billing rules.
+    """
+    user_role = session.get('role')
+
+    if request.method == 'POST':
+        try:
+            form_data = request.form
+            agency_id = form_data.get('agency_id')
+            billing_type = form_data.get('billing_type')
+
+            # --- Permission Check ---
+            if user_role == 'agency_manager':
+                managed_agencies = Agency.query.filter_by(agency_manager_id=session.get('user_id')).all()
+                managed_agency_ids = [str(a.id) for a in managed_agencies]
+                if agency_id not in managed_agency_ids:
+                    flash("You do not have permission to configure this agency.", "danger")
+                    return redirect(url_for('finance.payment_configurations'))
+            
+            agency = Agency.query.get_or_404(agency_id)
+            config = agency.payment_configuration or PaymentConfiguration(agency_id=agency.id)
+
+            config.billing_type = billing_type
+
+            if billing_type == 'fixed':
+                config.fixed_period = form_data.get('fixed_period')
+                config.fixed_value = Decimal(form_data.get('fixed_value'))
+                config.currency_code = agency.country.currency_code if agency.country else 'USD'
+                # Clear variable fields
+                config.variable_type = None
+            elif billing_type == 'variable':
+                config.variable_type = form_data.get('variable_type')
+                # Clear fixed fields
+                config.fixed_period = None
+                config.fixed_value = None
+                config.currency_code = None
+            
+            db.session.add(config)
+            db.session.commit()
+
+            flash(f"Payment configuration for '{agency.name}' saved successfully!", "success")
+            return redirect(url_for('finance.payment_configurations'))
+
+        except (InvalidOperation, ValueError):
+            db.session.rollback()
+            flash("Invalid value provided. Please check the numbers and try again.", "danger")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"An error occurred: {str(e)}", "danger")
+
+    # --- GET Request ---
+    # Fetch agencies that can be configured
+    if user_role == 'super_admin':
+        agencies = Agency.query.options(db.joinedload(Agency.payment_configuration)).filter_by(is_active=True).order_by(Agency.name).all()
+    elif user_role == 'agency_manager':
+        agencies = Agency.query.options(db.joinedload(Agency.payment_configuration)).filter(
+            Agency.agency_manager_id == session.get('user_id'),
+            Agency.is_active == True
+        ).order_by(Agency.name).all()
+    else:
+        agencies = []
+
+    # Prepare data for the template
+    configs = {agency.id: agency.payment_configuration for agency in agencies}
+
+    return render_template(
+        'finance/payment_configurations.html',
+        agencies=agencies,
+        configs=configs
+    )
+
+
+# ==================== AR/AP AGING REPORTS ====================
+@finance_bp.route('/ar_aging')
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def ar_aging_report(current_agency_id=None):
+    """Accounts Receivable Aging Report - Track customer outstanding invoices"""
+    user_role = session.get('role')
+    
+    # Base query for orders (sales orders)
+    orders_query = Order.query.filter(Order.status.in_(['pending', 'confirmed', 'delivered']))
+    
+    if user_role != 'super_admin':
+        orders_query = orders_query.filter(Order.agency_id == current_agency_id)
+    
+    # Get all orders with their receipt allocations
+    orders = orders_query.all()
+    
+    # Calculate aging buckets
+    today = datetime.utcnow()
+    aging_data = []
+    
+    for order in orders:
+        # Calculate total received amount for this order
+        total_received = sum(
+            receipt_link.amount 
+            for receipt_link in order.receipt_links 
+            if receipt_link.receipt.status == 'confirmed'
+        )
+        
+        # Calculate outstanding amount
+        outstanding = float(order.total_amount or 0) - float(total_received or 0)
+        
+        if outstanding > 0.01:  # Only include if there's outstanding amount
+            # Calculate days overdue based on order date
+            days_overdue = (today - order.order_date).days if order.order_date else 0
+            
+            # Determine aging bucket
+            if days_overdue <= 30:
+                bucket = 'current'
+            elif days_overdue <= 60:
+                bucket = '31-60'
+            elif days_overdue <= 90:
+                bucket = '61-90'
+            else:
+                bucket = '90+'
+            
+            aging_data.append({
+                'order_number': order.order_number,
+                'customer_name': order.customer.name if order.customer else 'N/A',
+                'order_date': order.order_date,
+                'total_amount': float(order.total_amount or 0),
+                'received_amount': float(total_received or 0),
+                'outstanding': outstanding,
+                'days_overdue': days_overdue,
+                'bucket': bucket,
+                'agency_name': order.agency.name if order.agency else 'N/A'
+            })
+    
+    # Calculate summary by bucket
+    summary = {
+        'current': sum(item['outstanding'] for item in aging_data if item['bucket'] == 'current'),
+        '31-60': sum(item['outstanding'] for item in aging_data if item['bucket'] == '31-60'),
+        '61-90': sum(item['outstanding'] for item in aging_data if item['bucket'] == '61-90'),
+        '90+': sum(item['outstanding'] for item in aging_data if item['bucket'] == '90+'),
+    }
+    summary['total'] = sum(summary.values())
+    
+    # Sort by days overdue (descending)
+    aging_data.sort(key=lambda x: x['days_overdue'], reverse=True)
+    
+    return render_template(
+        'finance/ar_aging.html',
+        aging_data=aging_data,
+        summary=summary,
+        report_date=today
+    )
+
+
+@finance_bp.route('/ap_aging')
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def ap_aging_report(current_agency_id=None):
+    """Accounts Payable Aging Report - Track supplier outstanding bills"""
+    user_role = session.get('role')
+    
+    # Base query for purchase orders
+    po_query = PurchaseOrder.query.filter(PurchaseOrder.status.in_(['pending', 'confirmed', 'received']))
+    
+    if user_role != 'super_admin':
+        po_query = po_query.filter(PurchaseOrder.agency_id == current_agency_id)
+    
+    # Get all purchase orders with their payment allocations
+    purchase_orders = po_query.all()
+    
+    # Calculate aging buckets
+    today = datetime.utcnow()
+    aging_data = []
+    
+    for po in purchase_orders:
+        # Calculate total paid amount for this PO
+        total_paid = sum(
+            payment_link.amount 
+            for payment_link in po.finance_payment_links 
+            if payment_link.finance_payment.status == 'confirmed'
+        )
+        
+        # Calculate outstanding amount
+        outstanding = float(po.total_amount or 0) - float(total_paid or 0)
+        
+        if outstanding > 0.01:  # Only include if there's outstanding amount
+            # Calculate days overdue based on PO date
+            days_overdue = (today - po.order_date).days if po.order_date else 0
+            
+            # Determine aging bucket
+            if days_overdue <= 30:
+                bucket = 'current'
+            elif days_overdue <= 60:
+                bucket = '31-60'
+            elif days_overdue <= 90:
+                bucket = '61-90'
+            else:
+                bucket = '90+'
+            
+            aging_data.append({
+                'po_number': po.po_number,
+                'supplier_name': po.supplier.name if po.supplier else 'N/A',
+                'order_date': po.order_date,
+                'total_amount': float(po.total_amount or 0),
+                'paid_amount': float(total_paid or 0),
+                'outstanding': outstanding,
+                'days_overdue': days_overdue,
+                'bucket': bucket,
+                'agency_name': po.agency.name if po.agency else 'N/A'
+            })
+    
+    # Calculate summary by bucket
+    summary = {
+        'current': sum(item['outstanding'] for item in aging_data if item['bucket'] == 'current'),
+        '31-60': sum(item['outstanding'] for item in aging_data if item['bucket'] == '31-60'),
+        '61-90': sum(item['outstanding'] for item in aging_data if item['bucket'] == '61-90'),
+        '90+': sum(item['outstanding'] for item in aging_data if item['bucket'] == '90+'),
+    }
+    summary['total'] = sum(summary.values())
+    
+    # Sort by days overdue (descending)
+    aging_data.sort(key=lambda x: x['days_overdue'], reverse=True)
+    
+    return render_template(
+        'finance/ap_aging.html',
+        aging_data=aging_data,
+        summary=summary,
+        report_date=today
+    )

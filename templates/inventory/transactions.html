@@ -20,10 +20,8 @@
                         <label for="product_id" class="form-label">Product</label>
                         <select name="product_id" id="product_id" class="form-select">
                             <option value="">All Products</option>
-                            {% for product in products %}
-                                <option value="{{ product.id }}" {% if current_filters.product_id == product.id|string %}selected{% endif %}>
-                                    {{ product.name }} ({{ product.sku }})
-                                </option>
+                            {% for p_filter in products_for_filter %}
+                                <option value="{{ p_filter.id }}" {% if current_filters.product_id == p_filter.id|string %}selected{% endif %}>{{ p_filter.display_name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -78,7 +76,7 @@
                         <tr>
                             <td>{{ tx.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td>
-                                <a href="{{ url_for('product.edit_product', product_id=tx.product.id) }}">{{ tx.product.name }}</a>
+                                <a href="{{ url_for('product.edit_product', product_id=tx.product.id) }}">{{ tx.product.get_display_name_for_agency(tx.agency_id) }}</a>
                                 <br><small class="text-muted">{{ tx.product.sku }}</small>
                             </td>
                             <td><span class="badge bg-secondary">{{ tx.transaction_type|capitalize }}</span></td>

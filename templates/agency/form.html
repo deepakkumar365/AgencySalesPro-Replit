@@ -40,19 +40,65 @@
                     </div>
                     {% endif %}
 
+                    <!-- Ticket #12: Split address fields -->
                     <div class="mb-3">
-                        <label for="address" class="form-label">Address</label>
-                        <textarea class="form-control" id="address" name="address" rows="3">{{ agency.address if agency else '' }}</textarea>
+                        <label for="address1" class="form-label">Address Line 1 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="address1" name="address1" 
+                               value="{{ agency.address1 if agency else '' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="address2" class="form-label">Address Line 2</label>
+                        <input type="text" class="form-control" id="address2" name="address2" 
+                               value="{{ agency.address2 if agency else '' }}">
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="phone" class="form-label">Phone</label>
-                            <input type="text" class="form-control" id="phone" name="phone" value="{{ agency.phone if agency else '' }}">
+                            <label for="city" class="form-label">City <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="city" name="city" 
+                                   value="{{ agency.city if agency else '' }}" required>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" value="{{ agency.email if agency else '' }}">
+                            <label for="state" class="form-label">State <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="state" name="state" 
+                                   value="{{ agency.state if agency else '' }}" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="country" class="form-label">Country <span class="text-danger">*</span></label>
+                            <select class="form-select" id="country" name="country" required>
+                                <option value="">-- Select Country --</option>
+                                <option value="India" {{ 'selected' if agency and agency.country == 'India' else 'selected' if not agency else '' }}>India</option>
+                                <option value="USA" {{ 'selected' if agency and agency.country == 'USA' else '' }}>USA</option>
+                                <option value="UK" {{ 'selected' if agency and agency.country == 'UK' else '' }}>UK</option>
+                                <option value="Canada" {{ 'selected' if agency and agency.country == 'Canada' else '' }}>Canada</option>
+                                <option value="Australia" {{ 'selected' if agency and agency.country == 'Australia' else '' }}>Australia</option>
+                                <option value="Singapore" {{ 'selected' if agency and agency.country == 'Singapore' else '' }}>Singapore</option>
+                                <option value="UAE" {{ 'selected' if agency and agency.country == 'UAE' else '' }}>UAE</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="registration_number" class="form-label">Registration Number</label>
+                            <input type="text" class="form-control" id="registration_number" name="registration_number" 
+                                   value="{{ agency.registration_number if agency else '' }}"
+                                   placeholder="e.g., GST, Tax ID, Company Registration">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Phone <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="phone" name="phone" 
+                                   value="{{ agency.phone if agency else '' }}" required>
+                            <div class="invalid-feedback" id="phone-error"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="{{ agency.email if agency else '' }}" required>
                         </div>
                     </div>
 
@@ -85,4 +131,87 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endif %}
+
+<!-- Ticket #13: Country-specific phone validation -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const phoneInput = document.getElementById('phone');
+    const countrySelect = document.getElementById('country');
+    const phoneError = document.getElementById('phone-error');
+    const form = phoneInput.closest('form');
+
+    // Phone validation patterns for different countries
+    const phonePatterns = {
+        'India': {
+            pattern: /^(\+91|91)?[6-9]\d{9}$/,
+            message: 'Please enter a valid Indian phone number (e.g., +919876543210 or 9876543210)',
+            format: '+91XXXXXXXXXX'
+        },
+        'USA': {
+            pattern: /^(\+1|1)?[2-9]\d{9}$/,
+            message: 'Please enter a valid US phone number (e.g., +12025551234 or 2025551234)',
+            format: '+1XXXXXXXXXX'
+        },
+        'UK': {
+            pattern: /^(\+44|44)?[1-9]\d{9,10}$/,
+            message: 'Please enter a valid UK phone number (e.g., +447911123456)',
+            format: '+44XXXXXXXXXX'
+        },
+        'Canada': {
+            pattern: /^(\+1|1)?[2-9]\d{9}$/,
+            message: 'Please enter a valid Canadian phone number (e.g., +14165551234)',
+            format: '+1XXXXXXXXXX'
+        },
+        'Australia': {
+            pattern: /^(\+61|61)?[2-478]\d{8}$/,
+            message: 'Please enter a valid Australian phone number (e.g., +61412345678)',
+            format: '+61XXXXXXXXX'
+        },
+        'Singapore': {
+            pattern: /^(\+65|65)?[689]\d{7}$/,
+            message: 'Please enter a valid Singapore phone number (e.g., +6591234567)',
+            format: '+65XXXXXXXX'
+        },
+        'UAE': {
+            pattern: /^(\+971|971)?[0-9]\d{8}$/,
+            message: 'Please enter a valid UAE phone number (e.g., +971501234567)',
+            format: '+971XXXXXXXXX'
+        }
+    };
+
+    function validatePhone() {
+        const country = countrySelect.value;
+        const phone = phoneInput.value.trim();
+
+        if (!country || !phone) {
+            phoneInput.classList.remove('is-invalid');
+            phoneError.textContent = '';
+            return true;
+        }
+
+        const validation = phonePatterns[country];
+        if (validation && !validation.pattern.test(phone)) {
+            phoneInput.classList.add('is-invalid');
+            phoneError.textContent = validation.message;
+            return false;
+        }
+
+        phoneInput.classList.remove('is-invalid');
+        phoneError.textContent = '';
+        return true;
+    }
+
+    // Validate on input
+    phoneInput.addEventListener('input', validatePhone);
+    countrySelect.addEventListener('change', validatePhone);
+
+    // Validate on form submit
+    form.addEventListener('submit', function(e) {
+        if (!validatePhone()) {
+            e.preventDefault();
+            phoneInput.focus();
+        }
+    });
+});
+</script>
 {% endblock %}

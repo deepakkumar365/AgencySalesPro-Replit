@@ -11,9 +11,22 @@
     </div>
 </div>
 
+<!-- Help Banner -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="fas fa-lightbulb me-2"></i>
+            <strong>Welcome!</strong> Need help? Check out our 
+            <a href="{{ url_for('super_admin.user_manual') }}" class="alert-link">comprehensive Super Admin User Manual</a>
+            for guidance on all system features.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
 <!-- Statistics Cards -->
 <div class="row auto-hide-content">
-    <div class="col-md-3 mb-4">
+    <div class="col-md-4 mb-4">
         <div class="card text-center">
             <div class="card-body">
                 <i class="fas fa-building fa-2x text-primary mb-2"></i>
@@ -24,7 +37,7 @@
         </div>
     </div>
     
-    <div class="col-md-3 mb-4">
+    <div class="col-md-4 mb-4">
         <div class="card text-center">
             <div class="card-body">
                 <i class="fas fa-users fa-2x text-success mb-2"></i>
@@ -35,24 +48,49 @@
         </div>
     </div>
     
-    <div class="col-md-3 mb-4">
+    <div class="col-md-4 mb-4">
         <div class="card text-center">
             <div class="card-body">
-                <i class="fas fa-shopping-cart fa-2x text-info mb-2"></i>
-                <h3 class="card-title">{{ stats.total_orders }}</h3>
-                <p class="card-text">Total Orders</p>
-                <small>{{ stats.pending_orders }} Pending</small>
+                <i class="fas fa-user-shield fa-2x text-info mb-2"></i>
+                <h3 class="card-title">{{ stats.total_agency_managers }}</h3>
+                <p class="card-text">Total Agency Managers</p>
+                <small>&nbsp;</small> <!-- Placeholder for alignment -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Revenue Metrics (Ticket #25) -->
+<div class="row auto-hide-content">
+    <div class="col-md-4 mb-4">
+        <div class="card text-center bg-success text-white">
+            <div class="card-body">
+                <i class="fas fa-rupee-sign fa-2x mb-2"></i>
+                <h3 class="card-title">₹{{ "{:,.2f}".format(stats.total_revenue) }}</h3>
+                <p class="card-text">Total Revenue</p>
+                <small>All Time</small>
             </div>
         </div>
     </div>
     
-    <div class="col-md-3 mb-4">
-        <div class="card text-center">
+    <div class="col-md-4 mb-4">
+        <div class="card text-center bg-info text-white">
             <div class="card-body">
-                <i class="fas fa-box fa-2x text-warning mb-2"></i>
-                <h3 class="card-title">{{ stats.total_products }}</h3>
-                <p class="card-text">Total Products</p>
-                <small>{{ stats.total_customers }} Customers</small>
+                <i class="fas fa-calendar-alt fa-2x mb-2"></i>
+                <h3 class="card-title">₹{{ "{:,.2f}".format(stats.monthly_revenue) }}</h3>
+                <p class="card-text">Monthly Revenue</p>
+                <small>Current Month</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card text-center bg-primary text-white">
+            <div class="card-body">
+                <i class="fas fa-chart-line fa-2x mb-2"></i>
+                <h3 class="card-title">₹{{ "{:,.2f}".format(stats.avg_order_value) }}</h3>
+                <p class="card-text">Avg Order Value</p>
+                <small>Per Order</small>
             </div>
         </div>
     </div>
@@ -117,6 +155,41 @@
         </div>
     </div>
     
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Top Products</h5>
+            </div>
+            <div class="card-body">
+                {% if top_products %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>SKU</th>
+                                <th>Orders</th>
+                                <th>Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product_name, sku, order_count, total_qty in top_products %}
+                            <tr>
+                                <td>{{ product_name }}</td>
+                                <td><small class="text-muted">{{ sku }}</small></td>
+                                <td><span class="badge bg-success">{{ order_count }}</span></td>
+                                <td><span class="badge bg-info">{{ total_qty }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p>No data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Quick Actions -->

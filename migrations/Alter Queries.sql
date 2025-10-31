@@ -114,3 +114,150 @@ CREATE INDEX ix_ASP_inventory_transactions_agency_id ON "ASP_inventory_transacti
 
 -- Create an index on the new customer_id column for faster lookups
 CREATE INDEX ix_ASP_inventory_transactions_customer_id ON "ASP_inventory_transactions" (customer_id);
+
+-- ============================================
+-- UPGRADE QUERIES (Apply Changes)
+-- ============================================
+
+-- 1. Agency table enhancements (Tickets #12, #13)
+ALTER TABLE "ASP_agencies" 
+ADD COLUMN IF NOT EXISTS address1 VARCHAR(255),
+ADD COLUMN IF NOT EXISTS address2 VARCHAR(255),
+ADD COLUMN IF NOT EXISTS city VARCHAR(100),
+ADD COLUMN IF NOT EXISTS state VARCHAR(100),
+ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'India',
+ADD COLUMN IF NOT EXISTS registration_number VARCHAR(50);
+
+-- Migrate existing address data to address1
+UPDATE "ASP_agencies" 
+SET address1 = address 
+WHERE address IS NOT NULL AND address1 IS NULL;
+
+-- 2. Customer table enhancements (Ticket #14)
+ALTER TABLE "ASP_customers" 
+ADD COLUMN IF NOT EXISTS customer_code VARCHAR(10) UNIQUE;
+
+-- 3. Location table - unique constraint (Ticket #16)
+ALTER TABLE "ASP_locations" 
+ADD CONSTRAINT uq_location_name_agency UNIQUE (name, agency_id);
+
+-- 4. Order table enhancements for POS (Tickets #20, #23, #24)
+ALTER TABLE "ASP_orders" 
+ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(20) DEFAULT 'cash',
+ADD COLUMN IF NOT EXISTS order_type VARCHAR(20) DEFAULT 'local',
+ADD COLUMN IF NOT EXISTS discount_percentage NUMERIC(5, 2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS handling_charges NUMERIC(10, 2) DEFAULT 0;
+
+-- 5. Product table enhancements (Ticket #18)
+ALTER TABLE "ASP_products" 
+ADD COLUMN IF NOT EXISTS hsn_code VARCHAR(20),
+ADD COLUMN IF NOT EXISTS item_code VARCHAR(50);
+
+
+-- ============================================
+-- DOWNGRADE QUERIES (Revert Changes)
+-- ============================================
+
+-- Remove Agency fields
+ALTER TABLE "ASP_agencies" 
+DROP COLUMN IF EXISTS address1,
+DROP COLUMN IF EXISTS address2,
+DROP COLUMN IF EXISTS city,
+DROP COLUMN IF EXISTS state,
+DROP COLUMN IF EXISTS country,
+DROP COLUMN IF EXISTS registration_number;
+
+-- Remove Customer fields
+ALTER TABLE "ASP_customers" 
+DROP COLUMN IF EXISTS customer_code;
+
+-- Remove Location constraint
+ALTER TABLE "ASP_locations" 
+DROP CONSTRAINT IF EXISTS uq_location_name_agency;
+
+-- Remove Order fields
+ALTER TABLE "ASP_orders" 
+DROP COLUMN IF EXISTS payment_mode,
+DROP COLUMN IF EXISTS order_type,
+DROP COLUMN IF EXISTS discount_percentage,
+DROP COLUMN IF EXISTS handling_charges;
+
+-- Remove Product fields
+ALTER TABLE "ASP_products" 
+DROP COLUMN IF EXISTS hsn_code,
+DROP COLUMN IF EXISTS item_code;
+
+
+-- Create roles table
+DROP TABLE "ASP_roles"
+DROP TABLE IF EXISTS "ASP_roles" CASCADE;
+DROP TABLE "ASP_permissions"
+DROP TABLE "ASP_role_permissions"
+DROP TABLE "ASP_menu_items"
+
+CREATE TABLE IF NOT EXISTS "ASP_roles" (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    description TEXT,
+    is_system BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create permissions table
+CREATE TABLE IF NOT EXISTS "ASP_permissions" (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    code VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
+    category VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create role_permissions junction table
+CREATE TABLE IF NOT EXISTS "ASP_role_permissions" (
+    id SERIAL PRIMARY KEY,
+    role_id INTEGER NOT NULL REFERENCES "ASP_roles"(id) ON DELETE CASCADE,
+    permission_id INTEGER NOT NULL REFERENCES "ASP_permissions"(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_role_permission UNIQUE (role_id, permission_id)
+);
+
+-- Create menu_items table
+CREATE TABLE IF NOT EXISTS "ASP_menu_items" (
+    id SERIAL PRIMARY KEY,
+    parent_id INTEGER REFERENCES "ASP_menu_items"(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    url VARCHAR(255),
+    icon VARCHAR(50),
+    order_index INTEGER DEFAULT 0,
+    required_permission_code VARCHAR(100) REFERENCES "ASP_permissions"(code) ON DELETE SET NULL,
+    dashboard_for_role VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- Add role_id column to ASP_users
+ALTER TABLE "ASP_users" ADD COLUMN role_id INTEGER REFERENCES "ASP_roles"(id) ON DELETE SET NULL;
+CREATE INDEX idx_users_role_id ON "ASP_users"(role_id);
+
+-- 1️⃣ Drop the index first
+DROP INDEX IF EXISTS idx_users_role_id;
+
+-- 2️⃣ Then drop the column from the table
+ALTER TABLE "ASP_users" DROP COLUMN IF EXISTS role_id;
+
+
+-- Insert default system roles
+INSERT INTO "ASP_roles" (name, description, is_system) VALUES
+    ('super_admin', 'Full Tenant/Agency/User Management', TRUE),
+    ('support', 'Full access to all features', TRUE),
+    ('agency_manager', 'Full control within managed agencies', TRUE),
+    ('agency_admin', 'Full agency operations', TRUE),
+    ('staff', 'Operational role - Full Inventory/Sales', TRUE),
+    ('salesperson', 'Sales-focused - manage orders, view inventory', TRUE),
+    ('pos_user', 'POS terminal user', TRUE),
+    ('accountant', 'Finance role', TRUE)
+ON CONFLICT (name) DO NOTHING;
+
+
+select * from "ASP_roles"
+

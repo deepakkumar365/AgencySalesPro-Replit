@@ -3,58 +3,141 @@
 {% block title %}Manage Agencies - AgencySales Pro{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="fas fa-building me-2"></i>Manage Agencies</h1>
-    {% if session.role in ['super_admin', 'agency_manager'] %}
-    <a href="{{ url_for('agency.create_agency') }}" class="btn btn-primary">
-        <i class="fas fa-plus me-2"></i>Create Agency
-    </a>
-    {% endif %}
-</div>
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-building me-2"></i>Manage Agencies</h2>
+        <a href="{{ url_for('agency.create_agency') }}" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-1"></i>Create Agency
+        </a>
+    </div>
 
-<div class="card">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Code</th>
-                        <th>Manager</th>
-                        <th>Email</th>
-                        <th>Phone</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for agency in agencies %}
-                    <tr>
-                        <td><strong>{{ agency.name }}</strong></td>
-                        <td>{{ agency.code }}</td>
-                        <td>{{ agency.manager.full_name if agency.manager else 'N/A' }}</td>
-                        <td>{{ agency.email }}</td>
-                        <td>{{ agency.phone }}</td>
-                        <td>
-                            {% if agency.is_active %}
-                            <span class="badge bg-success">Active</span>
-                            {% else %}
-                            <span class="badge bg-secondary">Inactive</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{{ url_for('agency.edit_agency', agency_id=agency.id) }}" class="btn btn-sm btn-outline-primary me-1" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                             <a href="{{ url_for('agency.agency_users', agency_id=agency.id) }}" class="btn btn-sm btn-outline-info" title="View Users">
-                                <i class="fas fa-users"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <!-- Search and Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('agency.list_agencies') }}">
+                <div class="input-group">
+                    <input type="text" name="search" class="form-control" placeholder="Search by Agency Name, Code, or Manager..." value="{{ search or '' }}">
+                    <button class="btn btn-outline-secondary" type="submit"><i class="fas fa-search"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            {% if agencies_data %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Agency Name</th>
+                            <th>Code</th>
+                            <th>Manager User Name</th>
+                            <th class="text-center">Customer Count</th>
+                            <th class="text-center">Login ID Count</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for agency, manager_username, login_id_count, customer_count in agencies_data %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('agency.edit_agency', agency_id=agency.id) }}" class="fw-bold">{{ agency.name }}</a>
+                                <br>
+                                <small class="text-muted">{{ agency.email }}</small>
+                            </td>
+                            <td>{{ agency.code }}</td>
+                            <td>
+                                {% if manager_username %}
+                                    <i class="fas fa-user-shield me-1 text-success"></i>{{ manager_username }}
+                                {% else %}
+                                    <span class="text-muted fst-italic">Not Assigned</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info">{{ customer_count }}</span>
+                            </td>
+                            <td class="text-center">
+                                <a href="{{ url_for('super_admin.manage_users', agency_filter=agency.id) }}" class="badge bg-secondary text-decoration-none">{{ login_id_count }}</a>
+                            </td>
+                            <td class="text-center">
+                                {% if agency.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group">
+                                    <a href="{{ url_for('agency.edit_agency', agency_id=agency.id) }}" class="btn btn-sm btn-outline-primary" title="Edit Agency">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-warning" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#resetPasswordModal"
+                                            data-agency-name="{{ agency.name }}"
+                                            data-manager-name="{{ manager_username or 'N/A' }}"
+                                            data-action-url="{{ url_for('super_admin.reset_agency_manager_password', agency_id=agency.id) }}"
+                                            {% if not manager_username %}disabled{% endif %}
+                                            title="Reset Manager Password">
+                                        <i class="fas fa-key"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">No agencies found.</div>
+            {% endif %}
         </div>
     </div>
 </div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Password Reset</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to reset the password for manager <strong id="managerName"></strong> of agency <strong id="agencyName"></strong>?</p>
+        <p class="text-danger">The new password will be set to: <strong>Welcome@123</strong></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form id="resetPasswordForm" method="POST" action="">
+            <button type="submit" class="btn btn-warning">Reset Password</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var resetPasswordModal = document.getElementById('resetPasswordModal');
+    resetPasswordModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var agencyName = button.getAttribute('data-agency-name');
+        var managerName = button.getAttribute('data-manager-name');
+        var actionUrl = button.getAttribute('data-action-url');
+
+        var modalAgencyName = resetPasswordModal.querySelector('#agencyName');
+        var modalManagerName = resetPasswordModal.querySelector('#managerName');
+        var form = resetPasswordModal.querySelector('#resetPasswordForm');
+
+        modalAgencyName.textContent = agencyName;
+        modalManagerName.textContent = managerName;
+        form.action = actionUrl;
+    });
+});
+</script>
 {% endblock %}

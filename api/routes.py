@@ -1,6 +1,6 @@
 from flask import jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app import db
+from extensions import db
 from models import User, Agency, Product, ProductAgency, Order, Customer, Location
 from api import api_bp
 
@@ -152,7 +152,7 @@ def get_order_detail(order_id):
         },
         'items': [{
             'id': item.id,
-            'product_name': item.product.name,
+            'product_name': item.product_name or item.product.name,
             'product_sku': item.product.sku,
             'quantity': item.quantity,
             'unit_price': str(item.unit_price),

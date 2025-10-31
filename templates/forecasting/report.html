@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Forecast Report - AgencySales Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-file-alt"></i> Stock Forecast Report
+        </h1>
+        <div>
+            <a href="{{ url_for('forecasting.dashboard') }}{% if selected_agency_id %}?agency_id={{ selected_agency_id }}{% endif %}" class="btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Back to Dashboard
+            </a>
+            <a href="{{ url_for('forecasting.export', **request.args) }}" class="btn btn-sm btn-success shadow-sm">
+                <i class="fas fa-download fa-sm text-white-50"></i> Export to Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filters</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('forecasting.report') }}">
+                <div class="form-row">
+                    {% if agencies %}
+                    <div class="col-md-3 mb-3">
+                        <label for="agency_id">Agency</label>
+                        <select name="agency_id" id="agency_id" class="form-control">
+                            <option value="">-- All Agencies --</option>
+                            {% for agency in agencies %}
+                            <option value="{{ agency.id }}" {% if agency.id == selected_agency_id %}selected{% endif %}>
+                                {{ agency.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="col-md-3 mb-3">
+                        <label for="category_id">Category</label>
+                        <select name="category_id" id="category_id" class="form-control">
+                            <option value="">-- All Categories --</option>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}" {% if category.id == selected_category_id %}selected{% endif %}>
+                                {{ category.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-2 mb-3">
+                        <label for="week_start">Week Start</label>
+                        <input type="date" name="week_start" id="week_start" class="form-control" 
+                               value="{{ week_start.strftime('%Y-%m-%d') }}">
+                    </div>
+
+                    <div class="col-md-2 mb-3">
+                        <label for="sort_by">Sort By</label>
+                        <select name="sort_by" id="sort_by" class="form-control">
+                            <option value="shortage_desc" {% if sort_by == 'shortage_desc' %}selected{% endif %}>Shortage (High to Low)</option>
+                            <option value="excess_desc" {% if sort_by == 'excess_desc' %}selected{% endif %}>Excess (High to Low)</option>
+                            <option value="profit_impact" {% if sort_by == 'profit_impact' %}selected{% endif %}>Profit Impact</option>
+                            <option value="product_name" {% if sort_by == 'product_name' %}selected{% endif %}>Product Name</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2 mb-3">
+                        <label>&nbsp;</label>
+                        <div class="form-check">
+                            <input type="checkbox" name="alert_only" id="alert_only" class="form-check-input" 
+                                   value="true" {% if alert_only %}checked{% endif %}>
+                            <label class="form-check-label" for="alert_only">
+                                Alerts Only
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter"></i> Apply Filters
+                </button>
+                <a href="{{ url_for('forecasting.report') }}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Clear Filters
+                </a>
+            </form>
+        </div>
+    </div>
+
+    <!-- Report Data -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                Forecast Data ({{ forecasts|length }} products)
+                <span class="text-muted">- Week: {{ week_start.strftime('%b %d') }} to {{ week_end.strftime('%b %d, %Y') }}</span>
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if forecasts %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="forecastTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>SKU</th>
+                            <th>Category</th>
+                            {% if not selected_agency_id %}
+                            <th>Agency</th>
+                            {% endif %}
+                            <th>Forecast Demand</th>
+                            <th>Current Stock</th>
+                            <th>Shortage</th>
+                            <th>Excess</th>
+                            <th>Profit Impact</th>
+                            <th>Holding Cost</th>
+                            <th>Opportunity Cost</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for forecast in forecasts %}
+                        <tr>
+                            <td>{{ forecast.product.get_display_name_for_agency(forecast.agency_id) }}</td>
+                            <td>{{ forecast.product.sku }}</td>
+                            <td>{{ forecast.product.category_ref.name if forecast.product.category_ref else '-' }}</td>
+                            {% if not selected_agency_id %}
+                            <td>{{ forecast.agency.name }}</td>
+                            {% endif %}
+                            <td class="text-right">{{ "%.2f"|format(forecast.forecast_qty) }}</td>
+                            <td class="text-right">{{ "%.2f"|format(forecast.actual_stock) }}</td>
+                            <td class="text-right {% if forecast.shortage_qty > 0 %}text-danger font-weight-bold{% endif %}">
+                                {{ "%.2f"|format(forecast.shortage_qty) }}
+                            </td>
+                            <td class="text-right {% if forecast.excess_qty > 0 %}text-warning font-weight-bold{% endif %}">
+                                {{ "%.2f"|format(forecast.excess_qty) }}
+                            </td>
+                            <td class="text-right {% if forecast.profit_impact < 0 %}text-danger{% else %}text-success{% endif %}">
+                                ₹{{ "%.2f"|format(abs(forecast.profit_impact)) }}
+                            </td>
+                            <td class="text-right">₹{{ "%.2f"|format(forecast.holding_cost) }}</td>
+                            <td class="text-right">₹{{ "%.2f"|format(forecast.opportunity_cost) }}</td>
+                            <td>
+                                {% if forecast.shortage_qty > 0 %}
+                                <span class="badge badge-danger">Shortage</span>
+                                {% elif forecast.excess_qty > 0 %}
+                                <span class="badge badge-warning">Excess</span>
+                                {% else %}
+                                <span class="badge badge-success">Balanced</span>
+                                {% endif %}
+                                {% if forecast.alert_triggered %}
+                                <span class="badge badge-info">Alert</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No forecast data available for the selected filters.
+                Please refresh forecasts from the dashboard.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- DataTables -->
+<link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css" rel="stylesheet">
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    $('#forecastTable').DataTable({
+        "pageLength": 25,
+        "order": [[6, "desc"]], // Sort by shortage by default
+        "columnDefs": [
+            { "orderable": false, "targets": -1 } // Disable sorting on status column
+        ]
+    });
+});
+</script>
+{% endblock %}

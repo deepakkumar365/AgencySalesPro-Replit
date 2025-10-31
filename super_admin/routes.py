@@ -2,9 +2,9 @@ from flask import render_template, request, redirect, url_for, flash, session, m
 from sqlalchemy import func
 from datetime import datetime, timedelta
 import csv, io
-from app import db
+from extensions import db
 from models import Agency, User, Order, Product, Customer, ActivityLog, Location
-from super_admin import super_admin_bp
+from . import super_admin_bp
 from auth.utils import login_required, role_required, get_role_permissions
 from utils.decorators import log_activity
 
@@ -39,12 +39,29 @@ def dashboard():
         'total_agencies': agency_query.count(),
         'active_agencies': agency_query.filter(Agency.is_active == True).count(),
         'total_users': user_query.count(),
+        'total_agency_managers': user_query.filter(User.role == 'agency_manager').count(),
         'active_users': user_query.filter(User.is_active == True).count(),
         'total_orders': order_query.count(),
         'pending_orders': order_query.filter(Order.status == 'pending').count(),
         'total_products': product_query.count(),  # Products are global
-        'total_customers': customer_query.count()
+        'total_customers': customer_query.count(),
     }
+    
+    # Enhanced business metrics (Ticket #25)
+    # Calculate total revenue
+    total_revenue_result = db.session.query(func.sum(Order.total_amount)).select_from(order_query).scalar()
+    stats['total_revenue'] = float(total_revenue_result) if total_revenue_result else 0
+    
+    # Calculate revenue for current month
+    current_month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    monthly_revenue_result = db.session.query(func.sum(Order.total_amount)).select_from(order_query).filter(Order.created_at >= current_month_start).scalar()
+    stats['monthly_revenue'] = float(monthly_revenue_result) if monthly_revenue_result else 0
+    
+    # Calculate average order value
+    if stats['total_orders'] > 0:
+        stats['avg_order_value'] = stats['total_revenue'] / stats['total_orders']
+    else:
+        stats['avg_order_value'] = 0
 
     # Recent activities removed as not required
 
@@ -71,12 +88,31 @@ def dashboard():
         top_agencies_query = top_agencies_query.filter(Agency.id.in_(managed_agency_ids))
 
     top_agencies = top_agencies_query.group_by(Agency.id).order_by(func.count(Order.id).desc()).limit(5).all()
+    
+    # Get top products by order count (Ticket #25)
+    from models import OrderItem
+    top_products_query = db.session.query(
+        Product.name,
+        Product.sku,
+        func.count(OrderItem.id).label('order_count'),
+        func.sum(OrderItem.quantity).label('total_quantity')
+    ).join(OrderItem, OrderItem.product_id == Product.id).join(Order, Order.id == OrderItem.order_id)
+    
+    if user_role == 'agency_manager':
+        top_products_query = top_products_query.filter(Order.agency_id.in_(managed_agency_ids))
+    
+    top_products = top_products_query.group_by(Product.id).order_by(func.count(OrderItem.id).desc()).limit(5).all()
+    
+    # Get recent orders (Ticket #25)
+    recent_orders = order_query.order_by(Order.created_at.desc()).limit(10).all()
 
     return render_template('super_admin/dashboard.html',
                          stats=stats,
                          order_stats=order_stats,
                          monthly_orders=monthly_orders,
-                         top_agencies=top_agencies)
+                         top_agencies=top_agencies,
+                         top_products=top_products,
+                         recent_orders=recent_orders)
 
 @super_admin_bp.route('/users')
 @role_required('super_admin', 'agency_manager')
@@ -492,3 +528,37 @@ def export_data():
     # This would be implemented with pandas/Excel export functionality
     flash('Data export functionality will be implemented', 'info')
     return redirect(url_for('super_admin.dashboard'))
+
+@super_admin_bp.route('/agency/<int:agency_id>/reset_manager_password', methods=['POST'])
+@role_required('super_admin')
+@log_activity('reset_agency_manager_password')
+def reset_agency_manager_password(agency_id):
+    """
+    Resets the password for an agency's manager to a default value.
+    """
+    agency = Agency.query.get_or_404(agency_id)
+    
+    if not agency.agency_manager_id:
+        flash(f"Agency '{agency.name}' does not have a manager assigned.", "warning")
+        return redirect(url_for('agency.list_agencies'))
+        
+    manager = User.query.get(agency.agency_manager_id)
+    if not manager:
+        flash(f"Manager for agency '{agency.name}' not found.", "danger")
+        return redirect(url_for('agency.list_agencies'))
+
+    try:
+        manager.set_password('Welcome@123')
+        db.session.commit()
+        flash(f"Password for manager '{manager.username}' of agency '{agency.name}' has been reset to 'Welcome@123'.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while resetting the password: {str(e)}", "danger")
+
+    return redirect(url_for('agency.list_agencies'))
+
+@super_admin_bp.route('/user-manual')
+@login_required
+def user_manual():
+    """Display Super Admin User Manual"""
+    return render_template('super_admin/user_manual.html')

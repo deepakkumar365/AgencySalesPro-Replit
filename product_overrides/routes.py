@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, session, send_file
 import pandas as pd
 import io
-from app import db
+from extensions import db
 from auth.utils import login_required, permission_required
 from utils.decorators import log_activity
 from product_overrides import overrides_bp
@@ -82,7 +82,7 @@ def list_overrides(current_agency_id=None):
 
 @overrides_bp.route('/<int:product_id>/edit', methods=['GET', 'POST'])
 @login_required
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('edit_product_override')
 def edit_override(product_id, current_agency_id=None):
     user_role = session.get('role')
@@ -129,7 +129,7 @@ def edit_override(product_id, current_agency_id=None):
 
 @overrides_bp.route('/bulk-upload', methods=['GET', 'POST'])
 @login_required
-@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager'])
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 @log_activity('bulk_upload_overrides')
 def bulk_upload_overrides(current_agency_id=None):
     user_role = session.get('role')
@@ -191,6 +191,8 @@ def bulk_upload_overrides(current_agency_id=None):
                         category_name = str(row.get('category_name', '')).strip()
                         uom_name = str(row.get('uom_name', '')).strip()
                         tax_name = str(row.get('tax_name', '')).strip() # Optional
+                        hsn_code = str(row.get('hsn_code', '')).strip() if pd.notna(row.get('hsn_code')) else None
+                        item_code = str(row.get('item_code', '')).strip() if pd.notna(row.get('item_code')) else None
 
                         if not all([category_name, uom_name]):
                             errors.append(f"Row {index+2}: category_name and uom_name are required for new product '{sku}'.")
@@ -212,6 +214,8 @@ def bulk_upload_overrides(current_agency_id=None):
                             category_id=categories.get(category_name.lower()),
                             uom_id=uoms.get(uom_name.lower()),
                             tax_master_id=tax_masters.get(tax_name.lower()) if tax_name else None,
+                            hsn_code=hsn_code,
+                            item_code=item_code,
                             is_active=True
                         )
                         db.session.add(product)
@@ -290,12 +294,12 @@ def download_overrides_template():
     """Provides a CSV template for bulk override uploads."""
     columns = [
         'sku', 'display_name', 'buy_price', 'sell_price', 'mrp_price',
-        'category_name', 'uom_name', 'tax_name', 'is_active'
+        'category_name', 'uom_name', 'tax_name', 'hsn_code', 'item_code', 'is_active'
     ]
     
     example_data = [[
         'PROD-SKU-001', 'Agency Specific Name', 100.00, 150.00, 160.00,
-        'Electronics', 'Pieces', 'GST 18%', True
+        'Electronics', 'Pieces', 'GST 18%', '8517', 'ITEM001', True
     ]]
     
     df = pd.DataFrame(example_data, columns=columns)

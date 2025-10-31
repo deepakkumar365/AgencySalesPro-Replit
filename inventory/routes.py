@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import io
 from decimal import Decimal
-from app import db
+from extensions import db
 from models import (
     Product, Agency, Location, User, ProductAgency, Category,
     InventoryTransaction, Supplier, PurchaseOrder
@@ -58,10 +58,9 @@ def dashboard(current_agency_id=None):
     # Base query joining products, agency mappings, and the calculated stock
     query = db.session.query(
         ProductAgency.id,
+        ProductAgency.display_name,
         ProductAgency.buy_price,
         ProductAgency.agency_id,
-        # Add other ProductAgency columns if needed by the template
-        # For example: ProductAgency.display_name
         # We need the agency object itself for the template
         Agency,
         Product,
@@ -81,14 +80,22 @@ def dashboard(current_agency_id=None):
     total_inventory_value = Decimal(0)
 
     # The query now returns a tuple with the columns we selected
-    for pa_id, pa_buy_price, agency_id, agency, product, stock_quantity in results:
+    for pa_id, pa_display_name, pa_buy_price, agency_id, agency, product, stock_quantity in results:
         stock = stock_quantity or 0 # Coalesce NULL to 0
         # NOTE: low_stock_threshold is not on the model. Using a hardcoded value of 10 for now.
         low_stock_threshold = 10 
+
+        # Create a dictionary to hold product info with the correct display name
+        product_info = {
+            'id': product.id,
+            'name': pa_display_name or product.name,
+            'sku': product.sku,
+            'stock_quantity': stock
+        }
         if stock <= 0:
-            out_of_stock_products.append(product)
+            out_of_stock_products.append(product_info)
         elif stock <= low_stock_threshold:
-            low_stock_products.append(product)
+            low_stock_products.append(product_info)
         
         total_inventory_value += (pa_buy_price or product.buy_price or 0) * stock
 
@@ -153,13 +160,14 @@ def stock_levels(current_agency_id=None):
     # Base query joining products with their calculated stock
     query = db.session.query(
         Product,
-        func.coalesce(stock_subquery.c.stock_quantity, 0).label('current_stock')
-    ).outerjoin(stock_subquery, Product.id == stock_subquery.c.product_id)
+        func.coalesce(stock_subquery.c.stock_quantity, 0).label('current_stock'),
+        ProductAgency
+    ).outerjoin(stock_subquery, Product.id == stock_subquery.c.product_id)\
+     .join(ProductAgency, Product.id == ProductAgency.product_id)
 
     # Filter by agency for non-super-admins
     if user_role != 'super_admin':
-        query = query.join(ProductAgency, Product.id == ProductAgency.product_id)\
-            .filter(ProductAgency.agency_id == current_agency_id)
+        query = query.filter(ProductAgency.agency_id == current_agency_id)
 
     query = query.filter(Product.is_active == True)
 
@@ -167,11 +175,13 @@ def stock_levels(current_agency_id=None):
     if category:
         query = query.filter(Product.category_id == category)
     
+    from sqlalchemy import or_
     if search:
         query = query.filter(
             or_(
                 Product.name.ilike(f'%{search}%'),
-                Product.sku.ilike(f'%{search}%')
+                Product.sku.ilike(f'%{search}%'),
+                ProductAgency.display_name.ilike(f'%{search}%')
             )
         )
     
@@ -190,7 +200,7 @@ def stock_levels(current_agency_id=None):
 
         # When filtering, we query from the subquery, so we order by its columns
         # The columns of the subquery are named after the original query's columns
-        query = query.order_by(aliased_query.c.name)
+        query = query.order_by(aliased_query.c.name) # Sorting by master name is OK for now
     else:
         # Order by the original Product.name if no subquery was created
         query = query.order_by(Product.name)
@@ -376,14 +386,28 @@ def transaction_history(current_agency_id=None):
     
     # Get products for filter dropdown
     if user_role == 'super_admin':
-        products = Product.query.filter_by(is_active=True).all()
+        # For super admin, just show master names for simplicity in the filter
+        products_for_filter = [{
+            'id': p.id,
+            'display_name': f"{p.name} ({p.sku})"
+        } for p in Product.query.filter_by(is_active=True).order_by(Product.name).all()]
     else:
         from models import ProductAgency
-        products = db.session.query(Product).join(ProductAgency).filter(ProductAgency.agency_id == current_agency_id, Product.is_active == True).all()
+        # For agency users, show the agency-specific name
+        product_mappings = db.session.query(Product, ProductAgency).join(
+            ProductAgency, Product.id == ProductAgency.product_id
+        ).filter(
+            ProductAgency.agency_id == current_agency_id, Product.is_active == True
+        ).order_by(Product.name).all()
+        
+        products_for_filter = [{
+            'id': p.id,
+            'display_name': f"{pa.display_name or p.name} ({p.sku})"
+        } for p, pa in product_mappings]
     
     return render_template('inventory/transactions.html',
                          transactions=transactions,
-                         products=products,
+                         products_for_filter=products_for_filter,
                          current_filters={
                              'product_id': product_id,
                              'transaction_type': transaction_type,
@@ -678,7 +702,8 @@ def reports(current_agency_id=None):
         product_id = transaction.product_id
         if product_id not in product_movements:
             product_movements[product_id] = {
-                'product': transaction.product,
+                'product_name': transaction.product.get_display_name_for_agency(transaction.agency_id),
+                'product_sku': transaction.product.sku,
                 'total_movement': 0
             }
         product_movements[product_id]['total_movement'] += abs(transaction.quantity_change)
@@ -756,7 +781,11 @@ def export_inventory_report(current_agency_id=None):
     product_movements = {}
     for tx in period_transactions:
         if tx.product_id not in product_movements:
-            product_movements[tx.product_id] = {'SKU': tx.product.sku, 'Product Name': tx.product.name, 'Total Movement (Units)': 0}
+            product_movements[tx.product_id] = {
+                'SKU': tx.product.sku, 
+                'Product Name': tx.product.get_display_name_for_agency(tx.agency_id), 
+                'Total Movement (Units)': 0
+            }
         product_movements[tx.product_id]['Total Movement (Units)'] += abs(tx.quantity_change)
     
     top_products_list = sorted(product_movements.values(), key=lambda x: x['Total Movement (Units)'], reverse=True)
@@ -912,7 +941,7 @@ def download_current_stock(current_agency_id=None):
     # Base query
     query = db.session.query(
         Product.sku,
-        Product.name,
+        ProductAgency.display_name,
         Category.name.label('category'),
         Agency.code.label('agency_code'),
         func.coalesce(stock_subquery.c.current_stock, 0).label('current_stock')
@@ -921,7 +950,8 @@ def download_current_stock(current_agency_id=None):
      .join(Agency, ProductAgency.agency_id == Agency.id)\
      .outerjoin(Category, Product.category_id == Category.id)\
      .outerjoin(stock_subquery, Product.id == stock_subquery.c.product_id)\
-     .filter(Product.is_active == True, ProductAgency.is_active == True)
+     .filter(Product.is_active == True, ProductAgency.is_active == True)\
+     .add_entity(Product) # Add the full product object to get the fallback name
 
     if user_role != 'super_admin':
         query = query.filter(ProductAgency.agency_id == current_agency_id)
@@ -932,10 +962,10 @@ def download_current_stock(current_agency_id=None):
     data = []
     if user_role == 'super_admin':
         columns = ['sku', 'product_name', 'category', 'agency_code', 'current_stock', 'quantity_change', 'reason', 'notes']
-        for row in results:
+        for row in results: # row is now (sku, display_name, category, agency_code, current_stock, Product)
             data.append({
                 'sku': row.sku,
-                'product_name': row.name,
+                'product_name': row.display_name or row.Product.name,
                 'category': row.category,
                 'agency_code': row.agency_code,
                 'current_stock': row.current_stock,
@@ -945,10 +975,10 @@ def download_current_stock(current_agency_id=None):
             })
     else:
         columns = ['sku', 'product_name', 'category', 'current_stock', 'quantity_change', 'reason', 'notes']
-        for row in results:
+        for row in results: # row is now (sku, display_name, category, agency_code, current_stock, Product)
             data.append({
                 'sku': row.sku,
-                'product_name': row.name,
+                'product_name': row.display_name or row.Product.name,
                 'category': row.category,
                 'current_stock': row.current_stock,
                 'quantity_change': 0,

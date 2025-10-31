@@ -1,16 +1,14 @@
 import os
 import logging
 import json
-from flask import Flask
+from flask import Flask, url_for
 from markupsafe import escape, Markup
 from dotenv import load_dotenv
-from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager
-from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.engine import Row
 from werkzeug.middleware.proxy_fix import ProxyFix
 from datetime import timedelta, datetime, date
 from decimal import Decimal
+from extensions import db, jwt
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -26,11 +24,24 @@ class CustomJSONEncoder(json.JSONEncoder):
             return dict(obj._mapping)
         return super(CustomJSONEncoder, self).default(obj)
 
-class Base(DeclarativeBase):
-    pass
-
-db = SQLAlchemy(model_class=Base)
-jwt = JWTManager()
+# Helper function to get dashboard URL based on user role
+def get_dashboard_url(role):
+    """
+    Returns the appropriate dashboard URL based on the user's role.
+    
+    Args:
+        role: The user's role (super_admin, agency_manager, agency_admin, customer, etc.)
+    
+    Returns:
+        The endpoint name for the user's dashboard
+    """
+    role_dashboard_map = {
+        'super_admin': 'super_admin.dashboard',
+        'agency_manager': 'agency_manager.dashboard',
+        'agency_admin': 'inventory.dashboard',
+        'customer': 'customer.customer_dashboard',
+    }
+    return role_dashboard_map.get(role, 'index')
 
 def create_app():
     # Load environment variables from .env file
@@ -75,6 +86,17 @@ def create_app():
             return Markup(str(escape(s)).replace('\n', '<br>\n'))
         return ''
     app.jinja_env.filters['nl2br'] = nl2br_filter
+    
+    # Add functions to Jinja2 globals
+    app.jinja_env.globals['abs'] = abs
+    app.jinja_env.globals['get_dashboard_url'] = get_dashboard_url
+
+    # Register the context processor to inject permissions into templates
+    from auth.utils import inject_permissions
+
+    @app.context_processor
+    def _inject_permissions_context():
+        return inject_permissions()
 
     db.init_app(app)
     jwt.init_app(app)
@@ -90,7 +112,6 @@ def create_app():
         from purchase_order import purchase_order_bp
         from super_admin import super_admin_bp
         from pos import pos_bp
-        from billing import billing_bp
         from inventory import inventory_bp
         from reports import reports_bp
         from agency_manager import agency_manager_bp
@@ -100,6 +121,7 @@ def create_app():
         from job_accounting import job_accounting_bp
         from product_overrides import overrides_bp
         from finance import finance_bp
+        from forecasting import forecasting_bp
 
         app.register_blueprint(auth_bp, url_prefix='/auth')
         app.register_blueprint(agency_bp, url_prefix='/agency')
@@ -111,7 +133,6 @@ def create_app():
         app.register_blueprint(purchase_order_bp, url_prefix='/purchase-order')
         app.register_blueprint(super_admin_bp, url_prefix='/super_admin')
         app.register_blueprint(pos_bp, url_prefix='/pos')
-        app.register_blueprint(billing_bp, url_prefix='/billing')
         app.register_blueprint(inventory_bp, url_prefix='/inventory')
         app.register_blueprint(reports_bp, url_prefix='/reports')
         app.register_blueprint(agency_manager_bp, url_prefix='/agency_manager')
@@ -119,8 +140,9 @@ def create_app():
         app.register_blueprint(masters_bp, url_prefix='/masters')
         app.register_blueprint(subscription_bp, url_prefix='/subscription')
         app.register_blueprint(job_accounting_bp, url_prefix='/job-accounting')
-        app.register_blueprint(finance_bp, url_prefix='/finance')
+        app.register_blueprint(finance_bp, url_prefix='/billing') # Changed from /finance to /billing
         app.register_blueprint(overrides_bp)
+        app.register_blueprint(forecasting_bp, url_prefix='/forecasting')
 
     register_blueprints(app)
     
@@ -173,6 +195,58 @@ def create_app():
             logging.info("App not installed. Running setup...")
             run_setup()
 
+    # Register CLI commands
+    @app.cli.command('resync-product-names')
+    def resync_product_names_command():
+        """Resync all item product names across all tables to respect current ProductAgency overrides.
+        
+        This command updates product names for:
+        - Order Items
+        - Purchase Order Items  
+        - Invoice Items
+        - Delivery Challan Items
+        """
+        try:
+            from utils.maintenance import resync_product_names
+            from flask import current_app
+            
+            with app.app_context():
+                logging.info('Starting comprehensive product names resync across all item tables...')
+                stats = resync_product_names()
+                
+                # Log results
+                logging.info(f'Resync completed:')
+                logging.info(f'  - Order Items: {stats["order_items_updated"]} updated')
+                logging.info(f'  - Purchase Order Items: {stats["po_items_updated"]} updated')
+                logging.info(f'  - Invoice Items: {stats["invoice_items_updated"]} updated')
+                logging.info(f'  - Delivery Challan Items: {stats["challan_items_updated"]} updated')
+                logging.info(f'  - Total: {stats["total_updated"]} records updated')
+                
+                if stats['errors']:
+                    logging.warning(f'  - Errors: {len(stats["errors"])} error(s) occurred')
+                    for error in stats['errors']:
+                        logging.warning(f'    - {error}')
+                
+                # Console output
+                print(f'\n✓ Product names resync completed!')
+                print(f'  Order Items: {stats["order_items_updated"]} updated')
+                print(f'  Purchase Order Items: {stats["po_items_updated"]} updated')
+                print(f'  Invoice Items: {stats["invoice_items_updated"]} updated')
+                print(f'  Delivery Challan Items: {stats["challan_items_updated"]} updated')
+                print(f'  Total: {stats["total_updated"]} records updated\n')
+                
+                if stats['errors']:
+                    print(f'⚠ {len(stats["errors"])} error(s) occurred:')
+                    for error in stats['errors']:
+                        print(f'  - {error}')
+                    print()
+                
+        except Exception as e:
+            logging.error(f'Resync failed: {str(e)}')
+            print(f'\n✗ Error: {str(e)}\n')
+            return 1
+        return 0
+    
     return app
 
 app = create_app()

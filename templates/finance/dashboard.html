@@ -3,271 +3,218 @@
 {% block title %}Finance Dashboard - AgencySales Pro{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-chart-line me-2"></i>Finance Dashboard</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Finance Dashboard</h2>
+    
+    <!-- Agency Filter for Super Admin -->
+    {% if session.role == 'super_admin' and agencies %}
+    <div class="col-md-4">
+        <form method="GET" action="{{ url_for('reports.unified_dashboard') }}" id="agencyFilterForm">
+            <div class="input-group">
+                <select class="form-select" id="agency_id" name="agency_id">
+                    <option value="">All Agencies</option>
+                    {% for agency in agencies %}
+                    <option value="{{ agency.id }}" {% if agency.id == selected_agency_id %}selected{% endif %}>
+                        {{ agency.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <button class="btn btn-outline-secondary" type="submit"><i class="fas fa-filter"></i> Filter</button>
+            </div>
+        </form>
     </div>
+    {% endif %}
+</div>
 
-    <!-- Period Filter -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <form method="GET" action="{{ url_for('finance.dashboard') }}" class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Period</label>
-                    <select name="period" class="form-select" id="periodSelect" onchange="updateDateInput()">
-                        <option value="daily" {% if period == 'daily' %}selected{% endif %}>Daily</option>
-                        <option value="weekly" {% if period == 'weekly' %}selected{% endif %}>Weekly</option>
-                        <option value="monthly" {% if period == 'monthly' %}selected{% endif %}>Monthly</option>
-                        <option value="yearly" {% if period == 'yearly' %}selected{% endif %}>Yearly</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label" id="dateLabel">Select Date</label>
-                    <input type="date" name="date" class="form-control" value="{{ selected_date }}" id="dateInput">
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter me-1"></i>Apply Filter
-                    </button>
-                </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <div class="text-muted small">
-                        <i class="fas fa-calendar me-1"></i>
-                        Showing: {{ start_date.strftime('%d %b %Y') }} to {{ end_date.strftime('%d %b %Y') }}
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
+<p class="text-muted">Showing data from {{ start_date.strftime('%d %b %Y') }} to {{ end_date.strftime('%d %b %Y') }}</p>
 
-    <!-- Dashboard Tiles -->
-    <div class="row g-4 mb-4">
-        <!-- Total Payment -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-muted mb-2">
-                                <i class="fas fa-money-bill-wave text-danger me-2"></i>Total Payment
-                            </h6>
-                            <h3 class="mb-0 text-danger">₹{{ "{:,.2f}".format(total_payment) }}</h3>
-                            <small class="text-muted">For selected period</small>
-                        </div>
-                        <div class="bg-danger bg-opacity-10 p-3 rounded">
-                            <i class="fas fa-arrow-up fa-2x text-danger"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Total Receipt -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-muted mb-2">
-                                <i class="fas fa-receipt text-success me-2"></i>Total Receipt
-                            </h6>
-                            <h3 class="mb-0 text-success">₹{{ "{:,.2f}".format(total_receipt) }}</h3>
-                            <small class="text-muted">For selected period</small>
-                        </div>
-                        <div class="bg-success bg-opacity-10 p-3 rounded">
-                            <i class="fas fa-arrow-down fa-2x text-success"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Net Cash Flow -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-muted mb-2">
-                                <i class="fas fa-exchange-alt text-info me-2"></i>Net Cash Flow
-                            </h6>
-                            <h3 class="mb-0 {% if total_receipt - total_payment >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                ₹{{ "{:,.2f}".format(total_receipt - total_payment) }}
-                            </h3>
-                            <small class="text-muted">Receipt - Payment</small>
-                        </div>
-                        <div class="bg-info bg-opacity-10 p-3 rounded">
-                            <i class="fas fa-balance-scale fa-2x text-info"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pending Payment -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-muted mb-2">
-                                <i class="fas fa-clock text-warning me-2"></i>Pending Payment
-                            </h6>
-                            <h3 class="mb-0 text-warning">₹{{ "{:,.2f}".format(pending_payment) }}</h3>
-                            <small class="text-muted">Yet to be paid</small>
-                        </div>
-                        <div class="bg-warning bg-opacity-10 p-3 rounded">
-                            <i class="fas fa-hourglass-half fa-2x text-warning"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pending Receipt -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-muted mb-2">
-                                <i class="fas fa-clock text-primary me-2"></i>Pending Receipt
-                            </h6>
-                            <h3 class="mb-0 text-primary">₹{{ "{:,.2f}".format(pending_receipt) }}</h3>
-                            <small class="text-muted">Yet to be received</small>
-                        </div>
-                        <div class="bg-primary bg-opacity-10 p-3 rounded">
-                            <i class="fas fa-hourglass-half fa-2x text-primary"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Cash on Hand -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-muted mb-2">
-                                💰 Cash on Hand
-                            </h6>
-                            <h3 class="mb-0 {% if cash_on_hand >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                ₹{{ "{:,.2f}".format(cash_on_hand) }}
-                            </h3>
-                            <small class="text-muted">Available cash balance</small>
-                        </div>
-                        <div class="bg-secondary bg-opacity-10 p-3 rounded">
-                            <i class="fas fa-wallet fa-2x text-secondary"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Cash in Bank -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-muted mb-2">
-                                🏦 Cash in Bank
-                            </h6>
-                            <h3 class="mb-0 {% if cash_in_bank >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                ₹{{ "{:,.2f}".format(cash_in_bank) }}
-                            </h3>
-                            <small class="text-muted">Bank account balance</small>
-                        </div>
-                        <div class="bg-info bg-opacity-10 p-3 rounded">
-                            <i class="fas fa-university fa-2x text-info"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Total Available -->
-        <div class="col-md-6 col-lg-4">
-            <div class="card border-0 shadow-sm h-100 border-primary">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-muted mb-2">
-                                <i class="fas fa-coins text-success me-2"></i>Total Available
-                            </h6>
-                            <h3 class="mb-0 text-success">₹{{ "{:,.2f}".format(cash_on_hand + cash_in_bank) }}</h3>
-                            <small class="text-muted">Cash + Bank</small>
-                        </div>
-                        <div class="bg-success bg-opacity-10 p-3 rounded">
-                            <i class="fas fa-piggy-bank fa-2x text-success"></i>
-                        </div>
-                    </div>
-                </div>
+<!-- Key Performance Indicators (KPIs) -->
+<div class="row g-4 mb-4">
+    <!-- Sales Stats -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 text-bg-primary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-shopping-cart me-2"></i>Total Revenue</h5>
+                <p class="card-text fs-4 fw-bold">₹{{ "{:,.2f}".format(sales_stats.total_revenue if sales_stats else 0) }}</p>
+                <small>{{ sales_stats.total_orders if sales_stats else 0 }} orders</small>
             </div>
         </div>
     </div>
-
-    <!-- Quick Actions -->
-    <div class="row g-3">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body text-center">
-                    <i class="fas fa-money-bill-wave fa-3x text-danger mb-3"></i>
-                    <h5>Record Payment</h5>
-                    <p class="text-muted">Create a new payment entry</p>
-                    <a href="{{ url_for('finance.create_payment') }}" class="btn btn-danger">
-                        <i class="fas fa-plus me-1"></i>New Payment
-                    </a>
-                </div>
+    <!-- Billing Stats -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 text-bg-success">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-file-invoice-dollar me-2"></i>Total Collected</h5>
+                <p class="card-text fs-4 fw-bold">₹{{ "{:,.2f}".format(billing_stats.total_collected if billing_stats else 0) }}</p>
+                <small>{{ "{:,.1f}".format(billing_stats.collection_rate if billing_stats else 0) }}% collection rate</small>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body text-center">
-                    <i class="fas fa-receipt fa-3x text-success mb-3"></i>
-                    <h5>Record Receipt</h5>
-                    <p class="text-muted">Create a new receipt entry</p>
-                    <a href="{{ url_for('finance.create_receipt') }}" class="btn btn-success">
-                        <i class="fas fa-plus me-1"></i>New Receipt
-                    </a>
-                </div>
+    </div>
+    <!-- Pending Payments -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 text-bg-warning">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-hourglass-half me-2"></i>Pending Payments</h5>
+                <p class="card-text fs-4 fw-bold">₹{{ "{:,.2f}".format(pending_payment if pending_payment else 0) }}</p>
+                <small>From {{ billing_stats.total_invoices if billing_stats else 0 }} invoices</small>
+            </div>
+        </div>
+    </div>
+    <!-- Inventory Stats -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card h-100 text-bg-info">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-boxes me-2"></i>Active Products</h5>
+                <p class="card-text fs-4 fw-bold">{{ inventory_stats.total_products if inventory_stats else 0 }}</p>
+                <small>Across all categories</small>
             </div>
         </div>
     </div>
 </div>
 
-<script>
-function updateDateInput() {
-    const period = document.getElementById('periodSelect').value;
-    const dateLabel = document.getElementById('dateLabel');
-    const dateInput = document.getElementById('dateInput');
-    
-    switch(period) {
-        case 'daily':
-            dateLabel.textContent = 'Select Date';
-            dateInput.type = 'date';
-            break;
-        case 'weekly':
-            dateLabel.textContent = 'Select Week Start';
-            dateInput.type = 'date';
-            break;
-        case 'monthly':
-            dateLabel.textContent = 'Select Month';
-            dateInput.type = 'month';
-            break;
-        case 'yearly':
-            dateLabel.textContent = 'Select Year';
-            dateInput.type = 'number';
-            dateInput.min = '2000';
-            dateInput.max = '2100';
-            dateInput.value = new Date().getFullYear();
-            break;
-    }
-}
+<!-- Charts -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Daily Sales Trend (Last 7 Days)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="dailySalesChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', updateDateInput);
+<!-- Recent Activity & Top Products -->
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Activity</h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="nav nav-tabs px-3" id="activityTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="recent-orders-tab" data-bs-toggle="tab" data-bs-target="#recent-orders" type="button" role="tab">Recent Orders</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="recent-payments-tab" data-bs-toggle="tab" data-bs-target="#recent-payments" type="button" role="tab">Recent Payments</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="activityTabContent">
+                    <div class="tab-pane fade show active" id="recent-orders" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <tbody>
+                                    {% for order in recent_orders or [] %}
+                                    <tr>
+                                        <td><a href="{{ url_for('order.view_order', order_id=order.id) }}">{{ order.order_number }}</a></td>
+                                        <td>{{ order.customer.name }}</td>
+                                        <td class="text-end">₹{{ "{:,.2f}".format(order.total_amount) }}</td>
+                                        <td class="text-end"><span class="badge bg-secondary">{{ order.status }}</span></td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="4" class="text-center p-3">No recent orders.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="recent-payments" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <tbody>
+                                    {% for payment in recent_payments or [] %}
+                                    <tr>
+                                        <td>{{ payment.invoice.invoice_number if payment.invoice else 'N/A' }}</td>
+                                        <td>{{ payment.payment_date.strftime('%d %b %Y') }}</td>
+                                        <td class="text-end">₹{{ "{:,.2f}".format(payment.amount) }}</td>
+                                        <td class="text-end"><span class="badge bg-success">{{ payment.payment_method }}</span></td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="4" class="text-center p-3">No recent payments.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-star me-2"></i>Top Selling Products</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    {% for item in top_products or [] %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ item.product_name or item.product.name }}
+                        <span class="badge bg-primary rounded-pill">₹{{ "{:,.0f}".format(item.revenue) }}</span>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-center">No product sales in this period.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Daily Sales Chart
+    const dailySalesCtx = document.getElementById('dailySalesChart')?.getContext('2d');
+    const dailySalesData = {{ daily_sales | tojson | safe if daily_sales else '[]' }};
+    
+    new Chart(dailySalesCtx, {
+        type: 'line',
+        data: {
+            labels: dailySalesData.map(d => new Date(d.date).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })),
+            datasets: [{
+                label: 'Total Sales',
+                data: dailySalesData.map(d => d.total_sales),
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value, index, values) {
+                            return '₹' + value.toLocaleString();
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
 </script>
 {% endblock %}

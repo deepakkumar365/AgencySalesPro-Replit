@@ -166,7 +166,7 @@
                             {% for transaction in recent_transactions %}
                             <tr>
                                 <td>
-                                    <div class="fw-bold">{{ transaction.product.name }}</div>
+                                    <div class="fw-bold">{{ transaction.product.get_display_name_for_agency(transaction.agency_id) }}</div>
                                     <small>{{ transaction.product.sku }}</small>
                                 </td>
                                 <td>
@@ -225,7 +225,7 @@
                         <div class="text-end">
                             <span class="badge bg-warning">{{ product.stock_quantity }}</span>
                             <div>
-                                <a href="{{ url_for('inventory.adjust_stock', product_id=product.id) }}" 
+                                <a href="{{ url_for('inventory.adjust_stock', product_id=product.id) }}"
                                    class="btn btn-sm btn-outline-primary mt-1">
                                     <i class="fas fa-edit"></i>
                                 </a>
@@ -260,7 +260,7 @@
                         <div>
                             <span class="badge bg-danger">0</span>
                             <div>
-                                <a href="{{ url_for('inventory.adjust_stock', product_id=product.id) }}" 
+                                <a href="{{ url_for('inventory.adjust_stock', product_id=product.id) }}"
                                    class="btn btn-sm btn-outline-primary mt-1">
                                     <i class="fas fa-plus"></i>
                                 </a>

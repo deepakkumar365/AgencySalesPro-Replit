@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, session, make_response, jsonify
 from werkzeug.utils import secure_filename
 import csv, io, os
-from app import db
+from extensions import db
 from models import Location, Agency
 from location import location_bp
 from auth.utils import login_required, role_required, permission_required

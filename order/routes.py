@@ -2,8 +2,8 @@ from flask import render_template, request, redirect, url_for, flash, session, s
 from datetime import datetime
 import uuid
 from sqlalchemy import or_, and_, func, union_all
-from app import db
-from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode, ProductAgency, InventoryTransaction, Job
+from extensions import db
+from models import Order, OrderItem, Customer, Product, Location, User, Agency, IndianTaxCode, ProductAgency, InventoryTransaction, Job, DeliveryChallan
 from order import order_bp
 from auth.utils import login_required, permission_required, order_owner_required
 from utils.decorators import log_activity
@@ -181,6 +181,12 @@ def create_order():
             items = data.get('items', [])
             tax_amount = float(data.get('tax', 0))
             discount_amount = float(data.get('discount', 0))
+            
+            # POS-specific fields (Tickets #20, #23, #24)
+            payment_mode = data.get('payment_mode', 'cash')
+            order_type = data.get('order_type', 'local')
+            discount_percentage = float(data.get('discount_percentage', 0))
+            handling_charges = float(data.get('handling_charges', 0))
 
             if not customer_id or not items:
                 return jsonify({'error': 'Customer and at least one item are required.'}), 400
@@ -202,9 +208,13 @@ def create_order():
                 status='pending',
                 payment_status='pending',
                 notes=data.get('notes'),
-                order_date=datetime.utcnow(),
+                order_date=datetime.strptime(data['order_date'], '%Y-%m-%d') if data.get('order_date') else datetime.utcnow(),
                 tax=tax_amount,
-                discount=discount_amount
+                discount=discount_amount,
+                payment_mode=payment_mode,
+                order_type=order_type,
+                discount_percentage=discount_percentage,
+                handling_charges=handling_charges
             )
             if data.get('delivery_date'):
                 order.delivery_date = datetime.strptime(data['delivery_date'], '%Y-%m-%d')
@@ -249,7 +259,8 @@ def create_order():
                     tax_rate=0,
                     tax_amount=0,
                     line_total=line_total,
-                    total_price=line_total  # Backward compatibility
+                    total_price=line_total,  # Backward compatibility
+                    product_name=product.get_display_name_for_agency(order.agency_id)  # Store effective product name respecting agency-specific overrides
                 )
                 db.session.add(order_item)
                 
@@ -257,7 +268,8 @@ def create_order():
 
             order.subtotal_amount = subtotal
             order.total_tax_amount = tax_amount # From payload
-            order.total_amount = subtotal + tax_amount - discount_amount
+            # Calculate total: subtotal + tax - discount + handling_charges
+            order.total_amount = subtotal + tax_amount - discount_amount + handling_charges
             order.total_items_count = len(items)
             
             # Legacy fields (optional, can be removed if not needed elsewhere)
@@ -702,35 +714,6 @@ def update_order_status(order_id):
     
     return redirect(url_for('order.view_order', order_id=order_id))
 
-@order_bp.route('/<int:order_id>/delete', methods=['POST'])
-@login_required
-@log_activity('delete_order')
-def delete_order(order_id):
-    order = Order.query.get_or_404(order_id)
-    
-    user_role = session.get('role')
-    current_agency_id = session.get('agency_id')
-    user_id = session.get('user_id')
-    
-    # Check permissions
-    if user_role == 'salesperson' and order.salesperson_id != user_id:
-        flash('You can only delete your own orders', 'error')
-        return redirect(url_for('order.list_orders'))
-    elif user_role not in ['super_admin', 'agency_admin'] and order.agency_id != current_agency_id:
-        flash('You do not have permission to delete orders', 'error')
-        return redirect(url_for('order.list_orders'))
-    
-    # Can only delete pending or cancelled orders
-    if order.status not in ['pending', 'cancelled']:
-        flash('Can only delete pending or cancelled orders', 'error')
-        return redirect(url_for('order.view_order', order_id=order_id))
-    
-    db.session.delete(order)
-    db.session.commit()
-    
-    flash('Order deleted successfully!', 'success')
-    return redirect(url_for('order.list_orders'))
-
 @order_bp.route('/export')
 @login_required
 @log_activity('export_orders')
@@ -915,3 +898,251 @@ def search_products():
             + f" - ₹{safe_float(pa.sell_price if pa and pa.sell_price is not None else p.sell_price, 0.0)}"
         )
     } for (p, pa) in results])
+
+
+@order_bp.route('/<int:order_id>/create-delivery-challan', methods=['GET', 'POST'])
+@login_required
+@permission_required(roles=['agency_admin', 'agency_manager'])
+@log_activity('create_delivery_challan')
+def create_delivery_challan(order_id):
+    """Create a delivery challan for an order"""
+    order = Order.query.get_or_404(order_id)
+    
+    user_role = session.get('role')
+    current_agency_id = session.get('agency_id')
+    user_id = session.get('user_id')
+    
+    # Check permissions
+    if user_role not in ['super_admin', 'agency_admin', 'agency_manager'] or (user_role != 'super_admin' and order.agency_id != current_agency_id):
+        flash('You do not have permission to create delivery challan for this order', 'error')
+        return redirect(url_for('order.view_order', order_id=order_id))
+    
+    # Check if order status allows delivery challan creation
+    if order.status not in ['confirmed', 'shipped']:
+        flash('Delivery challan can only be created for confirmed or shipped orders', 'error')
+        return redirect(url_for('order.view_order', order_id=order_id))
+    
+    if request.method == 'POST':
+        try:
+            # Generate challan number
+            last_challan = DeliveryChallan.query.order_by(DeliveryChallan.id.desc()).first()
+            challan_number = f"DC-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:8].upper()}"
+            
+            # Get form data
+            delivery_date_str = request.form.get('delivery_date')
+            delivery_date = datetime.strptime(delivery_date_str, '%Y-%m-%d') if delivery_date_str else None
+            
+            # Create delivery challan
+            challan = DeliveryChallan(
+                challan_number=challan_number,
+                order_id=order.id,
+                agency_id=order.agency_id,
+                customer_id=order.customer_id,
+                delivery_date=delivery_date,
+                delivery_address=request.form.get('delivery_address'),
+                transporter_name=request.form.get('transporter_name'),
+                vehicle_number=request.form.get('vehicle_number'),
+                lr_number=request.form.get('lr_number'),
+                e_way_bill_number=request.form.get('e_way_bill_number'),
+                notes=request.form.get('notes'),
+                status='pending',
+                created_by=user_id
+            )
+            
+            db.session.add(challan)
+            
+            # Update order status to shipped if it was confirmed
+            if order.status == 'confirmed':
+                order.status = 'shipped'
+            
+            db.session.commit()
+            
+            flash(f'Delivery Challan {challan_number} created successfully!', 'success')
+            return redirect(url_for('order.view_delivery_challan', challan_id=challan.id))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'An error occurred while creating delivery challan: {str(e)}', 'danger')
+            return redirect(url_for('order.view_order', order_id=order_id))
+    
+    # GET request - show form
+    return render_template('order/delivery_challan_form.html', order=order)
+
+
+@order_bp.route('/delivery-challan/<int:challan_id>')
+@login_required
+def view_delivery_challan(challan_id):
+    """View delivery challan details"""
+    challan = DeliveryChallan.query.get_or_404(challan_id)
+    
+    user_role = session.get('role')
+    current_agency_id = session.get('agency_id')
+    
+    # Check permissions
+    if user_role != 'super_admin' and challan.agency_id != current_agency_id:
+        flash('You do not have permission to view this delivery challan', 'error')
+        return redirect(url_for('order.list_orders'))
+    
+    return render_template('order/delivery_challan_view.html', challan=challan)
+
+
+@order_bp.route('/delivery-challan/<int:challan_id>/update-status', methods=['POST'])
+@login_required
+@permission_required(roles=['agency_admin', 'agency_manager'])
+@log_activity('update_delivery_challan_status')
+def update_delivery_challan_status(challan_id):
+    """Update delivery challan status"""
+    challan = DeliveryChallan.query.get_or_404(challan_id)
+    
+    user_role = session.get('role')
+    current_agency_id = session.get('agency_id')
+    
+    # Check permissions
+    if user_role not in ['super_admin', 'agency_admin', 'agency_manager'] or (user_role != 'super_admin' and challan.agency_id != current_agency_id):
+        flash('You do not have permission to update this delivery challan', 'error')
+        return redirect(url_for('order.view_delivery_challan', challan_id=challan_id))
+    
+    new_status = request.form.get('status')
+    
+    if new_status not in ['pending', 'in_transit', 'delivered', 'cancelled']:
+        flash('Invalid status', 'error')
+        return redirect(url_for('order.view_delivery_challan', challan_id=challan_id))
+    
+    try:
+        challan.status = new_status
+        
+        # Update order status based on challan status
+        if new_status == 'delivered':
+            challan.order.status = 'delivered'
+        elif new_status == 'in_transit':
+            challan.order.status = 'shipped'
+        
+        db.session.commit()
+        flash(f'Delivery Challan status updated to {new_status.replace("_", " ").title()}', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'An error occurred while updating status: {str(e)}', 'danger')
+    
+    return redirect(url_for('order.view_delivery_challan', challan_id=challan_id))
+
+
+@order_bp.route('/bulk-upload', methods=['GET', 'POST'])
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@log_activity('bulk_order_upload')
+def bulk_order_upload():
+    """Bulk order upload page for Sales Orders"""
+    if request.method == 'POST':
+        # Check if file was uploaded
+        if 'file' not in request.files:
+            flash('No file uploaded', 'danger')
+            return redirect(request.url)
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            flash('No file selected', 'danger')
+            return redirect(request.url)
+        
+        # Check file extension
+        if not (file.filename.lower().endswith('.xlsx') or file.filename.lower().endswith('.xls')):
+            flash('Invalid file format. Please upload an Excel file (.xlsx or .xls)', 'danger')
+            return redirect(request.url)
+        
+        try:
+            from utils.excel_utils import process_bulk_orders
+            
+            user_role = session.get('role')
+            user_id = session.get('user_id')
+            agency_id = session.get('agency_id')
+            
+            # Process the file
+            results = process_bulk_orders(file, 'sale', agency_id, user_id, user_role)
+            
+            # Display results
+            success_count = len(results['success'])
+            error_count = len(results['errors'])
+            skipped_count = results['skipped']
+            
+            if success_count > 0:
+                flash(f'Successfully created {success_count} order(s)', 'success')
+            
+            if error_count > 0:
+                flash(f'{error_count} error(s) occurred during processing', 'warning')
+            
+            if skipped_count > 0:
+                flash(f'{skipped_count} blank row(s) skipped', 'info')
+            
+            # Store results in session for display
+            session['bulk_upload_results'] = results
+            
+            return redirect(url_for('order.bulk_order_results'))
+            
+        except Exception as e:
+            flash(f'An error occurred while processing the file: {str(e)}', 'danger')
+            return redirect(request.url)
+    
+    return render_template('order/bulk_upload.html', order_type='sale')
+
+
+@order_bp.route('/bulk-upload/results')
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def bulk_order_results():
+    """Display bulk order upload results"""
+    results = session.pop('bulk_upload_results', None)
+    
+    if not results:
+        flash('No upload results found', 'warning')
+        return redirect(url_for('order.list_orders'))
+    
+    return render_template('order/bulk_upload_results.html', results=results, order_type='sale')
+
+
+@order_bp.route('/bulk-upload/download-template')
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def download_bulk_order_template():
+    """Download Excel template for bulk order upload"""
+    from utils.excel_utils import generate_bulk_order_template
+    
+    output = generate_bulk_order_template('sale')
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'bulk_sales_order_template_{datetime.now().strftime("%Y%m%d")}.xlsx'
+    )
+
+
+# ==================== DELETE ROUTES ====================
+@order_bp.route('/<int:order_id>/delete', methods=['POST'])
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@log_activity('delete_order')
+def delete_order(order_id, current_agency_id=None):
+    """Delete sales order (only pending/cancelled orders)"""
+    order = Order.query.get_or_404(order_id)
+    user_role = session.get('role')
+    
+    # Permission check
+    if user_role != 'super_admin' and order.agency_id != current_agency_id:
+        flash("You do not have permission to delete this order.", "danger")
+        return redirect(url_for('order.list_orders'))
+    
+    # Only allow deletion of pending or cancelled orders
+    if order.status not in ['pending', 'cancelled']:
+        flash(f"Cannot delete {order.status} orders. Only pending or cancelled orders can be deleted.", "warning")
+        return redirect(url_for('order.view_order', order_id=order_id))
+    
+    try:
+        order_number = order.order_number
+        db.session.delete(order)
+        db.session.commit()
+        flash(f"Order {order_number} deleted successfully!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error deleting order: {str(e)}", "danger")
+    
+    return redirect(url_for('order.list_orders'))

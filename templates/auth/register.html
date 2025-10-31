@@ -73,6 +73,7 @@
                         <label for="role" class="form-label">Role</label>
                         <select class="form-select" id="role" name="role" required>
                             {% if session.role == 'super_admin' %}
+                            <option value="support">Support</option>
                             <option value="agency_admin">Agency Admin</option>
                             <option value="agency_manager">Agency Manager</option>
                             <option value="staff">Staff</option>

@@ -2,21 +2,21 @@ from flask import render_template, request, redirect, url_for, flash, session
 from sqlalchemy import func
 
 from werkzeug.security import generate_password_hash
-from app import db
-from models import Agency, User, Order, ActivityLog
-from auth.utils import role_required
+from extensions import db
+from models import Agency, User, ActivityLog
+from auth.utils import permission_required
 from . import agency_manager_bp
 
 
 @agency_manager_bp.route('/dashboard')
-@role_required('agency_manager')
+@permission_required(roles=['agency_manager'])
 def dashboard():
     """Redirects agency managers to the main dashboard, which will show their scoped data."""
     return redirect(url_for('super_admin.dashboard'))
 
 
 @agency_manager_bp.route('/users')
-@role_required('agency_manager')
+@permission_required(roles=['agency_manager'])
 def manage_users():
     user_id = session.get('user_id')
     agency_filter = request.args.get('agency_filter', type=int)
@@ -43,7 +43,7 @@ def manage_users():
 
 
 @agency_manager_bp.route('/users/create', methods=['GET', 'POST'])
-@role_required('agency_manager')
+@permission_required(roles=['agency_manager'])
 def create_user():
     manager_id = session.get('user_id')
     managed_agencies = Agency.query.filter_by(agency_manager_id=manager_id).all()
@@ -89,7 +89,7 @@ def create_user():
     return render_template('super_admin/edit_user.html', agencies=managed_agencies, roles=editable_roles, is_new=True)
 
 @agency_manager_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
-@role_required('agency_manager')
+@permission_required(roles=['agency_manager'])
 def edit_user(user_id):
     # Ensure the user being edited belongs to an agency managed by the current manager
     manager_id = session.get('user_id')
@@ -132,7 +132,7 @@ def edit_user(user_id):
 
 
 @agency_manager_bp.route('/activities')
-@role_required('agency_manager')
+@permission_required(roles=['agency_manager'])
 def view_activities():
     # Scoped to activities within managed agencies
     manager_id = session.get('user_id')

@@ -1,6 +1,6 @@
 import re
 from typing import Optional
-from app import db
+from extensions import db
 from models import Product, Category, UOM
 
 # Helpers to normalize strings to 3-4 letter codes
