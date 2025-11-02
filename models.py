@@ -137,6 +137,7 @@ class MenuItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     parent_id = db.Column(db.Integer, db.ForeignKey('ASP_menu_items.id', ondelete='CASCADE'))
     name = db.Column(db.String(100), nullable=False)
+    display_name = db.Column(db.String(100))  # Optional display name for distinguishing menus with same name
     url = db.Column(db.String(255))
     icon = db.Column(db.String(50))
     order_index = db.Column(db.Integer, default=0)
@@ -147,9 +148,28 @@ class MenuItem(db.Model):
 
     # Relationships
     children = db.relationship('MenuItem', backref=db.backref('parent', remote_side=[id]), lazy='dynamic')
+    role_mappings = db.relationship('MenuRole', backref='menu_item', lazy=True, cascade='all, delete-orphan')
 
     def __repr__(self):
         return f"<MenuItem {self.name}>"
+
+class MenuRole(db.Model):
+    """Mapping table for Menu-Role many-to-many relationship"""
+    __tablename__ = 'ASP_menu_roles'
+    id = db.Column(db.Integer, primary_key=True)
+    menu_id = db.Column(db.Integer, db.ForeignKey('ASP_menu_items.id', ondelete='CASCADE'), nullable=False, index=True)
+    role_id = db.Column(db.Integer, db.ForeignKey('ASP_roles.id', ondelete='CASCADE'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    role = db.relationship('Role', backref='menu_mappings')
+
+    __table_args__ = (
+        db.UniqueConstraint('menu_id', 'role_id', name='uq_menu_role'),
+    )
+
+    def __repr__(self):
+        return f"<MenuRole menu={self.menu_id} role={self.role_id}>"
 
 class Location(db.Model):
     __tablename__ = 'ASP_locations'

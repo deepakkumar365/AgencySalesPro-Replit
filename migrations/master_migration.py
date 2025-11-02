@@ -161,9 +161,10 @@ class SchemaMigrations:
                 logger.info("  Creating ASP_menu_items table...")
                 db.session.execute(db.text("""
                     CREATE TABLE "ASP_menu_items" (
-                        id SERIAL PRIMARY KEY,
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
                         parent_id INTEGER REFERENCES "ASP_menu_items"(id) ON DELETE CASCADE,
                         name VARCHAR(100) NOT NULL,
+                        display_name VARCHAR(100),
                         url VARCHAR(255),
                         icon VARCHAR(50),
                         order_index INTEGER DEFAULT 0,
@@ -198,6 +199,38 @@ class SchemaMigrations:
             """))
             
             logger.info("  ✓ role_id column and index created")
+    
+    @staticmethod
+    def add_display_name_column_to_menu_items():
+        """Add display_name column to ASP_menu_items if it doesn't exist"""
+        logger.info("▶ Adding display_name column to ASP_menu_items...")
+        
+        # Check if table exists first
+        if not SchemaMigrations.check_table_exists('ASP_menu_items'):
+            logger.info("  ⊘ ASP_menu_items table does not exist, skipping")
+            return
+        
+        # Check if column already exists
+        if SchemaMigrations.check_column_exists('ASP_menu_items', 'display_name'):
+            logger.info("  ⊘ display_name column already exists in ASP_menu_items")
+            return
+        
+        with migration_transaction():
+            logger.info("  Adding display_name column...")
+            db.session.execute(db.text("""
+                ALTER TABLE "ASP_menu_items" 
+                ADD COLUMN display_name VARCHAR(100)
+            """))
+            
+            logger.info("  Creating index for display_name...")
+            try:
+                db.session.execute(db.text("""
+                    CREATE INDEX idx_menu_items_display_name ON "ASP_menu_items"(display_name)
+                """))
+            except Exception as e:
+                logger.warning(f"  ⚠ Could not create index (may already exist): {e}")
+            
+            logger.info("  ✓ display_name column and index created")
 
 
 # ============================================================================
@@ -485,21 +518,25 @@ class MigrationRunner:
         """Execute all migrations in proper sequence"""
         try:
             with self.app.app_context():
-                logger.info("Step 1/4: Creating RBAC schema tables...")
+                logger.info("Step 1/5: Creating RBAC schema tables...")
                 SchemaMigrations.create_rbac_tables()
                 
                 logger.info("")
-                logger.info("Step 2/4: Adding role_id column to ASP_users...")
+                logger.info("Step 2/5: Adding role_id column to ASP_users...")
                 SchemaMigrations.add_role_id_column_to_users()
                 
                 logger.info("")
-                logger.info("Step 3/4: Populating system data...")
+                logger.info("Step 3/5: Adding display_name column to ASP_menu_items...")
+                SchemaMigrations.add_display_name_column_to_menu_items()
+                
+                logger.info("")
+                logger.info("Step 4/5: Populating system data...")
                 DataMigrations.populate_system_roles()
                 DataMigrations.populate_permissions()
                 DataMigrations.assign_permissions_to_roles()
                 
                 logger.info("")
-                logger.info("Step 4/4: Updating existing users...")
+                logger.info("Step 5/5: Updating existing users...")
                 DataMigrations.update_existing_users_role_ids()
                 
                 self.end_time = datetime.now()
@@ -527,6 +564,7 @@ class MigrationRunner:
             logger.info("📋 Migration Summary:")
             logger.info("  ✓ RBAC schema tables created/verified")
             logger.info("  ✓ role_id column added to ASP_users")
+            logger.info("  ✓ display_name column added to ASP_menu_items")
             logger.info("  ✓ System roles populated")
             logger.info("  ✓ System permissions populated")
             logger.info("  ✓ Role-permission assignments completed")

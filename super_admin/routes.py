@@ -1,12 +1,13 @@
-from flask import render_template, request, redirect, url_for, flash, session, make_response
+from flask import render_template, request, redirect, url_for, flash, session, make_response, jsonify
 from sqlalchemy import func
 from datetime import datetime, timedelta
 import csv, io
 from extensions import db
-from models import Agency, User, Order, Product, Customer, ActivityLog, Location
+from models import Agency, User, Order, Product, Customer, ActivityLog, Location, AppSetting, MenuItem, MenuRole, Role
 from . import super_admin_bp
 from auth.utils import login_required, role_required, get_role_permissions
 from utils.decorators import log_activity
+from service.menu_service import MenuService
 
 @super_admin_bp.route('/dashboard')
 @role_required('super_admin', 'agency_manager')
@@ -49,12 +50,12 @@ def dashboard():
     
     # Enhanced business metrics (Ticket #25)
     # Calculate total revenue
-    total_revenue_result = db.session.query(func.sum(Order.total_amount)).select_from(order_query).scalar()
+    total_revenue_result = order_query.with_entities(func.sum(Order.total_amount)).scalar()
     stats['total_revenue'] = float(total_revenue_result) if total_revenue_result else 0
     
     # Calculate revenue for current month
     current_month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    monthly_revenue_result = db.session.query(func.sum(Order.total_amount)).select_from(order_query).filter(Order.created_at >= current_month_start).scalar()
+    monthly_revenue_result = order_query.filter(Order.created_at >= current_month_start).with_entities(func.sum(Order.total_amount)).scalar()
     stats['monthly_revenue'] = float(monthly_revenue_result) if monthly_revenue_result else 0
     
     # Calculate average order value
@@ -66,17 +67,17 @@ def dashboard():
     # Recent activities removed as not required
 
     # Get order statistics by status
-    order_stats = db.session.query(
+    order_stats = order_query.with_entities(
         Order.status,
         func.count(Order.id).label('count')
-    ).select_from(order_query).group_by(Order.status).all()
+    ).group_by(Order.status).all()
 
     # Get monthly order trends (last 6 months)
     six_months_ago = datetime.utcnow() - timedelta(days=180)
-    monthly_orders = db.session.query(
+    monthly_orders = order_query.filter(Order.created_at >= six_months_ago).with_entities(
         func.date_trunc('month', Order.created_at).label('month'),
         func.count(Order.id).label('count')
-    ).select_from(order_query).filter(Order.created_at >= six_months_ago).group_by(func.date_trunc('month', Order.created_at)).order_by(func.date_trunc('month', Order.created_at)).all()
+    ).group_by(func.date_trunc('month', Order.created_at)).order_by(func.date_trunc('month', Order.created_at)).all()
 
     # Get top agencies by orders
     top_agencies_query = db.session.query(
@@ -198,12 +199,276 @@ def view_activities():
 @role_required('super_admin', 'agency_manager')
 def system_config():
     if request.method == 'POST':
-        # Handle system configuration updates
-        # This is a placeholder for system-wide settings
-        flash('System configuration updated successfully!', 'success')
-        return redirect(url_for('super_admin.system_config'))
+        action = request.form.get('action')
+        
+        if action == 'create_menu':
+            # Create new menu item
+            name = request.form.get('name', '').strip()
+            display_name = request.form.get('display_name', '').strip() or None
+            url = request.form.get('url', '').strip() or None
+            icon = request.form.get('icon', '').strip()
+            parent_id = request.form.get('parent_id')
+            order_index = int(request.form.get('order_index', 0))
+            
+            if not name:
+                flash('Menu name is required.', 'error')
+            else:
+                menu = MenuItem(
+                    name=name,
+                    display_name=display_name,
+                    url=url,
+                    icon=icon,
+                    parent_id=int(parent_id) if parent_id else None,
+                    order_index=order_index,
+                    is_active=True
+                )
+                db.session.add(menu)
+                db.session.commit()
+                MenuService.invalidate_cache()
+                flash(f'Menu "{name}" created successfully!', 'success')
+            
+            return redirect(url_for('super_admin.system_config', tab='menu_management'))
+        
+        elif action == 'update_menu':
+            # Update menu item
+            menu_id = request.form.get('menu_id')
+            menu = MenuItem.query.get(menu_id)
+            
+            if not menu:
+                flash('Menu not found.', 'error')
+            else:
+                menu.name = request.form.get('name', '').strip()
+                menu.display_name = request.form.get('display_name', '').strip() or None
+                menu.url = request.form.get('url', '').strip() or None
+                menu.icon = request.form.get('icon', '').strip()
+                menu.order_index = int(request.form.get('order_index', 0))
+                menu.is_active = request.form.get('is_active') == 'on'
+                
+                db.session.commit()
+                MenuService.invalidate_cache()
+                flash(f'Menu "{menu.name}" updated successfully!', 'success')
+            
+            return redirect(url_for('super_admin.system_config', tab='menu_management'))
+        
+        elif action == 'delete_menu':
+            # Delete menu item
+            menu_id = request.form.get('menu_id')
+            menu = MenuItem.query.get(menu_id)
+            
+            if not menu:
+                flash('Menu not found.', 'error')
+            else:
+                name = menu.name
+                db.session.delete(menu)
+                db.session.commit()
+                MenuService.invalidate_cache()
+                flash(f'Menu "{name}" deleted successfully!', 'success')
+            
+            return redirect(url_for('super_admin.system_config', tab='menu_management'))
+        
+        else:
+            # Save system configuration to database
+            AppSetting.set('system_name', request.form.get('system_name'))
+            AppSetting.set('default_currency', request.form.get('default_currency'))
+            AppSetting.set('timezone', request.form.get('timezone'))
+            AppSetting.set('email_notifications', '1' if request.form.get('email_notifications') else '0')
+            AppSetting.set('auto_backup', '1' if request.form.get('auto_backup') else '0')
+            
+            flash('System configuration updated successfully!', 'success')
+            return redirect(url_for('super_admin.system_config', tab='config'))
     
-    return render_template('super_admin/config.html')
+    # Fetch settings from database with defaults
+    settings = {
+        'system_name': AppSetting.get('system_name', 'AgencySales Pro'),
+        'default_currency': AppSetting.get('default_currency', 'USD'),
+        'timezone': AppSetting.get('timezone', 'UTC'),
+        'email_notifications': AppSetting.get('email_notifications', '1') == '1',
+        'auto_backup': AppSetting.get('auto_backup', '1') == '1',
+    }
+    
+    # Fetch menu items and roles
+    all_menus = MenuService.get_all_menus()
+    roles = Role.query.all()
+    parent_menus = MenuItem.query.filter_by(parent_id=None, is_active=True).order_by(MenuItem.order_index).all()
+    
+    return render_template('super_admin/config.html', 
+                         settings=settings,
+                         all_menus=all_menus,
+                         roles=roles,
+                         parent_menus=parent_menus,
+                         tab=request.args.get('tab', 'config'))
+
+# ==================== Menu Management Routes ====================
+
+@super_admin_bp.route('/manage_menus', methods=['GET', 'POST'])
+@role_required('super_admin')
+def manage_menus():
+    """Manage menu items and role-menu mappings"""
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'create_menu':
+            # Create new menu item
+            name = request.form.get('name', '').strip()
+            display_name = request.form.get('display_name', '').strip() or None
+            url = request.form.get('url', '').strip() or None
+            icon = request.form.get('icon', '').strip()
+            parent_id = request.form.get('parent_id')
+            order_index = int(request.form.get('order_index', 0))
+            
+            if not name:
+                flash('Menu name is required.', 'error')
+            else:
+                menu = MenuItem(
+                    name=name,
+                    display_name=display_name,
+                    url=url,
+                    icon=icon,
+                    parent_id=int(parent_id) if parent_id else None,
+                    order_index=order_index,
+                    is_active=True
+                )
+                db.session.add(menu)
+                db.session.commit()
+                MenuService.invalidate_cache()
+                flash(f'Menu "{name}" created successfully!', 'success')
+            
+            return redirect(url_for('super_admin.manage_menus'))
+        
+        elif action == 'update_menu':
+            # Update menu item
+            menu_id = request.form.get('menu_id')
+            menu = MenuItem.query.get(menu_id)
+            
+            if not menu:
+                flash('Menu not found.', 'error')
+            else:
+                menu.name = request.form.get('name', '').strip()
+                menu.display_name = request.form.get('display_name', '').strip() or None
+                menu.url = request.form.get('url', '').strip() or None
+                menu.icon = request.form.get('icon', '').strip()
+                menu.order_index = int(request.form.get('order_index', 0))
+                menu.is_active = request.form.get('is_active') == 'on'
+                
+                db.session.commit()
+                MenuService.invalidate_cache()
+                flash(f'Menu "{menu.name}" updated successfully!', 'success')
+            
+            return redirect(url_for('super_admin.manage_menus'))
+        
+        elif action == 'delete_menu':
+            # Delete menu item
+            menu_id = request.form.get('menu_id')
+            menu = MenuItem.query.get(menu_id)
+            
+            if not menu:
+                flash('Menu not found.', 'error')
+            else:
+                name = menu.name
+                db.session.delete(menu)
+                db.session.commit()
+                MenuService.invalidate_cache()
+                flash(f'Menu "{name}" deleted successfully!', 'success')
+            
+            return redirect(url_for('super_admin.manage_menus'))
+    
+    # GET: Display menu management interface
+    all_menus = MenuService.get_all_menus()
+    roles = Role.query.all()
+    parent_menus = MenuItem.query.filter_by(parent_id=None, is_active=True).order_by(MenuItem.order_index).all()
+    
+    return render_template('super_admin/config.html', 
+                         settings={},
+                         all_menus=all_menus, 
+                         roles=roles,
+                         parent_menus=parent_menus,
+                         tab='menu_management')
+
+@super_admin_bp.route('/api/menu/<int:menu_id>', methods=['GET'])
+@role_required('super_admin')
+def api_menu_details(menu_id):
+    """API endpoint to get menu details"""
+    menu = MenuItem.query.get(menu_id)
+    
+    if not menu:
+        return jsonify({'error': 'Menu not found'}), 404
+    
+    return jsonify({
+        'menu': {
+            'id': menu.id,
+            'name': menu.name,
+            'display_name': menu.display_name,
+            'url': menu.url,
+            'icon': menu.icon,
+            'order_index': menu.order_index,
+            'is_active': menu.is_active,
+            'parent_id': menu.parent_id
+        }
+    })
+
+@super_admin_bp.route('/api/menu/<int:menu_id>/roles', methods=['GET', 'POST', 'DELETE'])
+@role_required('super_admin')
+def api_menu_roles(menu_id):
+    """API endpoint to manage menu-role relationships"""
+    menu = MenuItem.query.get(menu_id)
+    
+    if not menu:
+        return jsonify({'error': 'Menu not found'}), 404
+    
+    if request.method == 'GET':
+        # Get roles assigned to this menu
+        menu_roles = MenuRole.query.filter_by(menu_id=menu_id).all()
+        return jsonify([{'role_id': mr.role_id, 'role_name': mr.role.name} for mr in menu_roles])
+    
+    elif request.method == 'POST':
+        # Assign role to menu
+        data = request.get_json()
+        role_id = data.get('role_id')
+        
+        if not role_id:
+            return jsonify({'error': 'role_id required'}), 400
+        
+        # Check if already exists
+        existing = MenuRole.query.filter_by(menu_id=menu_id, role_id=role_id).first()
+        if existing:
+            return jsonify({'error': 'Role already assigned to this menu'}), 409
+        
+        menu_role = MenuRole(menu_id=menu_id, role_id=role_id)
+        db.session.add(menu_role)
+        db.session.commit()
+        MenuService.invalidate_cache(role_id)
+        
+        return jsonify({'success': True, 'message': 'Role assigned to menu'})
+    
+    elif request.method == 'DELETE':
+        # Remove role from menu
+        data = request.get_json()
+        role_id = data.get('role_id')
+        
+        if not role_id:
+            return jsonify({'error': 'role_id required'}), 400
+        
+        menu_role = MenuRole.query.filter_by(menu_id=menu_id, role_id=role_id).first()
+        if not menu_role:
+            return jsonify({'error': 'Role not assigned to this menu'}), 404
+        
+        db.session.delete(menu_role)
+        db.session.commit()
+        MenuService.invalidate_cache(role_id)
+        
+        return jsonify({'success': True, 'message': 'Role removed from menu'})
+
+@super_admin_bp.route('/api/role/<int:role_id>/menus', methods=['GET'])
+@role_required('super_admin')
+def api_role_menus(role_id):
+    """API endpoint to get menus for a specific role"""
+    role = Role.query.get(role_id)
+    
+    if not role:
+        return jsonify({'error': 'Role not found'}), 404
+    
+    menus = MenuService.get_menus_by_role(role_id)
+    return jsonify(menus)
 
 @super_admin_bp.route('/reports')
 @role_required('super_admin', 'agency_manager')

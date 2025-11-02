@@ -22,6 +22,33 @@
     <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
 </head>
 <body>
+    <!-- Macro to render menu items dynamically -->
+    {% macro render_menu_item(item) %}
+        {% if item.children %}
+            <!-- Menu item with children (dropdown) -->
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                    {% if item.icon %}<i class="{{ item.icon }} me-1"></i>{% endif %}{{ item.display_name or item.name }}
+                </a>
+                <ul class="dropdown-menu">
+                    {% for child in item.children %}
+                        <li>
+                            <a class="dropdown-item" href="{{ child.url or '#' }}">
+                                {% if child.icon %}<i class="{{ child.icon }} me-1"></i>{% endif %}{{ child.display_name or child.name }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </li>
+        {% elif item.url %}
+            <!-- Menu item without children (direct link) -->
+            <li class="nav-item">
+                <a class="nav-link" href="{{ item.url }}">
+                    {% if item.icon %}<i class="{{ item.icon }} me-1"></i>{% endif %}{{ item.display_name or item.name }}
+                </a>
+            </li>
+        {% endif %}
+    {% endmacro %}
     <!-- Navigation -->
     {% if session.user_id %}
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
@@ -42,6 +69,13 @@
                             <i class="fas fa-home me-1"></i>Dashboard
                         </a>
                     </li>
+                    
+                    <!-- Dynamic Menus from ASP_menu_roles table -->
+                    {% for menu_item in dynamic_menus %}
+                        {{ render_menu_item(menu_item) }}
+                    {% empty %}
+                        <!-- No menus configured for this role -->
+                    {% endfor %}
                     
                     <!-- Agencies Menu (Super Admin, Agency Manager) -->
                     {% if permissions.can_manage_agencies %}
@@ -320,6 +354,30 @@
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('subscription.list_invoices') }}">
                                 <i class="fas fa-file-invoice me-1"></i>Subscription Invoices
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                    
+                    <!-- System Configuration Menu (Super Admin Only) -->
+                    {% if session.role == 'super_admin' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-cogs me-1"></i>Administration
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('super_admin.system_config') }}">
+                                <i class="fas fa-cog me-1"></i>System Configuration
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('super_admin.manage_users') }}">
+                                <i class="fas fa-users-cog me-1"></i>Manage Users
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('super_admin.view_activities') }}">
+                                <i class="fas fa-history me-1"></i>Activity Logs
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('super_admin.reports') }}">
+                                <i class="fas fa-chart-line me-1"></i>System Reports
                             </a></li>
                         </ul>
                     </li>

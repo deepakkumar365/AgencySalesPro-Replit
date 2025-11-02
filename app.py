@@ -8,7 +8,7 @@ from sqlalchemy.engine import Row
 from werkzeug.middleware.proxy_fix import ProxyFix
 from datetime import timedelta, datetime, date
 from decimal import Decimal
-from extensions import db, jwt
+from extensions import db, jwt, cache
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -92,14 +92,21 @@ def create_app():
     app.jinja_env.globals['get_dashboard_url'] = get_dashboard_url
 
     # Register the context processor to inject permissions into templates
-    from auth.utils import inject_permissions
+    from auth.utils import inject_permissions, inject_dynamic_menus
+    from flask import session
 
     @app.context_processor
     def _inject_permissions_context():
         return inject_permissions()
+    
+    @app.context_processor
+    def _inject_menus_context():
+        """Inject dynamic menus based on user role from ASP_menu_roles"""
+        return inject_dynamic_menus()
 
     db.init_app(app)
     jwt.init_app(app)
+    cache.init_app(app)
     
     def register_blueprints(app):
         from auth import auth_bp

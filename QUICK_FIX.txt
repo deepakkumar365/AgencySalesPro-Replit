@@ -1,0 +1,58 @@
+═══════════════════════════════════════════════════════════════════════════════
+  🔧 QUICK FIX - Missing Dependencies
+═══════════════════════════════════════════════════════════════════════════════
+
+ERROR:
+  ModuleNotFoundError: No module named 'flask_caching'
+
+SOLUTION (1 COMMAND):
+  pip install flask-caching redis
+
+DONE! 🎉
+
+═══════════════════════════════════════════════════════════════════════════════
+
+WHAT WAS MISSING?
+  The new role-based menu system needs:
+  ✓ flask-caching (for menu caching)
+  ✓ redis (optional backend, has automatic fallback)
+
+WHAT WAS UPDATED?
+  ✓ pyproject.toml
+  ✓ render_requirements.txt
+  ✓ render_requirements_minimal.txt
+
+NEXT STEPS:
+  1. Run: pip install flask-caching redis
+  2. Run: python seed_menus.py
+  3. Run: python app.py
+  4. Test: Administration → Menu Management
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ALTERNATIVE METHODS:
+
+Option A - Requirements file:
+  pip install -r render_requirements.txt
+
+Option B - In virtual environment:
+  venv\Scripts\activate
+  pip install flask-caching redis
+
+Option C - Poetry:
+  poetry install
+  poetry run python app.py
+
+═══════════════════════════════════════════════════════════════════════════════
+
+VERIFY IT WORKED:
+  python -c "from flask_caching import Cache; print('✓ Success!')"
+
+═══════════════════════════════════════════════════════════════════════════════
+
+For more details, see:
+  • DEPENDENCY_FIX.md - Detailed explanation
+  • INSTALLATION_GUIDE.md - Step-by-step guide
+  • MENU_QUICK_START.txt - Menu system quick start
+
+═══════════════════════════════════════════════════════════════════════════════

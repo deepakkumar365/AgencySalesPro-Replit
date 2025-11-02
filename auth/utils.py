@@ -334,3 +334,23 @@ def inject_permissions():
         'user_menu': [],
         'has_permission': lambda code: False
     }
+
+def inject_dynamic_menus():
+    """Inject role-based menus from ASP_menu_roles table into all templates"""
+    from service.menu_service import MenuService
+    from models import User
+    
+    if 'user_id' in session:
+        try:
+            # Get user and their role
+            user = User.query.get(session.get('user_id'))
+            if user and user.role:
+                # Get menus for this role
+                menus = MenuService.get_menus_by_role(user.role_id)
+                return {'dynamic_menus': menus, 'role_id': user.role_id}
+        except Exception as e:
+            # Log error but don't break the app
+            import logging
+            logging.error(f"Error loading dynamic menus: {e}")
+    
+    return {'dynamic_menus': [], 'role_id': None}
