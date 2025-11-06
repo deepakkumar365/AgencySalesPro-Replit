@@ -22,6 +22,7 @@
                     <p><strong>Role:</strong> <span class="badge bg-info">{{ user.role.replace('_', ' ')|title }}</span></p>
                     {% if user.agency %}
                     <p><strong>Agency:</strong> {{ user.agency.name }}</p>
+                    <p><strong>Agency Code:</strong> <span class="badge bg-secondary">{{ user.agency.code }}</span></p>
                     {% endif %}
                     <p><strong>Member Since:</strong> {{ user.created_at.strftime('%d %b %Y') }}</p>
                 </div>
