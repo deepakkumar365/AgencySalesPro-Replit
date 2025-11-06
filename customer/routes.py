@@ -544,6 +544,16 @@ def import_customers():
                     )
                     
                     db.session.add(customer)
+                    db.session.flush()  # Get customer ID before creating mapping
+                    
+                    # Create customer-agency mapping
+                    customer_agency = CustomerAgency(
+                        customer_id=customer.id,
+                        agency_id=agency.id,
+                        is_active=True
+                    )
+                    db.session.add(customer_agency)
+                    
                     success_count += 1
                     
                 except Exception as e:
