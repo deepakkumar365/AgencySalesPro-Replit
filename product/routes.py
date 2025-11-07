@@ -449,19 +449,35 @@ def export_products():
     user_role = session.get('role')
     current_agency_id = session.get('agency_id')
     
+    # Allow super_admin to specify agency via query parameter
+    agency_filter = request.args.get('agency', type=int)
+    target_agency_id = None
+    
     if user_role == 'super_admin':
-        products = Product.query.order_by(Product.created_at.desc()).all()
+        # Super admin can export all or filter by selected agency
+        if agency_filter:
+            target_agency_id = agency_filter
+            products = db.session.query(Product).join(ProductAgency).filter(ProductAgency.agency_id == agency_filter).order_by(Product.created_at.desc()).all()
+        else:
+            products = Product.query.order_by(Product.created_at.desc()).all()
     else:
         # Products visible to current agency (via mapping)
-        products = db.session.query(Product).join(ProductAgency).filter(ProductAgency.agency_id == current_agency_id).all()
+        target_agency_id = current_agency_id
+        products = db.session.query(Product).join(ProductAgency).filter(ProductAgency.agency_id == current_agency_id).order_by(Product.created_at.desc()).all()
     
-    # Create Excel file
-    output = export_products_to_excel(products)
+    # Create Excel file with agency context
+    output = export_products_to_excel(products, target_agency_id)
+    
+    filename = 'products_export.xlsx'
+    if target_agency_id:
+        agency = Agency.query.get(target_agency_id)
+        if agency:
+            filename = f'products_{agency.name.replace(" ", "_")}.xlsx'
     
     return send_file(
         output,
         as_attachment=True,
-        download_name='products_export.xlsx',
+        download_name=filename,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
 
