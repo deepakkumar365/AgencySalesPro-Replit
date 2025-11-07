@@ -168,6 +168,7 @@ def bulk_upload_overrides(current_agency_id=None):
             updated_count = 0
             error_count = 0
             errors = []
+            batch_size = 50  # Batch flush every 50 rows to prevent timeouts
 
             # Pre-fetch master data for lookups to avoid querying in a loop
             categories = {c.name.lower(): c.id for c in Category.query.all()}
@@ -219,7 +220,7 @@ def bulk_upload_overrides(current_agency_id=None):
                             is_active=True
                         )
                         db.session.add(product)
-                        db.session.flush() # To get product.id
+                        # Note: We'll flush in batches below instead of after each product
                         created_count += 1
                     else:
                         updated_count += 1
@@ -256,6 +257,10 @@ def bulk_upload_overrides(current_agency_id=None):
                         mapping.tax_master_id = tax_masters.get(str(row['tax_name']).lower())
 
                     success_count += 1
+                    
+                    # Batch flush every N rows to prevent timeouts
+                    if success_count % batch_size == 0:
+                        db.session.flush()
                 
                 except Exception as e:
                     errors.append(f"Row {index+2}: Error processing - {str(e)}")
