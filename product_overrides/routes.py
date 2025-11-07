@@ -205,8 +205,11 @@ def bulk_upload_overrides(current_agency_id=None):
                         mrp_price = float(row.get('mrp_price', 0.0))
                         margin = round(((sell_price - buy_price) / buy_price) * 100, 2) if buy_price > 0 else 0
 
+                        description = str(row.get('description', '')).strip() if pd.notna(row.get('description')) else None
+                        
                         product = Product(
                             name=display_name, # Use display_name as master name for new products
+                            description=description,  # Product description
                             sku=sku,
                             buy_price=buy_price,
                             sell_price=sell_price,
@@ -224,6 +227,14 @@ def bulk_upload_overrides(current_agency_id=None):
                         created_count += 1
                     else:
                         updated_count += 1
+                        
+                        # Update master Product fields for existing products if provided
+                        if 'description' in row and pd.notna(row['description']):
+                            product.description = str(row['description']).strip() or None
+                        if 'hsn_code' in row and pd.notna(row['hsn_code']):
+                            product.hsn_code = str(row['hsn_code']).strip() or None
+                        if 'item_code' in row and pd.notna(row['item_code']):
+                            product.item_code = str(row['item_code']).strip() or None
 
                     # Find or create the agency mapping
                     mapping = ProductAgency.query.filter_by(product_id=product.id, agency_id=agency_id).first()
@@ -293,17 +304,84 @@ def bulk_upload_overrides(current_agency_id=None):
                            selected_agency_id=agency_id,
                            selected_agency=selected_agency)
 
+@overrides_bp.route('/export')
+@login_required
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+@log_activity('export_product_overrides')
+def export_overrides(current_agency_id=None):
+    """Export product overrides to Excel."""
+    user_role = session.get('role')
+    if not current_agency_id:
+        current_agency_id = session.get('agency_id')
+    
+    # Allow super_admin to specify agency via query parameter
+    agency_filter = request.args.get('agency', type=int)
+    
+    # Build query for product overrides
+    query = db.session.query(Product, ProductAgency).join(ProductAgency, ProductAgency.product_id == Product.id)
+    
+    # Apply agency filter
+    if user_role == 'super_admin':
+        if agency_filter:
+            query = query.filter(ProductAgency.agency_id == agency_filter)
+    else:
+        # Non-super admins can only export their own agency's overrides
+        query = query.filter(ProductAgency.agency_id == current_agency_id)
+    
+    rows = query.order_by(Product.created_at.desc()).all()
+    
+    # Prepare data for export
+    data = []
+    for product, mapping in rows:
+        data.append({
+            'SKU': product.sku,
+            'Master Product Name': product.name,
+            'Override Display Name': mapping.display_name or '',
+            'Description': product.description or '',
+            'Buy Price': mapping.buy_price or product.buy_price or 0,
+            'Sell Price': mapping.sell_price or product.sell_price or 0,
+            'MRP Price': mapping.mrp_price or product.mrp_price or 0,
+            'Category': mapping.category_ref.name if mapping.category_ref else (product.category_ref.name if product.category_ref else ''),
+            'UOM': mapping.uom_ref.name if mapping.uom_ref else (product.uom_ref.name if product.uom_ref else ''),
+            'GST %': mapping.tax_master_ref.tax_rate if mapping.tax_master_ref else (product.tax_master_ref.tax_rate if product.tax_master_ref else ''),
+            'Agency': mapping.agency.name if mapping.agency else 'N/A',
+            'Status': 'Active' if mapping.is_active else 'Inactive',
+        })
+    
+    df = pd.DataFrame(data)
+    
+    output = io.BytesIO()
+    df.to_excel(output, index=False, sheet_name='Product Overrides')
+    output.seek(0)
+    
+    filename = 'product_overrides_export.xlsx'
+    if agency_filter:
+        agency = Agency.query.get(agency_filter)
+        if agency:
+            filename = f'product_overrides_{agency.name.replace(" ", "_")}.xlsx'
+    elif user_role != 'super_admin':
+        agency = Agency.query.get(current_agency_id)
+        if agency:
+            filename = f'product_overrides_{agency.name.replace(" ", "_")}.xlsx'
+    
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
 @overrides_bp.route('/download-template')
 @login_required
 def download_overrides_template():
     """Provides a CSV template for bulk override uploads."""
     columns = [
-        'sku', 'display_name', 'buy_price', 'sell_price', 'mrp_price',
+        'sku', 'display_name', 'description', 'buy_price', 'sell_price', 'mrp_price',
         'category_name', 'uom_name', 'tax_name', 'hsn_code', 'item_code', 'is_active'
     ]
     
     example_data = [[
-        'PROD-SKU-001', 'Agency Specific Name', 100.00, 150.00, 160.00,
+        'PROD-SKU-001', 'Agency Specific Name', 'Product description for this item', 100.00, 150.00, 160.00,
         'Electronics', 'Pieces', 'GST 18%', '8517', 'ITEM001', True
     ]]
     

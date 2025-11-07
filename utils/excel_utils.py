@@ -5,16 +5,16 @@ from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Font, PatternFill
 from extensions import db
-from models import Product, Order, OrderItem, ProductAgency, Agency
+from models import Product, Order, OrderItem, ProductAgency, Agency, Category, UOM, TaxMaster
 
-def export_products_to_excel(products):
-    """Export products to Excel file using openpyxl"""
+def export_products_to_excel(products, target_agency_id=None):
+    """Export products to Excel file using openpyxl with optional agency filtering"""
     wb = Workbook()
     ws = wb.active
     ws.title = "Products"
     
     # Headers
-    headers = ['ID', 'Name', 'Description', 'SKU', 'Sell Price (Effective)', 'Buy Cost', 'Category (Effective)', 'Agency', 'Active (Mapping)', 'Created At']
+    headers = ['ID', 'Name', 'Description', 'SKU', 'Sell Price (Effective)', 'Buy Cost', 'MRP Price (Effective)', 'Category (Effective)', 'GST %', 'Agency', 'Active (Mapping)', 'Created At']
     ws.append(headers)
     
     # Style headers
@@ -27,16 +27,39 @@ def export_products_to_excel(products):
     
     # Add data
     for product in products:
-        # Find mapping for given agency context if provided by caller; otherwise, try to use the first mapping
+        # Find mapping for given agency context
         mapping = None
-        if hasattr(product, 'agency_mappings') and product.agency_mappings:
-            mapping = product.agency_mappings[0]
+        
+        if target_agency_id:
+            # If agency_id is specified, find the specific mapping for that agency
+            if hasattr(product, 'agency_mappings') and product.agency_mappings:
+                for m in product.agency_mappings:
+                    if m.agency_id == target_agency_id:
+                        mapping = m
+                        break
+        else:
+            # Otherwise use the first mapping (for all products export)
+            if hasattr(product, 'agency_mappings') and product.agency_mappings:
+                mapping = product.agency_mappings[0]
+        
+        # Calculate effective values (prefer agency override, fall back to master)
         effective_sell = float(mapping.sell_price) if mapping and mapping.sell_price is not None else float(product.sell_price or 0)
+        effective_buy = float(mapping.buy_price) if mapping and mapping.buy_price is not None else float(product.buy_price or 0)
+        effective_mrp = float(mapping.mrp_price) if mapping and mapping.mrp_price is not None else float(product.mrp_price or 0)
+        
         effective_category_name = (
             (mapping.category_ref.name if mapping and mapping.category_ref else None)
             or (product.category_ref.name if hasattr(product, 'category_ref') and product.category_ref else None)
             or (product.category if hasattr(product, 'category') else None)
         )
+        
+        # Get effective tax rate
+        effective_tax_rate = ''
+        if mapping and mapping.tax_master_ref:
+            effective_tax_rate = float(mapping.tax_master_ref.tax_rate) if mapping.tax_master_ref.tax_rate else ''
+        elif product.tax_master_ref:
+            effective_tax_rate = float(product.tax_master_ref.tax_rate) if product.tax_master_ref.tax_rate else ''
+        
         agency_name = mapping.agency.name if mapping else ''
         mapping_active = mapping.is_active if mapping else True
         row_data = [
@@ -45,8 +68,10 @@ def export_products_to_excel(products):
             product.description,
             product.sku,
             effective_sell,
-            float(product.buy_price) if product.buy_price else 0,
+            effective_buy,
+            effective_mrp,
             effective_category_name or '-',
+            effective_tax_rate,
             agency_name,
             mapping_active,
             product.created_at.strftime('%Y-%m-%d %H:%M:%S')
@@ -78,6 +103,11 @@ def import_products_from_excel(file, agency_id, user_role):
         imported = 0
         skipped = 0
         
+        # Pre-fetch master data for lookups
+        categories = {c.name.lower(): c.id for c in Category.query.all()}
+        uoms = {u.name.lower(): u.id for u in UOM.query.all()}
+        tax_masters = {t.name.lower(): t.id for t in TaxMaster.query.all()}
+        
         if file.filename.lower().endswith('.csv'):
             # Handle CSV file
             content = file.read().decode('utf-8')
@@ -101,19 +131,36 @@ def import_products_from_excel(file, agency_id, user_role):
                 
                 # Create product master and mapping
                 try:
-                    buy = float(row.get('Cost', 0)) if row.get('Cost') else 0
+                    # Extract cost, description, and MRP with case-insensitive matching
+                    cost_val = row.get('Cost') or row.get('cost') or row.get('COST') or 0
+                    desc_val = row.get('Description') or row.get('description') or row.get('DESCRIPTION') or ''
+                    mrp_val = row.get('MRP') or row.get('mrp') or row.get('Mrp') or price
+                    
+                    buy = float(cost_val) if cost_val else 0
                     sell = float(price)
-                    mrp = float(row.get('MRP', sell)) if row.get('MRP') else sell
+                    mrp = float(mrp_val) if mrp_val else sell
                     margin = round(((sell - buy) / buy) * 100, 2) if buy > 0 else 0
+
+                    # Extract and lookup category, UOM, and tax (check multiple case variants)
+                    category_name = str(row.get('Category') or row.get('category') or row.get('CATEGORY') or '').strip()
+                    uom_name = str(row.get('UOM') or row.get('uom') or row.get('Uom') or '').strip()
+                    tax_name = str(row.get('Tax') or row.get('tax') or row.get('TAX') or '').strip()
+                    
+                    category_id = categories.get(category_name.lower()) if category_name else None
+                    uom_id = uoms.get(uom_name.lower()) if uom_name else None
+                    tax_master_id = tax_masters.get(tax_name.lower()) if tax_name else None
 
                     product = Product(
                         name=name.strip(),
-                        description=row.get('Description', '').strip(),
+                        description=str(desc_val).strip(),
                         sku=sku.strip(),
                         buy_price=buy,
                         sell_price=sell,
                         mrp_price=mrp,
                         margin=margin,
+                        category_id=category_id,
+                        uom_id=uom_id,
+                        tax_master_id=tax_master_id,
                         is_active=True
                     )
                     db.session.add(product)
@@ -169,19 +216,36 @@ def import_products_from_excel(file, agency_id, user_role):
                 
                 # Create product master and mapping
                 try:
-                    buy = float(row_dict.get('Cost', 0)) if row_dict.get('Cost') else 0
+                    # Extract cost, description, and MRP with case-insensitive matching
+                    cost_val = row_dict.get('Cost') or row_dict.get('cost') or row_dict.get('COST') or 0
+                    desc_val = row_dict.get('Description') or row_dict.get('description') or row_dict.get('DESCRIPTION') or ''
+                    mrp_val = row_dict.get('MRP') or row_dict.get('mrp') or row_dict.get('Mrp') or price
+                    
+                    buy = float(cost_val) if cost_val else 0
                     sell = float(price)
-                    mrp = float(row_dict.get('MRP', sell)) if row_dict.get('MRP') else sell
+                    mrp = float(mrp_val) if mrp_val else sell
                     margin = round(((sell - buy) / buy) * 100, 2) if buy > 0 else 0
+
+                    # Extract and lookup category, UOM, and tax (check multiple case variants)
+                    category_name = str(row_dict.get('Category') or row_dict.get('category') or row_dict.get('CATEGORY') or '').strip()
+                    uom_name = str(row_dict.get('UOM') or row_dict.get('uom') or row_dict.get('Uom') or '').strip()
+                    tax_name = str(row_dict.get('Tax') or row_dict.get('tax') or row_dict.get('TAX') or '').strip()
+                    
+                    category_id = categories.get(category_name.lower()) if category_name else None
+                    uom_id = uoms.get(uom_name.lower()) if uom_name else None
+                    tax_master_id = tax_masters.get(tax_name.lower()) if tax_name else None
 
                     product = Product(
                         name=str(name).strip(),
-                        description=str(row_dict.get('Description', '')).strip(),
+                        description=str(desc_val).strip(),
                         sku=str(sku).strip(),
                         buy_price=buy,
                         sell_price=sell,
                         mrp_price=mrp,
                         margin=margin,
+                        category_id=category_id,
+                        uom_id=uom_id,
+                        tax_master_id=tax_master_id,
                         is_active=True
                     )
                     

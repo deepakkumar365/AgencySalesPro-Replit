@@ -9,6 +9,9 @@
         <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-cogs me-2"></i>Product Overrides</h1>
         <div>
             {% if session.role in ['super_admin', 'agency_admin', 'agency_manager', 'staff'] %}
+            <a href="{{ url_for('product_overrides.export_overrides', agency=filters.agency if filters.agency else '') }}" class="btn btn-outline-info btn-sm shadow-sm me-2">
+                <i class="fas fa-download fa-sm me-2"></i>Export
+            </a>
             <a href="{{ url_for('product_overrides.bulk_upload_overrides', agency=filters.agency) }}" class="btn btn-info btn-sm shadow-sm me-2">
                 <i class="fas fa-file-upload fa-sm text-white-50 me-2"></i>Bulk Upload
             </a>
@@ -78,9 +81,13 @@
                     <thead>
                         <tr>
                             <th>Product (SKU)</th>
-                            <th>Agency Name</th>
+                            <th>Description</th>
+                            <th>HSN Code</th>
+                            <th>Item Code</th>
+                            <th>Effective UOM</th>
                             <th>Effective Prices (Buy/Sell/MRP)</th>
                             <th>Effective Category</th>
+                            <th>GST %</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -93,8 +100,19 @@
                                 <small class="text-muted ms-2">({{ product.sku }})</small>
                             </td>
                             <td>
-                                {% if mapping.agency %}
-                                    {{ mapping.agency.name }}
+                                <small>{{ product.description or '-' }}</small>
+                            </td>
+                            <td>
+                                <small>{{ product.hsn_code or '-' }}</small>
+                            </td>
+                            <td>
+                                <small>{{ product.item_code or '-' }}</small>
+                            </td>
+                            <td>
+                                {% if mapping.uom_ref %}
+                                    {{ mapping.uom_ref.name }} <span class="badge bg-warning text-dark">Override</span>
+                                {% elif product.uom_ref %}
+                                    {{ product.uom_ref.name }}
                                 {% else %}
                                     N/A
                                 {% endif %}
@@ -114,6 +132,15 @@
                                 {% endif %}
                             </td>
                             <td>
+                                {% if mapping.tax_master_ref %}
+                                    <span class="badge bg-info">{{ "%.2f"|format(mapping.tax_master_ref.tax_rate) }}%</span>
+                                {% elif product.tax_master_ref %}
+                                    <span class="badge bg-secondary">{{ "%.2f"|format(product.tax_master_ref.tax_rate) }}%</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if mapping.is_active %}
                                 <span class="badge bg-success">Active</span>
                                 {% else %}
@@ -128,7 +155,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6" class="text-center">No product overrides found for the selected criteria.</td>
+                            <td colspan="10" class="text-center">No product overrides found for the selected criteria.</td>
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -10,7 +10,7 @@
                 <i class="fas fa-box me-2"></i>Products
             </h1>
             <div class="btn-group">
-                <a href="{{ url_for('product.export_products') }}" class="btn btn-outline-info">
+                <a href="{{ url_for('product.export_products', agency=filters.agency if filters.agency else '') }}" class="btn btn-outline-info">
                     <i class="fas fa-download me-2"></i>Export
                 </a>
                 <a href="{{ url_for('product.import_products') }}" class="btn btn-outline-warning">
@@ -118,6 +118,7 @@
                                 <th class="d-none-mobile">Prices (Buy / Sell / MRP)</th>
                                 <th>Stock</th>
                                 <th class="d-none-mobile">Category</th>
+                                <th class="d-none-mobile">GST %</th>
                                 <th class="d-none-mobile">Agency</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -147,6 +148,15 @@
                                     </span>
                                 </td>
                                 <td class="d-none-mobile">{{ product.category_ref.name if product.category_ref else '-' }}</td>
+                                <td class="d-none-mobile">
+                                    {% if row.ProductAgency and row.ProductAgency.tax_master_ref %}
+                                        <span class="badge bg-info">{{ "%.2f"|format(row.ProductAgency.tax_master_ref.tax_rate) }}%</span>
+                                    {% elif product.tax_master_ref %}
+                                        <span class="badge bg-secondary">{{ "%.2f"|format(product.tax_master_ref.tax_rate) }}%</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">-</span>
+                                    {% endif %}
+                                </td>
                                 <td class="d-none-mobile">{{ row.ProductAgency.agency.name if row.ProductAgency else '-' }}</td>
                                 <td>
                                     {% if row.effective_active %}
