@@ -241,7 +241,7 @@
                     {% endif %}
                     
                     <!-- Finance Menu -->
-                    {% if permissions.can_manage_billing and session.role in ['super_admin', 'agency_manager'] %}
+                    {% if permissions.can_manage_billing and session.role in ['super_admin', 'agency_manager', 'agency_admin'] %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-wallet me-1"></i>Finance

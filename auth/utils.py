@@ -159,7 +159,7 @@ def get_role_permissions(role):
             'can_access_pos': False,              # Not for super admin
             'can_manage_inventory': False,        # Inventory: None
             'can_view_inventory': False,
-            'can_manage_billing': False,          # Payment Configuration: Full (but not shown in nav)
+            'can_manage_billing': True,          # Payment Configuration: Full (but not shown in nav)
             'can_view_billing': True,
             'can_view_reports': False,            # Reports: None
             'can_manage_reports': False,
