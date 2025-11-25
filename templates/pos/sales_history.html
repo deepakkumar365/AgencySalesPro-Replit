@@ -5,9 +5,18 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-history me-2"></i>Sales History</h2>
-    <a href="{{ url_for('pos.dashboard') }}" class="btn btn-outline-secondary">
-        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
-    </a>
+    <div class="d-flex gap-2">
+        <form method="GET" id="export-form">
+            <input type="hidden" name="start_date" value="{{ request.args.get('start_date', '') }}">
+            <input type="hidden" name="end_date" value="{{ request.args.get('end_date', '') }}">
+            <button type="submit" formaction="{{ url_for('pos.export_sales_history') }}" class="btn btn-outline-success" title="Export Sales Records">
+                <i class="fas fa-download me-2"></i>Export
+            </button>
+        </form>
+        <a href="{{ url_for('pos.dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+        </a>
+    </div>
 </div>
 
 <!-- Filters -->

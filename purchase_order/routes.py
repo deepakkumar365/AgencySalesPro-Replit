@@ -2,7 +2,7 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime
 
 import uuid
-from flask import render_template, request, redirect, url_for, flash, session, jsonify
+from flask import render_template, request, redirect, url_for, flash, session, jsonify, send_file
 from sqlalchemy import or_, func
 
 from extensions import db
@@ -21,6 +21,7 @@ from models import (
 from purchase_order import purchase_order_bp
 from auth.utils import login_required, permission_required
 from utils.decorators import log_activity
+from utils.excel_utils import export_purchase_orders_to_excel
 
 
 @purchase_order_bp.route("/")
@@ -621,6 +622,58 @@ def download_bulk_purchase_order_template():
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         as_attachment=True,
         download_name=f'bulk_purchase_order_template_{datetime.now().strftime("%Y%m%d")}.xlsx'
+    )
+
+
+@purchase_order_bp.route("/export")
+@permission_required(roles=["super_admin", "agency_admin", "agency_manager", "staff"])
+def export_purchase_orders(current_agency_id=None):
+    """Export filtered purchase orders to Excel"""
+    user_role = session.get("role")
+    user_id = session.get("user_id")
+    
+    date_from = request.args.get("date_from")
+    date_to = request.args.get("date_to")
+    agency_filter = request.args.get("agency")
+    supplier_filter = request.args.get("supplier")
+    status_filter = request.args.get("status")
+    
+    po_query = PurchaseOrder.query
+    if user_role != "super_admin":
+        po_query = po_query.filter(PurchaseOrder.agency_id == current_agency_id)
+    
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, "%Y-%m-%d")
+            po_query = po_query.filter(PurchaseOrder.created_at >= date_from_obj)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, "%Y-%m-%d")
+            po_query = po_query.filter(PurchaseOrder.created_at <= date_to_obj)
+        except ValueError:
+            pass
+    
+    if agency_filter and user_role == "super_admin":
+        po_query = po_query.filter(PurchaseOrder.agency_id == agency_filter)
+    
+    if supplier_filter:
+        po_query = po_query.filter(PurchaseOrder.supplier_id == supplier_filter)
+    
+    if status_filter:
+        po_query = po_query.filter(PurchaseOrder.status == status_filter)
+    
+    purchase_orders = po_query.order_by(PurchaseOrder.created_at.desc()).all()
+    
+    output = export_purchase_orders_to_excel(purchase_orders)
+    
+    return send_file(
+        output,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=f"purchase_orders_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     )
 
 

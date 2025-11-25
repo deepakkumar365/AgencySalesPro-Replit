@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash, session, jsonify
+from flask import render_template, request, redirect, url_for, flash, session, jsonify, send_file
 from datetime import datetime, timedelta
 from decimal import Decimal
 from sqlalchemy import func
@@ -10,6 +10,7 @@ from models import (
 from pos import pos_bp
 from auth.utils import login_required, permission_required, get_role_permissions
 from utils.decorators import log_activity
+from utils.excel_utils import export_pos_sales_to_excel
 import uuid
 import qrcode
 import io
@@ -496,3 +497,51 @@ def sales_history(current_agency_id=None):
     )
     
     return render_template('pos/sales_history.html', orders=orders)
+
+
+@pos_bp.route('/sales-history/export')
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user', 'staff'])
+def export_sales_history(current_agency_id=None):
+    """Export POS sales history to Excel"""
+    user_role = session.get('role')
+    user_id = session.get('user_id')
+    
+    # Get date range from query params
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    # Base query
+    if user_role == 'super_admin':
+        query = Order.query
+    elif user_role == 'pos_user':
+        query = Order.query.filter_by(salesperson_id=user_id)
+    else:
+        query = Order.query.filter_by(agency_id=current_agency_id)
+    
+    # Filter by date range if provided
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            query = query.filter(Order.order_date >= start_dt)
+        except ValueError:
+            pass
+    
+    if end_date:
+        try:
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            end_dt = end_dt.replace(hour=23, minute=59, second=59)
+            query = query.filter(Order.order_date <= end_dt)
+        except ValueError:
+            pass
+    
+    # Get all orders (not paginated for export)
+    orders = query.order_by(Order.order_date.desc()).all()
+    
+    output = export_pos_sales_to_excel(orders)
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'pos_sales_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    )
