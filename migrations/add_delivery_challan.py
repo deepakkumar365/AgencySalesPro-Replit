@@ -21,7 +21,7 @@ def migrate():
         try:
             # Create the table
             db.create_all()
-            print("✓ DeliveryChallan table created successfully!")
+            print("[OK] DeliveryChallan table created successfully!")
             
             # Verify table exists
             from sqlalchemy import inspect
@@ -29,7 +29,7 @@ def migrate():
             tables = inspector.get_table_names()
             
             if 'ASP_delivery_challans' in tables:
-                print("✓ Table 'ASP_delivery_challans' verified in database")
+                print("[OK] Table 'ASP_delivery_challans' verified in database")
                 
                 # Show table columns
                 columns = inspector.get_columns('ASP_delivery_challans')
@@ -37,10 +37,10 @@ def migrate():
                 for col in columns:
                     print(f"  - {col['name']}: {col['type']}")
             else:
-                print("✗ Table 'ASP_delivery_challans' not found in database")
+                print("[ERROR] Table 'ASP_delivery_challans' not found in database")
                 
         except Exception as e:
-            print(f"✗ Error creating table: {str(e)}")
+            print(f"[ERROR] Error creating table: {str(e)}")
             raise
 
 if __name__ == '__main__':

@@ -17,7 +17,7 @@ def unified_dashboard(current_agency_id=None):
     user_role = session.get('role')
     
     # Get date range (last 30 days by default)
-    end_date = datetime.utcnow()
+    end_date = datetime.now()
     start_date = end_date - timedelta(days=30)
     
     # Base queries based on role
@@ -109,9 +109,9 @@ def unified_dashboard(current_agency_id=None):
     ).all()
     total_payment = sum(p.amount for p in period_payments)
     
-    # Daily sales trend (last 7 days)
+    # Daily sales trend (last 7 days including today)
     daily_sales = []
-    for i in range(7):
+    for i in range(6, -1, -1):
         day = end_date - timedelta(days=i)
         day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -124,11 +124,11 @@ def unified_dashboard(current_agency_id=None):
         daily_sales.append({
             'date': day.strftime('%Y-%m-%d'),
             'day_name': day.strftime('%A'),
-            'total_sales': sum(order.total_amount for order in day_orders),
-            'order_count': len(day_orders)
+            'so_total': float(sum(order.total_amount for order in day_orders)),
+            'po_total': 0,
+            'so_count': len(day_orders),
+            'po_count': 0
         })
-    
-    daily_sales.reverse()  # Show oldest to newest
     
     # Render the unified dashboard for all permitted roles.
     return render_template('finance/dashboard.html',
@@ -162,7 +162,7 @@ def accounting_report(current_agency_id=None, report_type=None):
     # Default to 'sales' if no report_type is specified
     # Get date range from query params
     period = request.args.get('period', '30')  # days
-    end_date = datetime.utcnow()
+    end_date = datetime.now()
     start_date = end_date - timedelta(days=int(period))
     
     # Base queries
@@ -260,7 +260,7 @@ def sales_trend_api(current_agency_id=None):
     chart_type = request.args.get('type', 'sales_trend')
     days = int(request.args.get('days', 30))
     
-    end_date = datetime.utcnow()
+    end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
     
     if user_role == 'super_admin':
@@ -297,7 +297,7 @@ def collection_rate_api(current_agency_id=None):
     """API endpoint for collection rate chart"""
     user_role = session.get('role')
     
-    end_date = datetime.utcnow()
+    end_date = datetime.now()
     
     if user_role == 'super_admin':
         invoice_query = Invoice.query
@@ -332,8 +332,8 @@ def export_report(report_type, current_agency_id=None):
     user_role = session.get('role')
     
     # Get date range
-    start_date = request.args.get('start_date', (datetime.utcnow() - timedelta(days=30)).strftime('%Y-%m-%d'))
-    end_date = request.args.get('end_date', datetime.utcnow().strftime('%Y-%m-%d'))
+    start_date = request.args.get('start_date', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
+    end_date = request.args.get('end_date', datetime.now().strftime('%Y-%m-%d'))
     
     try:
         start_dt = datetime.strptime(start_date, '%Y-%m-%d')
