@@ -393,6 +393,219 @@ def export_orders_to_excel(orders):
     return output
 
 
+def export_purchase_orders_to_excel(purchase_orders):
+    """Export purchase orders to Excel file using openpyxl"""
+    wb = Workbook()
+    
+    # PO details sheet
+    ws_details = wb.active
+    ws_details.title = "PO Details"
+    
+    # Headers for details
+    detail_headers = [
+        'PO ID', 'PO Number', 'Supplier', 'Supplier Email', 'Supplier Phone',
+        'Agency', 'Product Name', 'Product SKU', 'Quantity Ordered', 'Quantity Received',
+        'Unit Cost', 'Total Cost', 'Status', 'PO Total', 'Created Date', 'Notes'
+    ]
+    ws_details.append(detail_headers)
+    
+    # Style headers
+    header_font = Font(bold=True)
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    
+    for cell in ws_details[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    
+    # Add PO details data
+    for po in purchase_orders:
+        for item in po.po_items:
+            row_data = [
+                po.id,
+                po.po_number,
+                po.supplier.name,
+                po.supplier.email or '',
+                po.supplier.phone or '',
+                po.agency_ref.name,
+                item.product_name or item.product.name,
+                item.product.sku,
+                item.quantity_ordered,
+                item.quantity_received or 0,
+                float(item.unit_cost),
+                float(item.total_cost),
+                po.status,
+                float(po.total_amount),
+                po.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                po.notes or ''
+            ]
+            ws_details.append(row_data)
+    
+    # Auto-size columns for details
+    for column in ws_details.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws_details.column_dimensions[column_letter].width = adjusted_width
+    
+    # PO summary sheet
+    ws_summary = wb.create_sheet("PO Summary")
+    summary_headers = [
+        'PO Number', 'Supplier', 'Agency', 'Status',
+        'Total Amount', 'Created Date', 'Items Count'
+    ]
+    ws_summary.append(summary_headers)
+    
+    # Style summary headers
+    for cell in ws_summary[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    
+    # Add summary data
+    po_summary = {}
+    for po in purchase_orders:
+        if po.id not in po_summary:
+            row_data = [
+                po.po_number,
+                po.supplier.name,
+                po.agency_ref.name,
+                po.status,
+                float(po.total_amount),
+                po.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                len(po.po_items)
+            ]
+            ws_summary.append(row_data)
+            po_summary[po.id] = True
+    
+    # Auto-size columns for summary
+    for column in ws_summary.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws_summary.column_dimensions[column_letter].width = adjusted_width
+    
+    # Save to BytesIO
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
+
+
+def export_pos_sales_to_excel(orders):
+    """Export POS sales to Excel file using openpyxl"""
+    wb = Workbook()
+    
+    # Sales details sheet
+    ws_details = wb.active
+    ws_details.title = "Sales Details"
+    
+    # Headers for details
+    detail_headers = [
+        'Receipt #', 'Date/Time', 'Customer', 'Customer Phone', 'Agency',
+        'Product Name', 'Product SKU', 'Quantity', 'Unit Price', 'Discount %',
+        'Line Total', 'Status', 'Sale Total', 'Notes'
+    ]
+    ws_details.append(detail_headers)
+    
+    # Style headers
+    header_font = Font(bold=True)
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    
+    for cell in ws_details[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    
+    # Add sales details data
+    for order in orders:
+        for item in order.order_items:
+            row_data = [
+                order.order_number,
+                order.order_date.strftime('%Y-%m-%d %H:%M:%S'),
+                order.customer.name,
+                order.customer.phone or '',
+                order.agency.name,
+                item.product_name or item.product.name,
+                item.product.sku,
+                item.quantity,
+                float(item.unit_price),
+                float(item.discount_percentage or 0),
+                float(item.total_price),
+                order.status,
+                float(order.total_amount),
+                order.notes or ''
+            ]
+            ws_details.append(row_data)
+    
+    # Auto-size columns for details
+    for column in ws_details.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws_details.column_dimensions[column_letter].width = adjusted_width
+    
+    # Sales summary sheet
+    ws_summary = wb.create_sheet("Sales Summary")
+    summary_headers = [
+        'Receipt #', 'Date/Time', 'Customer', 'Agency', 'Status',
+        'Items Count', 'Total Amount'
+    ]
+    ws_summary.append(summary_headers)
+    
+    # Style summary headers
+    for cell in ws_summary[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+    
+    # Add summary data
+    for order in orders:
+        row_data = [
+            order.order_number,
+            order.order_date.strftime('%Y-%m-%d %H:%M:%S'),
+            order.customer.name,
+            order.agency.name,
+            order.status,
+            len(order.order_items),
+            float(order.total_amount)
+        ]
+        ws_summary.append(row_data)
+    
+    # Auto-size columns for summary
+    for column in ws_summary.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws_summary.column_dimensions[column_letter].width = adjusted_width
+    
+    # Save to BytesIO
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
+
+
 def generate_bulk_order_template(order_type='sale'):
     """
     Generate Excel template for bulk order creation

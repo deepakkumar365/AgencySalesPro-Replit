@@ -6,8 +6,8 @@
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0"><i class="fas fa-file-invoice-dollar me-2"></i>Orders (SO & PO)</h2>
-        <div>
-            <div class="btn-group me-2" role="group">
+        <div class="d-flex gap-2">
+            <div class="btn-group" role="group">
                 <a href="{{ url_for('order.create_order') }}" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i>New Sales Order
                 </a>
@@ -23,6 +23,22 @@
                     <i class="fas fa-file-upload"></i>
                 </a>
             </div>
+            <form method="GET" id="export-form" class="d-flex gap-2">
+                <input type="hidden" name="agency" value="{{ filters.agency or '' }}">
+                <input type="hidden" name="customer" value="{{ filters.customer or '' }}">
+                <input type="hidden" name="supplier" value="{{ filters.supplier or '' }}">
+                <input type="hidden" name="status" value="{{ filters.status or '' }}">
+                <input type="hidden" name="date_from" value="{{ filters.date_from or '' }}">
+                <input type="hidden" name="date_to" value="{{ filters.date_to or '' }}">
+                <div class="btn-group" role="group">
+                    <button type="submit" formaction="{{ url_for('order.export_orders') }}" class="btn btn-outline-success" title="Export Sales Orders">
+                        <i class="fas fa-download me-2"></i>Export SO
+                    </button>
+                    <button type="submit" formaction="{{ url_for('purchase_order.export_purchase_orders') }}" class="btn btn-outline-success" title="Export Purchase Orders">
+                        <i class="fas fa-download me-2"></i>Export PO
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 

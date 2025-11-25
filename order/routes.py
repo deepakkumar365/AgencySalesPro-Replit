@@ -717,26 +717,60 @@ def update_order_status(order_id):
 @order_bp.route('/export')
 @login_required
 @log_activity('export_orders')
-def export_orders():
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson'])
+def export_orders(current_agency_id=None):
+    """Export filtered sales orders to Excel"""
     user_role = session.get('role')
-    current_agency_id = session.get('agency_id')
     user_id = session.get('user_id')
     
-    if user_role == 'super_admin':
-        orders = Order.query.all()
-    elif user_role == 'salesperson':
-        orders = Order.query.filter_by(salesperson_id=user_id).all()
-    else:
-        orders = Order.query.filter_by(agency_id=current_agency_id).all()
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+    agency_filter = request.args.get('agency')
+    customer_filter = request.args.get('customer')
+    salesperson_filter = request.args.get('salesperson')
+    status_filter = request.args.get('status')
     
-    # Create Excel file
+    so_query = Order.query
+    if user_role == 'salesperson':
+        so_query = so_query.filter(Order.salesperson_id == user_id)
+    elif user_role != 'super_admin':
+        so_query = so_query.filter(Order.agency_id == current_agency_id)
+    
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+            so_query = so_query.filter(Order.created_at >= date_from_obj)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d')
+            so_query = so_query.filter(Order.created_at <= date_to_obj)
+        except ValueError:
+            pass
+    
+    if agency_filter and user_role == 'super_admin':
+        so_query = so_query.filter(Order.agency_id == agency_filter)
+    
+    if customer_filter:
+        so_query = so_query.filter(Order.customer_id == customer_filter)
+    
+    if salesperson_filter:
+        so_query = so_query.filter(Order.salesperson_id == salesperson_filter)
+    
+    if status_filter:
+        so_query = so_query.filter(Order.status == status_filter)
+    
+    orders = so_query.order_by(Order.created_at.desc()).all()
+    
     output = export_orders_to_excel(orders)
     
     return send_file(
         output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         as_attachment=True,
-        download_name='orders_export.xlsx',
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        download_name=f'sales_orders_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
     )
 
 @order_bp.route('/api/customers/<int:location_id>')
