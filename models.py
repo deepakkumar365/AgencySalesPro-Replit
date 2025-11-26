@@ -382,8 +382,8 @@ class DeliveryChallan(db.Model):
     
     # Relationships
     order = db.relationship('Order', backref='delivery_challans', lazy=True)
-    agency = db.relationship('Agency', backref='delivery_challans', lazy=True)
-    customer = db.relationship('Customer', backref='delivery_challans', lazy=True)
+    agency = db.relationship('Agency', backref='agency_delivery_challans', lazy=True)
+    customer = db.relationship('Customer', backref='customer_delivery_challans', lazy=True)
     creator = db.relationship('User', backref='created_challans', lazy=True)
     items = db.relationship('DeliveryChallanItem', backref='challan', lazy=True, cascade='all, delete-orphan')
 
@@ -433,8 +433,8 @@ class Invoice(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
-    order = db.relationship('Order', backref='invoice', lazy=True)
-    customer = db.relationship('Customer', backref='invoices', lazy=True)
+    order = db.relationship('Order', backref='invoices', lazy=True)
+    customer = db.relationship('Customer', backref='customer_invoices', lazy=True)
     payments = db.relationship('Payment', backref='invoice', lazy=True)
     items = db.relationship('InvoiceItem', backref='invoice', lazy=True, cascade='all, delete-orphan')
 

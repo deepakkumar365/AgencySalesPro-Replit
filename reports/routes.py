@@ -9,6 +9,7 @@ from models import (
 from reports import reports_bp
 from auth.utils import login_required, permission_required
 from sqlalchemy import func, and_, or_
+import logging
 
 @reports_bp.route('/dashboard')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
@@ -53,7 +54,7 @@ def unified_dashboard(current_agency_id=None):
         Invoice.issue_date >= start_date,
         Invoice.issue_date <= end_date
     ).all()
-    
+    logging.info(invoice_query)
     billing_stats = {
         'total_invoices': len(period_invoices),
         'total_invoiced': sum(inv.total_amount for inv in period_invoices),

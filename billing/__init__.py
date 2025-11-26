@@ -2,4 +2,4 @@ from flask import Blueprint
 
 billing_bp = Blueprint('billing', __name__, url_prefix='/billing')
 
-from billing import routes
+from . import routes

@@ -3,6 +3,7 @@ from sqlalchemy import or_, func, and_, extract
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta
 import calendar
+import logging
 
 from extensions import db
 from models import (
@@ -145,19 +146,16 @@ def dashboard(current_agency_id=None):
     cash_in_bank = bank_receipts - bank_payments
     
     # Sales Performance (last 30 days for stats)
-    stats_end_date = datetime.now()
-    stats_start_date = stats_end_date - timedelta(days=30)
-    
     period_orders = order_query.filter(
-        Order.order_date >= stats_start_date,
-        Order.order_date <= stats_end_date
+        Order.order_date >= start_date,
+        Order.order_date <= end_date
     ).all()
-    
+    logging.info(f"Period Orders: {(period_orders)}")
     sales_stats = {
         'total_orders': len(period_orders),
         'total_revenue': sum(Decimal(str(order.total_amount)) if order.total_amount else Decimal('0') for order in period_orders),
         'avg_order_value': sum(Decimal(str(order.total_amount)) if order.total_amount else Decimal('0') for order in period_orders) / len(period_orders) if period_orders else Decimal('0'),
-        'completed_orders': len([o for o in period_orders if o.status == 'completed'])
+        'completed_orders': len([o for o in period_orders if o.status.lower() == 'completed'])
     }
     
     # Billing Performance
@@ -168,9 +166,15 @@ def dashboard(current_agency_id=None):
         'collection_rate': 0
     }
     
+    # Correctly calculate active products
+    from models import Product, ProductAgency
+    product_base_query = Product.query.filter(Product.is_active == True)
+    if user_role != 'super_admin':
+        product_base_query = product_base_query.join(ProductAgency).filter(ProductAgency.agency_id == current_agency_id)
+    
     # Inventory Stats
     inventory_stats = {
-        'total_products': 0,
+        'total_products': product_base_query.count(),
         'total_inventory_value': 0,
         'low_stock_items': 0,
         'out_of_stock_items': 0
@@ -178,7 +182,13 @@ def dashboard(current_agency_id=None):
     
     # Top performing products (by sales volume)
     product_sales = {}
-    for order in period_orders:
+    # Use a wider range for top products to be more meaningful
+    top_products_end_date = datetime.now()
+    top_products_start_date = top_products_end_date - timedelta(days=30)
+    top_products_orders = order_query.filter(
+        Order.order_date >= top_products_start_date, Order.order_date <= top_products_end_date
+    ).all()
+    for order in top_products_orders:
         for item in order.order_items:
             if item.product_id not in product_sales:
                 product_sales[item.product_id] = {
@@ -202,6 +212,8 @@ def dashboard(current_agency_id=None):
     
     # Daily sales trend (last 7 days) - Sales Orders and Purchase Orders
     po_query = PurchaseOrder.query
+    stats_end_date = datetime.now() # for daily sales trend
+
     if user_role != 'super_admin':
         po_query = po_query.filter(PurchaseOrder.agency_id == current_agency_id)
     
@@ -811,12 +823,13 @@ def get_customer_details(customer_id):
 # ==================== PAYMENT CONFIGURATION ====================
 @finance_bp.route('/payment_configurations', methods=['GET', 'POST'])
 @login_required
-@permission_required(roles=['super_admin', 'agency_manager'])
+@permission_required(roles=['super_admin', 'agency_manager', 'agency_admin'])
 @log_activity('manage_payment_configuration')
-def payment_configurations():
+def payment_configurations(current_agency_id=None):
     """
     Create or update payment configurations for tenants (agencies).
     Super Admin and Agency Manager can define billing rules.
+    Agency Admin can configure their own agency's payment settings.
     """
     user_role = session.get('role')
 
@@ -832,6 +845,11 @@ def payment_configurations():
                 managed_agency_ids = [str(a.id) for a in managed_agencies]
                 if agency_id not in managed_agency_ids:
                     flash("You do not have permission to configure this agency.", "danger")
+                    return redirect(url_for('finance.payment_configurations'))
+            elif user_role == 'agency_admin':
+                user = User.query.get(session.get('user_id'))
+                if str(user.agency_id) != agency_id:
+                    flash("You can only configure your own agency's payment settings.", "danger")
                     return redirect(url_for('finance.payment_configurations'))
             
             agency = Agency.query.get_or_404(agency_id)
@@ -874,6 +892,12 @@ def payment_configurations():
             Agency.agency_manager_id == session.get('user_id'),
             Agency.is_active == True
         ).order_by(Agency.name).all()
+    elif user_role == 'agency_admin':
+        user = User.query.get(session.get('user_id'))
+        if user.agency_id:
+            agencies = Agency.query.options(db.joinedload(Agency.payment_configuration)).filter_by(id=user.agency_id).all()
+        else:
+            agencies = []
     else:
         agencies = []
 

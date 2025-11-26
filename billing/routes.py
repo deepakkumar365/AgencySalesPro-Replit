@@ -6,7 +6,7 @@ from models import (
     Order, Customer, Agency, Location, User,
     Invoice, Payment, PaymentMethod, TaxRule
 )
-from billing import billing_bp
+from . import billing_bp
 from auth.utils import login_required, permission_required, get_role_permissions
 from utils.decorators import log_activity
 import uuid
@@ -142,7 +142,7 @@ def view_invoice(invoice_id, current_agency_id=None):
     else:
         invoice = Invoice.query.filter_by(id=invoice_id, agency_id=current_agency_id).first_or_404()
     
-    return render_template('billing/invoice_detail.html', invoice=invoice)
+    return render_template('billing/invoice_detail.html', invoice=invoice, now=datetime.utcnow())
 
 @billing_bp.route('/create_invoice/<int:order_id>')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
