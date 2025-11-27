@@ -122,6 +122,7 @@ def create_app():
         from product_overrides import overrides_bp
         from finance import finance_bp
         from forecasting import forecasting_bp
+        from billing import billing_bp
 
         app.register_blueprint(auth_bp, url_prefix='/auth')
         app.register_blueprint(agency_bp, url_prefix='/agency')
@@ -141,6 +142,7 @@ def create_app():
         app.register_blueprint(subscription_bp, url_prefix='/subscription')
         app.register_blueprint(job_accounting_bp, url_prefix='/job-accounting')
         app.register_blueprint(finance_bp, url_prefix='/billing') # Changed from /finance to /billing
+        app.register_blueprint(billing_bp)
         app.register_blueprint(overrides_bp)
         app.register_blueprint(forecasting_bp, url_prefix='/forecasting')
 

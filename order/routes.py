@@ -319,7 +319,7 @@ def create_order():
     # Add today's date for the template
     from datetime import date, timedelta
     today = date.today()
-    default_delivery_date = today + timedelta(days=10)
+    default_delivery_date = today
     user_role = session.get('role')
 
     # Fetch initial customers for the dropdown
@@ -938,7 +938,7 @@ def search_products():
 @login_required
 @permission_required(roles=['agency_admin', 'agency_manager'])
 @log_activity('create_delivery_challan')
-def create_delivery_challan(order_id):
+def create_delivery_challan(order_id, current_agency_id=None):
     """Create a delivery challan for an order"""
     order = Order.query.get_or_404(order_id)
     
@@ -1024,7 +1024,7 @@ def view_delivery_challan(challan_id):
 @login_required
 @permission_required(roles=['agency_admin', 'agency_manager'])
 @log_activity('update_delivery_challan_status')
-def update_delivery_challan_status(challan_id):
+def update_delivery_challan_status(challan_id, current_agency_id=None):
     """Update delivery challan status"""
     challan = DeliveryChallan.query.get_or_404(challan_id)
     

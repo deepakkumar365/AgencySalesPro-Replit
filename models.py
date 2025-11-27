@@ -382,8 +382,8 @@ class DeliveryChallan(db.Model):
     
     # Relationships
     order = db.relationship('Order', backref='delivery_challans', lazy=True)
-    agency = db.relationship('Agency', backref='delivery_challans', lazy=True)
-    customer = db.relationship('Customer', backref='delivery_challans', lazy=True)
+    agency = db.relationship('Agency', backref='agency_delivery_challans', lazy=True)
+    customer = db.relationship('Customer', backref='customer_delivery_challans', lazy=True)
     creator = db.relationship('User', backref='created_challans', lazy=True)
     items = db.relationship('DeliveryChallanItem', backref='challan', lazy=True, cascade='all, delete-orphan')
 
@@ -433,8 +433,8 @@ class Invoice(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
-    order = db.relationship('Order', backref='invoice', lazy=True)
-    customer = db.relationship('Customer', backref='invoices', lazy=True)
+    order = db.relationship('Order', backref='invoices', lazy=True)
+    customer = db.relationship('Customer', backref='customer_invoices', lazy=True)
     payments = db.relationship('Payment', backref='invoice', lazy=True)
     items = db.relationship('InvoiceItem', backref='invoice', lazy=True, cascade='all, delete-orphan')
 
@@ -1159,3 +1159,31 @@ class ForecastRefreshLog(db.Model):
     # Relationships
     agency = db.relationship('Agency', backref='forecast_refresh_logs', lazy=True)
     user = db.relationship('User', backref='forecast_refresh_logs', lazy=True)
+
+
+class DeliveryChallan(db.Model):
+    __tablename__ = 'ASP_delivery_challans'
+    __table_args__ = {'extend_existing': True}
+    id = db.Column(db.Integer, primary_key=True)
+    challan_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), nullable=False, index=True)
+    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False, index=True)
+    
+    delivery_date = db.Column(db.DateTime)
+    delivery_address = db.Column(db.Text)
+    transporter_name = db.Column(db.String(255))
+    vehicle_number = db.Column(db.String(50))
+    lr_number = db.Column(db.String(50))
+    e_way_bill_number = db.Column(db.String(50))
+    notes = db.Column(db.Text)
+    status = db.Column(db.String(20), default='pending')
+    
+    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    order = db.relationship('Order', backref='delivery_challans', lazy=True, foreign_keys=[order_id])
+    agency = db.relationship('Agency', backref='delivery_challans', lazy=True, foreign_keys=[agency_id])
+    customer = db.relationship('Customer', backref='delivery_challans', lazy=True, foreign_keys=[customer_id])
+    creator = db.relationship('User', backref='created_delivery_challans', lazy=True, foreign_keys=[created_by])

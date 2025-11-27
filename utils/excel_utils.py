@@ -288,7 +288,7 @@ def export_orders_to_excel(orders):
     
     # Headers for details
     detail_headers = [
-        'Order ID', 'Order Number', 'Customer', 'Customer Email', 'Customer Phone',
+        'Order ID', 'Order Number', 'Customer Code', 'Customer', 'Customer Email', 'Customer Phone',
         'Location', 'Agency', 'Salesperson', 'Product Name', 'Product SKU',
         'Quantity', 'Unit Price', 'Total Price', 'Order Status', 'Order Total',
         'Discount', 'Tax', 'Order Date', 'Delivery Date', 'Notes'
@@ -309,6 +309,7 @@ def export_orders_to_excel(orders):
             row_data = [
                 order.id,
                 order.order_number,
+                order.customer.customer_code,
                 order.customer.name,
                 order.customer.email,
                 order.customer.phone,
@@ -346,7 +347,7 @@ def export_orders_to_excel(orders):
     # Order summary sheet
     ws_summary = wb.create_sheet("Order Summary")
     summary_headers = [
-        'Order Number', 'Customer', 'Agency', 'Salesperson', 'Status',
+        'Order Number', 'Customer Code', 'Customer', 'Agency', 'Salesperson', 'Status',
         'Total Amount', 'Order Date', 'Items Count'
     ]
     ws_summary.append(summary_headers)
@@ -362,6 +363,7 @@ def export_orders_to_excel(orders):
         if order.id not in order_summary:
             row_data = [
                 order.order_number,
+                order.customer.customer_code,
                 order.customer.name,
                 order.agency.name,
                 order.salesperson.full_name,

@@ -3,6 +3,7 @@ from sqlalchemy import or_, func, and_, extract
 from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta
 import calendar
+import logging
 
 from extensions import db
 from models import (
@@ -69,31 +70,33 @@ def dashboard(current_agency_id=None):
         last_day = calendar.monthrange(filter_date.year, filter_date.month)[1]
         end_date = filter_date.replace(day=last_day, hour=23, minute=59, second=59)
     
-    # Build queries based on role
+    # Build base queries based on role
+    order_query = Order.query
     payment_query = FinancePayment.query.filter(FinancePayment.status == 'confirmed')
     receipt_query = Receipt.query.filter(Receipt.status == 'confirmed')
     
     if user_role != 'super_admin':
+        order_query = order_query.filter(Order.agency_id == current_agency_id)
         payment_query = payment_query.filter(FinancePayment.agency_id == current_agency_id)
         receipt_query = receipt_query.filter(Receipt.agency_id == current_agency_id)
     
-    # Apply date filters
-    payment_query = payment_query.filter(
+    # Apply date filters for transactions
+    period_payment_query = payment_query.filter(
         FinancePayment.payment_date >= start_date,
         FinancePayment.payment_date <= end_date
     )
-    receipt_query = receipt_query.filter(
+    period_receipt_query = receipt_query.filter(
         Receipt.receipt_date >= start_date,
         Receipt.receipt_date <= end_date
     )
     
-    # Calculate totals
+    # Calculate totals for the period
     total_payment = db.session.query(func.sum(FinancePayment.amount)).filter(
-        FinancePayment.id.in_([p.id for p in payment_query.all()])
+        FinancePayment.id.in_([p.id for p in period_payment_query.all()])
     ).scalar() or Decimal('0')
     
     total_receipt = db.session.query(func.sum(Receipt.amount)).filter(
-        Receipt.id.in_([r.id for r in receipt_query.all()])
+        Receipt.id.in_([r.id for r in period_receipt_query.all()])
     ).scalar() or Decimal('0')
     
     # Calculate pending amounts (all time, not filtered by period)
@@ -142,14 +145,121 @@ def dashboard(current_agency_id=None):
     
     cash_in_bank = bank_receipts - bank_payments
     
+    # Sales Performance (last 30 days for stats)
+    period_orders = order_query.filter(
+        Order.order_date >= start_date,
+        Order.order_date <= end_date
+    ).all()
+    logging.info(f"Period Orders: {(period_orders)}")
+    sales_stats = {
+        'total_orders': len(period_orders),
+        'total_revenue': sum(Decimal(str(order.total_amount)) if order.total_amount else Decimal('0') for order in period_orders),
+        'avg_order_value': sum(Decimal(str(order.total_amount)) if order.total_amount else Decimal('0') for order in period_orders) / len(period_orders) if period_orders else Decimal('0'),
+        'completed_orders': len([o for o in period_orders if o.status.lower() == 'completed'])
+    }
+    
+    # Billing Performance
+    billing_stats = {
+        'total_invoices': 0,
+        'total_invoiced': Decimal('0'),
+        'total_collected': total_receipt,
+        'collection_rate': 0
+    }
+    
+    # Correctly calculate active products
+    from models import Product, ProductAgency
+    product_base_query = Product.query.filter(Product.is_active == True)
+    if user_role != 'super_admin':
+        product_base_query = product_base_query.join(ProductAgency).filter(ProductAgency.agency_id == current_agency_id)
+    
+    # Inventory Stats
+    inventory_stats = {
+        'total_products': product_base_query.count(),
+        'total_inventory_value': 0,
+        'low_stock_items': 0,
+        'out_of_stock_items': 0
+    }
+    
+    # Top performing products (by sales volume)
+    product_sales = {}
+    # Use a wider range for top products to be more meaningful
+    top_products_end_date = datetime.now()
+    top_products_start_date = top_products_end_date - timedelta(days=30)
+    top_products_orders = order_query.filter(
+        Order.order_date >= top_products_start_date, Order.order_date <= top_products_end_date
+    ).all()
+    for order in top_products_orders:
+        for item in order.order_items:
+            if item.product_id not in product_sales:
+                product_sales[item.product_id] = {
+                    'product_name': item.product_name,
+                    'product': item.product,
+                    'quantity_sold': 0,
+                    'revenue': 0
+                }
+            product_sales[item.product_id]['quantity_sold'] += item.quantity
+            product_sales[item.product_id]['revenue'] += Decimal(str(item.total_price)) if item.total_price else Decimal('0')
+    
+    top_products = sorted(
+        product_sales.values(),
+        key=lambda x: float(x['revenue']),
+        reverse=True
+    )[:10]
+    
+    # Recent activity summary
+    recent_orders = order_query.order_by(Order.order_date.desc()).limit(5).all()
+    recent_payments = []
+    
+    # Daily sales trend (last 7 days) - Sales Orders and Purchase Orders
+    po_query = PurchaseOrder.query
+    stats_end_date = datetime.now() # for daily sales trend
+
+    if user_role != 'super_admin':
+        po_query = po_query.filter(PurchaseOrder.agency_id == current_agency_id)
+    
+    daily_sales = []
+    for i in range(6, -1, -1):
+        day = stats_end_date - timedelta(days=i)
+        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
+        
+        day_so = order_query.filter(
+            Order.order_date >= day_start,
+            Order.order_date <= day_end
+        ).all()
+        
+        day_po = po_query.filter(
+            PurchaseOrder.created_at >= day_start,
+            PurchaseOrder.created_at <= day_end
+        ).all()
+        
+        total_so = sum(Decimal(str(order.total_amount)) if order.total_amount else Decimal('0') for order in day_so)
+        total_po = sum(Decimal(str(po.total_amount)) if po.total_amount else Decimal('0') for po in day_po)
+        
+        daily_sales.append({
+            'date': day.strftime('%Y-%m-%d'),
+            'day_name': day.strftime('%A'),
+            'so_total': float(total_so),
+            'po_total': float(total_po),
+            'so_count': len(day_so),
+            'po_count': len(day_po)
+        })
+    
     return render_template(
         'finance/dashboard.html',
-        total_payment=total_payment,
-        total_receipt=total_receipt,
+        sales_stats=sales_stats,
+        billing_stats=billing_stats,
+        inventory_stats=inventory_stats,
+        top_products=top_products,
+        recent_orders=recent_orders,
+        recent_payments=recent_payments,
         pending_payment=pending_payment,
+        total_receipt=total_receipt,
         pending_receipt=pending_receipt,
         cash_on_hand=cash_on_hand,
         cash_in_bank=cash_in_bank,
+        total_payment=total_payment,
+        daily_sales=daily_sales,
         period=period,
         selected_date=selected_date,
         start_date=start_date,
@@ -713,12 +823,13 @@ def get_customer_details(customer_id):
 # ==================== PAYMENT CONFIGURATION ====================
 @finance_bp.route('/payment_configurations', methods=['GET', 'POST'])
 @login_required
-@permission_required(roles=['super_admin', 'agency_manager'])
+@permission_required(roles=['super_admin', 'agency_manager', 'agency_admin'])
 @log_activity('manage_payment_configuration')
-def payment_configurations():
+def payment_configurations(current_agency_id=None):
     """
     Create or update payment configurations for tenants (agencies).
     Super Admin and Agency Manager can define billing rules.
+    Agency Admin can configure their own agency's payment settings.
     """
     user_role = session.get('role')
 
@@ -734,6 +845,11 @@ def payment_configurations():
                 managed_agency_ids = [str(a.id) for a in managed_agencies]
                 if agency_id not in managed_agency_ids:
                     flash("You do not have permission to configure this agency.", "danger")
+                    return redirect(url_for('finance.payment_configurations'))
+            elif user_role == 'agency_admin':
+                user = User.query.get(session.get('user_id'))
+                if str(user.agency_id) != agency_id:
+                    flash("You can only configure your own agency's payment settings.", "danger")
                     return redirect(url_for('finance.payment_configurations'))
             
             agency = Agency.query.get_or_404(agency_id)
@@ -776,6 +892,12 @@ def payment_configurations():
             Agency.agency_manager_id == session.get('user_id'),
             Agency.is_active == True
         ).order_by(Agency.name).all()
+    elif user_role == 'agency_admin':
+        user = User.query.get(session.get('user_id'))
+        if user.agency_id:
+            agencies = Agency.query.options(db.joinedload(Agency.payment_configuration)).filter_by(id=user.agency_id).all()
+        else:
+            agencies = []
     else:
         agencies = []
 
