@@ -174,18 +174,7 @@ setTimeout(function() {
         const dailySalesData = {{ daily_sales | tojson | safe if daily_sales else '[]' }};
         const dailySalesCanvas = document.getElementById('dailySalesChart');
         
-        console.log('Chart Data:', dailySalesData);
-        console.log('Canvas:', dailySalesCanvas);
-        
-        if (!dailySalesCanvas) {
-            console.error('Canvas element not found');
-            return;
-        }
-        
-        if (!dailySalesData || dailySalesData.length === 0) {
-            console.warn('No data available for chart');
-            return;
-        }
+        if (!dailySalesCanvas || !dailySalesData || dailySalesData.length === 0) return;
         
         const ctx = dailySalesCanvas.getContext('2d');
         
@@ -198,23 +187,27 @@ setTimeout(function() {
                         label: 'Sales Orders (SO)',
                         data: dailySalesData.map(d => d.so_total),
                         borderColor: 'rgb(75, 192, 192)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.15)',
                         fill: true,
                         tension: 0.4,
-                        borderWidth: 2,
-                        pointRadius: 5,
-                        pointBackgroundColor: 'rgb(75, 192, 192)'
+                        borderWidth: 3,
+                        pointRadius: 6,
+                        pointBackgroundColor: 'rgb(75, 192, 192)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
                     },
                     {
                         label: 'Purchase Orders (PO)',
                         data: dailySalesData.map(d => d.po_total),
                         borderColor: 'rgb(255, 159, 64)',
-                        backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                        backgroundColor: 'rgba(255, 159, 64, 0.15)',
                         fill: true,
                         tension: 0.4,
-                        borderWidth: 2,
-                        pointRadius: 5,
-                        pointBackgroundColor: 'rgb(255, 159, 64)'
+                        borderWidth: 3,
+                        pointRadius: 6,
+                        pointBackgroundColor: 'rgb(255, 159, 64)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
                     }
                 ]
             },
@@ -223,14 +216,14 @@ setTimeout(function() {
                 maintainAspectRatio: false,
                 interaction: {
                     mode: 'index',
-                    intersect: false,
+                    intersect: false
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
-                                return '₹' + value.toLocaleString();
+                                return '₹' + (value / 1000).toFixed(1) + 'k';
                             }
                         }
                     }
@@ -238,24 +231,29 @@ setTimeout(function() {
                 plugins: {
                     legend: {
                         display: true,
-                        position: 'top'
+                        position: 'top',
+                        labels: {
+                            padding: 15,
+                            font: { size: 12, weight: 'bold' },
+                            usePointStyle: true
+                        }
                     },
                     tooltip: {
+                        mode: 'index',
+                        intersect: false,
                         callbacks: {
                             label: function(context) {
                                 const label = context.dataset.label || '';
                                 const value = context.parsed.y;
-                                return label + ': ₹' + value.toLocaleString();
+                                return label + ': ₹' + value.toLocaleString('en-IN', { maximumFractionDigits: 0 });
                             }
                         }
                     }
                 }
             }
         });
-        
-        console.log('Chart created successfully');
     } catch (error) {
-        console.error('Error creating chart:', error);
+        console.error('Chart error:', error);
     }
 }, 100);
 </script>

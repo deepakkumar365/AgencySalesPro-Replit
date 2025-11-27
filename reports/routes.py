@@ -4,7 +4,7 @@ from decimal import Decimal
 from extensions import db
 from models import (
     Order, Product, ProductAgency, Customer, Invoice, Payment, InventoryTransaction,
-    User, Agency, Location
+    User, Agency, Location, PurchaseOrder
 )
 from reports import reports_bp
 from auth.utils import login_required, permission_required
@@ -24,12 +24,14 @@ def unified_dashboard(current_agency_id=None):
     # Base queries based on role
     if user_role == 'super_admin':
         order_query = Order.query
+        po_query = PurchaseOrder.query
         product_query = Product.query
         invoice_query = Invoice.query
         payment_query = Payment.query
         transaction_query = InventoryTransaction.query
     else:
         order_query = Order.query.filter_by(agency_id=current_agency_id)
+        po_query = PurchaseOrder.query.filter_by(agency_id=current_agency_id)
         product_query = db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id)\
             .filter(ProductAgency.agency_id == current_agency_id)
         invoice_query = Invoice.query.filter_by(agency_id=current_agency_id)
@@ -122,13 +124,28 @@ def unified_dashboard(current_agency_id=None):
             Order.order_date <= day_end
         ).all()
         
+        day_purchase_orders = po_query.filter(
+            PurchaseOrder.order_date >= day_start,
+            PurchaseOrder.order_date <= day_end
+        ).all()
+        
+        so_total = 0
+        for order in day_orders:
+            if order.total_amount:
+                so_total += float(order.total_amount)
+        
+        po_total = 0
+        for po in day_purchase_orders:
+            if po.total_amount:
+                po_total += float(po.total_amount)
+        
         daily_sales.append({
             'date': day.strftime('%Y-%m-%d'),
             'day_name': day.strftime('%A'),
-            'so_total': float(sum(order.total_amount for order in day_orders)),
-            'po_total': 0,
+            'so_total': so_total,
+            'po_total': po_total,
             'so_count': len(day_orders),
-            'po_count': 0
+            'po_count': len(day_purchase_orders)
         })
     
     # Render the unified dashboard for all permitted roles.

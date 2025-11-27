@@ -319,7 +319,7 @@ def create_order():
     # Add today's date for the template
     from datetime import date, timedelta
     today = date.today()
-    default_delivery_date = today + timedelta(days=10)
+    default_delivery_date = today
     user_role = session.get('role')
 
     # Fetch initial customers for the dropdown
