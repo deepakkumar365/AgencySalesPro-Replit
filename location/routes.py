@@ -13,13 +13,25 @@ from datetime import datetime
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson'])
 def list_locations(current_agency_id=None):
     user_role = session.get('role')
+    query = Location.query
     
     if user_role == 'super_admin':
-        locations = Location.query.all()
+        # Super admin can see all locations
+        pass
     else:
-        locations = Location.query.filter_by(agency_id=current_agency_id).all()
+        # Other roles are restricted to their agency
+        query = query.filter_by(agency_id=current_agency_id)
     
-    return render_template('location/list.html', locations=locations)
+    # Get pagination parameters from request args
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    if per_page not in [10, 20, 50, 100]:
+        per_page = 10
+
+    # Use the paginate() method on the query
+    pagination = query.order_by(Location.name).paginate(page=page, per_page=per_page, error_out=False)
+    
+    return render_template('location/list.html', pagination=pagination, per_page=per_page)
 
 @location_bp.route('/create', methods=['GET', 'POST'])
 @login_required
