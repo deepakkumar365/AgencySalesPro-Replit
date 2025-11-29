@@ -399,14 +399,14 @@ def download_customer_template():
     writer = csv.writer(output)
     
     # Write header row
-    writer.writerow(['name', 'email', 'phone', 'address', 'location_name', 'agency_code'])
+    writer.writerow(['customer_code', 'name', 'email', 'phone', 'address', 'location_name', 'agency_code'])
     
     # Write sample data
-    writer.writerow(['John Doe', 'john@example.com', '5550123', '123 Main St', 'Main Office', 'AGENCY001'])
+    writer.writerow(['CUST01', 'John Doe', 'john@example.com', '5550123', '123 Main St', 'Main Office', 'AGENCY001'])
     
     # Create response
     response = make_response(output.getvalue())
-    response.headers['Content-Disposition'] = 'attachment; filename=customer_template.csv'
+    response.headers['Content-Disposition'] = 'attachment; filename=customer_import_template.csv'
     response.headers['Content-Type'] = 'text/csv'
     
     return response
@@ -429,11 +429,12 @@ def export_customers():
     writer = csv.writer(output)
     
     # Write header
-    writer.writerow(['name', 'email', 'phone', 'address', 'location_name', 'agency_code', 'is_active', 'created_at'])
+    writer.writerow(['customer_code', 'name', 'email', 'phone', 'address', 'location_name', 'agency_code', 'is_active', 'created_at'])
     
     # Write data
     for customer in customers:
         writer.writerow([
+            customer.customer_code,
             customer.name,
             customer.email or '',
             customer.phone or '',
@@ -479,49 +480,56 @@ def import_customers():
             current_agency_id = session.get('agency_id')
             
             success_count = 0
+            update_count = 0
             error_count = 0
             errors = []
             
             for row_num, row in enumerate(csv_input, start=2):  # Start from 2 to account for header
                 try:
                     # Validate required fields
-                    if not row.get('name') or not row.get('name').strip():
-                        errors.append(f"Row {row_num}: Customer name is required")
+                    customer_code = row.get('customer_code', '').strip().upper()
+                    if not customer_code or not row.get('name', '').strip():
+                        errors.append(f"Row {row_num}: Customer Code and Name are required.")
                         error_count += 1
                         continue
                     
-                    location_name = row.get('location_name', '').strip()
-                    agency_code = row.get('agency_code', '').strip()
+                    location_name = row.get('location_name', '').strip() or None
+                    agency_code = row.get('agency_code', '').strip() or None
+                    agency = None
+                    location = None
                     
-                    if not location_name or not agency_code:
-                        errors.append(f"Row {row_num}: Location name and agency code are required")
-                        error_count += 1
-                        continue
-                    
-                    # Find agency by code
-                    agency = Agency.query.filter_by(code=agency_code, is_active=True).first()
-                    if not agency:
-                        errors.append(f"Row {row_num}: Agency with code '{agency_code}' not found or inactive")
-                        error_count += 1
-                        continue
-                    
-                    # Check permissions for non-super admin users
-                    if user_role != 'super_admin' and agency.id != current_agency_id:
-                        errors.append(f"Row {row_num}: You can only import customers for your agency")
-                        error_count += 1
-                        continue
-                    
-                    # Find location by name and agency
-                    location = Location.query.filter_by(name=location_name, agency_id=agency.id, is_active=True).first()
+                    if user_role == 'super_admin':
+                        if not agency_code or not location_name:
+                            errors.append(f"Row {row_num}: Agency Code and Location Name are required for Super Admin.")
+                            error_count += 1
+                            continue
+                        agency = Agency.query.filter_by(code=agency_code, is_active=True).first()
+                        if not agency:
+                            errors.append(f"Row {row_num}: Agency with code '{agency_code}' not found or inactive.")
+                            error_count += 1
+                            continue
+                    else: # For agency-level users
+                        if agency_code:
+                            # If agency code is provided, validate it
+                            if agency_code.upper() != Agency.query.get(current_agency_id).code.upper():
+                                errors.append(f"Row {row_num}: You can only import customers for your own agency.")
+                                error_count += 1
+                                continue
+                        agency = Agency.query.get(current_agency_id)
+
+                    # Determine location
+                    if location_name:
+                        # If location name is provided, find it within the agency
+                        location = Location.query.filter_by(name=location_name, agency_id=agency.id, is_active=True).first()
+                    elif user_role != 'super_admin':
+                        # If not provided for an agency user, find the first active location for that agency
+                        location = Location.query.filter_by(agency_id=agency.id, is_active=True).first()
+                        if location:
+                            flash(f"Row {row_num}: No location provided, defaulted to '{location.name}'.", 'info')
+
+                    # Final validation for location
                     if not location:
                         errors.append(f"Row {row_num}: Location '{location_name}' not found for agency '{agency_code}' or inactive")
-                        error_count += 1
-                        continue
-                    
-                    # Check if customer already exists (by name and location)
-                    existing_customer = Customer.query.filter_by(name=row['name'].strip(), location_id=location.id).first()
-                    if existing_customer:
-                        errors.append(f"Row {row_num}: Customer '{row['name'].strip()}' already exists at location '{location_name}'")
                         error_count += 1
                         continue
                     
@@ -531,38 +539,62 @@ def import_customers():
                         errors.append(f"Row {row_num}: Invalid email format")
                         error_count += 1
                         continue
-                    
-                    # Create new customer
-                    customer = Customer(
-                        name=row['name'].strip(),
-                        email=email if email else None,
-                        # Clean phone number: remove non-numeric characters
-                        phone=re.sub(r'[^0-9]', '', row.get('phone', '')),
-                        address=row.get('address', '').strip(),
-                        location_id=location.id,
-                        is_active=True
-                    )
-                    
-                    db.session.add(customer)
-                    db.session.flush()  # Get customer ID before creating mapping
-                    
-                    # Create customer-agency mapping
-                    customer_agency = CustomerAgency(
+
+                    # Upsert logic: Check if customer exists by customer_code
+                    customer = Customer.query.filter_by(customer_code=customer_code).first()
+
+                    if customer:
+                        # --- UPDATE EXISTING CUSTOMER ---
+                        customer.name = row['name'].strip()
+                        customer.email = email if email else customer.email
+                        customer.phone = re.sub(r'[^0-9+]', '', row.get('phone', '')) or customer.phone
+                        customer.address = row.get('address', '').strip() or customer.address
+                        customer.location_id = location.id
+                        update_count += 1
+                    else:
+                        # --- CREATE NEW CUSTOMER ---
+                        customer = Customer(
+                            customer_code=customer_code,
+                            name=row['name'].strip(),
+                            email=email if email else None,
+                            phone=re.sub(r'[^0-9+]', '', row.get('phone', '')),
+                            address=row.get('address', '').strip(),
+                            location_id=location.id,
+                            is_active=True
+                        )
+                        db.session.add(customer)
+                        db.session.flush()  # Get customer ID before creating mapping
+                        success_count += 1
+
+                    # Ensure customer-agency mapping exists and is active
+                    customer_agency = CustomerAgency.query.filter_by(
                         customer_id=customer.id,
-                        agency_id=agency.id,
-                        is_active=True
-                    )
-                    db.session.add(customer_agency)
-                    
-                    success_count += 1
+                        agency_id=agency.id
+                    ).first()
+
+                    if customer_agency:
+                        if not customer_agency.is_active:
+                            customer_agency.is_active = True
+                    else:
+                        new_mapping = CustomerAgency(
+                            customer_id=customer.id,
+                            agency_id=agency.id,
+                            is_active=True
+                        )
+                        db.session.add(new_mapping)
                     
                 except Exception as e:
                     errors.append(f"Row {row_num}: {str(e)}")
                     error_count += 1
             
-            if success_count > 0:
+            if success_count > 0 or update_count > 0:
                 db.session.commit()
+            
+            if success_count > 0:
                 flash(f'Successfully imported {success_count} customers', 'success')
+            
+            if update_count > 0:
+                flash(f'Successfully updated {update_count} customers', 'info')
             
             if error_count > 0:
                 flash(f'{error_count} errors occurred during import', 'warning')

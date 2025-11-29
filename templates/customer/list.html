@@ -122,6 +122,7 @@
                     <table class="table table-hover">
                         <thead>
                             <tr>
+                                <th>Code</th>
                                 <th>Name</th>
                                 <th class="d-none-mobile">Contact</th>
                                 <th>Location</th>
@@ -134,6 +135,9 @@
                         <tbody>
                             {% for customer in customers %}
                             <tr>
+                                <td>
+                                    <span class="badge bg-light text-dark">{{ customer.customer_code }}</span>
+                                </td>
                                 <td>
                                     <strong>{{ customer.name }}</strong>
                                     {% if customer.address %}
@@ -148,8 +152,12 @@
                                     <div><i class="fas fa-phone me-1"></i> {{ customer.phone }}</div>
                                     {% endif %}
                                 </td>
-                                <td>{{ customer.location.name }}</td>
-                                <td class="d-none-mobile">{{ customer.location.agency.name }}</td>
+                                <td>{{ customer.location.name if customer.location else 'N/A' }}</td>
+                                <td class="d-none-mobile">
+                                    {% if customer.location and customer.location.agency %}
+                                        {{ customer.location.agency.name }}
+                                    {% else %}N/A{% endif %}
+                                </td>
                                 <td>
                                     {% if customer.is_active %}
                                     <span class="badge bg-success">Active</span>
