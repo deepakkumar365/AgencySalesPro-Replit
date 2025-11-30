@@ -43,14 +43,19 @@ def index():
 @masters_bp.route('/categories')
 @login_required
 def categories():
-    """List all categories"""
-    user_role = session.get('role')
-    agency_id = session.get('agency_id')
+    """List all categories with pagination"""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    if per_page not in [10, 20, 50, 100]:
+        per_page = 10
     
-    # Global masters
-    categories = Category.query.filter_by(is_active=True).all()
+    pagination = Category.query.order_by(Category.name.asc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
     
-    return render_template('masters/categories.html', categories=categories)
+    return render_template('masters/categories.html', 
+                           pagination=pagination, 
+                           per_page=per_page)
 
 @masters_bp.route('/categories/create', methods=['GET', 'POST'])
 @login_required
@@ -89,14 +94,19 @@ def create_category():
 @masters_bp.route('/uoms')
 @login_required
 def uoms():
-    """List all UOMs"""
-    user_role = session.get('role')
-    agency_id = session.get('agency_id')
+    """List all UOMs with pagination"""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    if per_page not in [10, 20, 50, 100]:
+        per_page = 10
     
-    # Global masters
-    uoms = UOM.query.filter_by(is_active=True).all()
+    pagination = UOM.query.order_by(UOM.name.asc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
     
-    return render_template('masters/uoms.html', uoms=uoms)
+    return render_template('masters/uoms.html', 
+                           pagination=pagination, 
+                           per_page=per_page)
 
 @masters_bp.route('/uoms/create', methods=['GET', 'POST'])
 @login_required
@@ -132,14 +142,19 @@ def create_uom():
 @masters_bp.route('/tax-masters')
 @login_required
 def tax_masters():
-    """List all tax masters"""
-    user_role = session.get('role')
-    agency_id = session.get('agency_id')
+    """List all tax masters with pagination"""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    if per_page not in [10, 20, 50, 100]:
+        per_page = 10
     
-    # Global masters
-    tax_masters = TaxMaster.query.filter_by(is_active=True).all()
+    pagination = TaxMaster.query.order_by(TaxMaster.name.asc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
     
-    return render_template('masters/tax_masters.html', tax_masters=tax_masters)
+    return render_template('masters/tax_masters.html', 
+                           pagination=pagination, 
+                           per_page=per_page)
 
 @masters_bp.route('/tax-masters/create', methods=['GET', 'POST'])
 @login_required

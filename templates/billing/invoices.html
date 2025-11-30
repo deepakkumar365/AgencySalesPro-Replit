@@ -183,14 +183,12 @@
         {% if invoices.pages > 1 %}
         <nav aria-label="Invoice pagination" class="mt-4">
             <ul class="pagination justify-content-center">
+                {# copy current_filters and remove page param #}
+                {% set _args = current_filters.copy() if current_filters is defined else {} %}
+                {% set _ = _args.pop('page', None) %}
                 {% if invoices.has_prev %}
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for('billing.list_invoices', 
-                        page=invoices.prev_num,
-                        status=current_filters.status,
-                        customer_id=current_filters.customer_id,
-                        start_date=current_filters.start_date,
-                        end_date=current_filters.end_date) }}">
+                    <a class="page-link" href="{{ url_for('billing.list_invoices', page=invoices.prev_num, **_args) }}">
                         <i class="fas fa-chevron-left"></i>
                     </a>
                 </li>
@@ -200,12 +198,7 @@
                     {% if page_num %}
                         {% if page_num != invoices.page %}
                         <li class="page-item">
-                            <a class="page-link" href="{{ url_for('billing.list_invoices', 
-                                page=page_num,
-                                status=current_filters.status,
-                                customer_id=current_filters.customer_id,
-                                start_date=current_filters.start_date,
-                                end_date=current_filters.end_date) }}">
+                            <a class="page-link" href="{{ url_for('billing.list_invoices', page=page_num, **_args) }}">
                                 {{ page_num }}
                             </a>
                         </li>
@@ -223,12 +216,7 @@
 
                 {% if invoices.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for('billing.list_invoices', 
-                        page=invoices.next_num,
-                        status=current_filters.status,
-                        customer_id=current_filters.customer_id,
-                        start_date=current_filters.start_date,
-                        end_date=current_filters.end_date) }}">
+                    <a class="page-link" href="{{ url_for('billing.list_invoices', page=invoices.next_num, **_args) }}">
                         <i class="fas fa-chevron-right"></i>
                     </a>
                 </li>

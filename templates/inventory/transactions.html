@@ -114,10 +114,13 @@
             {% if transactions.pages > 1 %}
             <nav>
                 <ul class="pagination justify-content-center">
+                    {# copy current_filters and remove page so explicit page wins #}
+                    {% set _args = current_filters.copy() if current_filters is defined else {} %}
+                    {% set _ = _args.pop('page', None) %}
                     {% for page_num in transactions.iter_pages() %}
                         {% if page_num %}
                             <li class="page-item {% if transactions.page == page_num %}active{% endif %}">
-                                <a class="page-link" href="{{ url_for('inventory.transaction_history', page=page_num, **current_filters) }}">{{ page_num }}</a>
+                                <a class="page-link" href="{{ url_for('inventory.transaction_history', page=page_num, **_args) }}">{{ page_num }}</a>
                             </li>
                         {% endif %}
                     {% endfor %}
