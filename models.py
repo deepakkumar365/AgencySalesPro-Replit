@@ -322,6 +322,7 @@ class Order(db.Model):
     
     # Relationships
     order_items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
+    delivery_challans = db.relationship('DeliveryChallan', back_populates='order', lazy=True)
 
 class OrderItem(db.Model):
     __tablename__ = 'ASP_order_items'
@@ -353,39 +354,6 @@ class OrderItem(db.Model):
             self.line_total = (self.discounted_price * self.quantity) + self.tax_amount
             # For backward compatibility
             self.total_price = self.line_total
-
-class DeliveryChallan(db.Model):
-    """Delivery Challan for tracking shipments"""
-    __tablename__ = 'ASP_delivery_challans'
-    id = db.Column(db.Integer, primary_key=True)
-    challan_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('ASP_orders.id'), nullable=False, index=True)
-    agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), nullable=False, index=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey('ASP_customers.id'), nullable=False, index=True)
-    
-    # Delivery details
-    delivery_date = db.Column(db.DateTime)
-    delivery_address = db.Column(db.Text)
-    transporter_name = db.Column(db.String(100))
-    vehicle_number = db.Column(db.String(50))
-    lr_number = db.Column(db.String(50))  # Lorry Receipt Number
-    e_way_bill_number = db.Column(db.String(50))
-    
-    # Status
-    status = db.Column(db.String(20), default='pending', index=True)  # pending, in_transit, delivered, cancelled
-    
-    # Additional info
-    notes = db.Column(db.Text)
-    created_by = db.Column(db.Integer, db.ForeignKey('ASP_users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    order = db.relationship('Order', backref='delivery_challans', lazy=True)
-    agency = db.relationship('Agency', backref='agency_delivery_challans', lazy=True)
-    customer = db.relationship('Customer', backref='customer_delivery_challans', lazy=True)
-    creator = db.relationship('User', backref='created_challans', lazy=True)
-    items = db.relationship('DeliveryChallanItem', backref='challan', lazy=True, cascade='all, delete-orphan')
 
 class DeliveryChallanItem(db.Model):
     """Line items for delivery challans with product name snapshot"""
@@ -1183,7 +1151,7 @@ class DeliveryChallan(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    order = db.relationship('Order', backref='delivery_challans', lazy=True, foreign_keys=[order_id])
+    order = db.relationship('Order', back_populates='delivery_challans', lazy=True, foreign_keys=[order_id])
     agency = db.relationship('Agency', backref='delivery_challans', lazy=True, foreign_keys=[agency_id])
     customer = db.relationship('Customer', backref='delivery_challans', lazy=True, foreign_keys=[customer_id])
     creator = db.relationship('User', backref='created_delivery_challans', lazy=True, foreign_keys=[created_by])
