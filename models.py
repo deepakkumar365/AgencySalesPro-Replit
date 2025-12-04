@@ -73,8 +73,6 @@ class User(db.Model):
     # - pos_user: POS terminal user - access POS, billing, basic orders
     # - accountant: Finance role - View Inventory/Sales, Full Reports, View Payment Config
     role = db.Column(db.String(20), nullable=False)
-    # New FK to normalized roles table (nullable for gradual migration)
-    role_id = db.Column(db.Integer, db.ForeignKey('ASP_roles.id'), nullable=True, index=True)
     agency_id = db.Column(db.Integer, db.ForeignKey('ASP_agencies.id'), index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

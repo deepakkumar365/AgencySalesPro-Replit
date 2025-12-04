@@ -13,6 +13,12 @@ def list_agencies():
     user_id = session.get('user_id')
     search = request.args.get('search')
     
+    # Get pagination parameters from request args
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    if per_page not in [10, 20, 50, 100]:
+        per_page = 10
+    
     # Subquery for user count per agency
     user_count_subquery = db.session.query(
         User.agency_id,
@@ -49,8 +55,11 @@ def list_agencies():
             User.username.ilike(f'%{search}%')
         ))
 
-    agencies_data = query.order_by(Agency.name).all()
-    return render_template('agency/list.html', agencies_data=agencies_data, search=search)
+    pagination = query.order_by(Agency.name).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('agency/list.html', pagination=pagination, search=search, per_page=per_page)
 
 @agency_bp.route('/create', methods=['GET', 'POST'])
 @role_required('super_admin', 'agency_manager')

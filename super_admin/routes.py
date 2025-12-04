@@ -120,6 +120,12 @@ def manage_users():
     user_role = session.get('role')
     user_id = session.get('user_id')
     agency_filter = request.args.get('agency_filter', type=int)
+    
+    # Get pagination parameters from request args
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    if per_page not in [10, 20, 50, 100]:
+        per_page = 10
 
     agencies_for_filter = []
     if user_role == 'super_admin':
@@ -127,7 +133,9 @@ def manage_users():
         query = User.query
         if agency_filter:
             query = query.filter(User.agency_id == agency_filter)
-        users = query.all()
+        pagination = query.order_by(User.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
     elif user_role == 'agency_manager':
         # Get agencies managed by this manager
         managed_agencies = Agency.query.filter_by(agency_manager_id=user_id).all()
@@ -141,10 +149,12 @@ def manage_users():
         if agency_filter and agency_filter in managed_agency_ids:
             query = query.filter(User.agency_id == agency_filter)
         
-        users = query.all()
+        pagination = query.order_by(User.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
     else:
-        users = []
-    return render_template('super_admin/users.html', users=users, agencies_for_filter=agencies_for_filter, current_agency_filter=agency_filter)
+        pagination = None
+    return render_template('super_admin/users.html', pagination=pagination, agencies_for_filter=agencies_for_filter, current_agency_filter=agency_filter, per_page=per_page)
 
 @super_admin_bp.route('/users/create')
 @role_required('super_admin', 'agency_manager')

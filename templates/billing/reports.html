@@ -5,9 +5,44 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-chart-pie me-2"></i>Billing Reports</h2>
-    <a href="{{ url_for('billing.dashboard') }}" class="btn btn-outline-secondary">
-        <i class="fas fa-arrow-left me-2"></i>Back to Billing Dashboard
-    </a>
+</div>
+
+<!-- Summary Cards -->
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Total Invoiced</h6>
+                <h4 class="card-title">₹{{ "%.2f"|format(report_data.total_invoiced) }}</h4>
+                <small>{{ report_data.total_invoices }} invoices</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Total Collected</h6>
+                <h4 class="card-title text-success">₹{{ "%.2f"|format(report_data.total_collected) }}</h4>
+                <small>{{ report_data.total_payments }} payments</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Avg. Invoice Value</h6>
+                <h4 class="card-title">₹{{ "%.2f"|format(report_data.avg_invoice_value) }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Avg. Payment Value</h6>
+                <h4 class="card-title">₹{{ "%.2f"|format(report_data.avg_payment_value) }}</h4>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="card">

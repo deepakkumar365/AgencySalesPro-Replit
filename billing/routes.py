@@ -373,8 +373,7 @@ def reports(current_agency_id=None):
     
     # Filter by date range
     period_invoices = invoice_query.filter(
-        Invoice.issue_date >= start_dt,
-        Invoice.issue_date <= end_dt
+        Invoice.issue_date.between(start_dt, end_dt)
     ).all()
     
     period_payments = payment_query.filter(
@@ -388,8 +387,8 @@ def reports(current_agency_id=None):
         'total_invoiced': sum(inv.total_amount for inv in period_invoices),
         'total_payments': len(period_payments),
         'total_collected': sum(pay.amount for pay in period_payments),
-        'avg_invoice_value': sum(inv.total_amount for inv in period_invoices) / len(period_invoices) if period_invoices else 0,
-        'avg_payment_value': sum(pay.amount for pay in period_payments) / len(period_payments) if period_payments else 0,
+        'avg_invoice_value': (sum(inv.total_amount for inv in period_invoices) / len(period_invoices)) if period_invoices else 0,
+        'avg_payment_value': (sum(pay.amount for pay in period_payments) / len(period_payments)) if period_payments else 0,
         'start_date': start_date,
         'end_date': end_date
     }
@@ -413,3 +412,46 @@ def reports(current_agency_id=None):
                          status_counts=status_counts,
                          status_amounts=status_amounts,
                          payment_method_amounts=payment_method_amounts)
+ 
+@billing_bp.route('/payments')
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def list_payments(current_agency_id=None):
+    """List all payments with filtering and pagination"""
+    user_role = session.get('role')
+    search = request.args.get('search', '').strip()
+
+    # Get pagination parameters from request args
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    if per_page not in [10, 20, 50, 100]:
+        per_page = 20
+
+    # Base query, joining with related tables for searching
+    query = Payment.query.join(Invoice, Payment.invoice_id == Invoice.id).join(Customer, Invoice.customer_id == Customer.id)
+
+    # Apply role-based filtering
+    if user_role != 'super_admin':
+        query = query.filter(Invoice.agency_id == current_agency_id)
+
+    # Apply search filter if a query is provided
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            db.or_(
+                Payment.payment_number.ilike(search_term),
+                Invoice.invoice_number.ilike(search_term),
+                Customer.name.ilike(search_term)
+            )
+        )
+
+    # Order the results and apply pagination
+    pagination = query.order_by(Payment.payment_date.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    return render_template(
+        'billing/payments.html',
+        pagination=pagination,
+        per_page=per_page,
+        search=search
+    )
