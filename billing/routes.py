@@ -9,6 +9,7 @@ from models import (
 from . import billing_bp
 from auth.utils import login_required, permission_required, get_role_permissions
 from utils.decorators import log_activity
+from utils.pagination import apply_pagination
 import uuid
 
 @billing_bp.route('/dashboard')
@@ -107,11 +108,8 @@ def list_invoices(current_agency_id=None):
             pass
     
     # Get paginated results
-    invoices = query.order_by(Invoice.issue_date.desc()).paginate(
-        page=request.args.get('page', 1, type=int),
-        per_page=20,
-        error_out=False
-    )
+    # Get paginated results
+    invoices = apply_pagination(query.order_by(Invoice.issue_date.desc()))
     
     # Get customers for filter dropdown
     if user_role == 'super_admin':
@@ -420,38 +418,11 @@ def list_payments(current_agency_id=None):
     user_role = session.get('role')
     search = request.args.get('search', '').strip()
 
-    # Get pagination parameters from request args
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    if per_page not in [10, 20, 50, 100]:
-        per_page = 20
-
-    # Base query, joining with related tables for searching
-    query = Payment.query.join(Invoice, Payment.invoice_id == Invoice.id).join(Customer, Invoice.customer_id == Customer.id)
-
-    # Apply role-based filtering
-    if user_role != 'super_admin':
-        query = query.filter(Invoice.agency_id == current_agency_id)
-
-    # Apply search filter if a query is provided
-    if search:
-        search_term = f"%{search}%"
-        query = query.filter(
-            db.or_(
-                Payment.payment_number.ilike(search_term),
-                Invoice.invoice_number.ilike(search_term),
-                Customer.name.ilike(search_term)
-            )
-        )
-
     # Order the results and apply pagination
-    pagination = query.order_by(Payment.payment_date.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
+    pagination = apply_pagination(query.order_by(Payment.payment_date.desc()))
 
     return render_template(
         'billing/payments.html',
         pagination=pagination,
-        per_page=per_page,
         search=search
     )

@@ -11,6 +11,7 @@ from auth.utils import login_required, permission_required
 from utils.decorators import log_activity
 from utils.excel_utils import export_products_to_excel, import_products_from_excel
 from utils.sku import generate_sku
+from utils.pagination import apply_pagination
 
 def _get_master_data():
     """Fetches all active master data for product forms."""
@@ -102,7 +103,7 @@ def list_products(current_agency_id=None):
             query = query.filter(from_obj.c.effective_active == False)
 
     query = query.order_by(Product.name)
-    results = query.all()
+    results = apply_pagination(query)
     
     # Get filter options
     agencies = []

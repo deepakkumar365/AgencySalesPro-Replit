@@ -65,7 +65,8 @@ def list_customers(current_agency_id=None):
         per_page = 20
 
     # Use the paginate() method on the query
-    pagination = query.order_by(Customer.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    from utils.pagination import apply_pagination
+    pagination = apply_pagination(query)
     
     # Get filter options
     agencies = []

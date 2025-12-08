@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from models import Category, UOM, TaxMaster, Agency, db
 from functools import wraps
 from datetime import datetime
+from utils.pagination import apply_pagination
 
 def login_required(f):
     @wraps(f)
@@ -44,18 +45,10 @@ def index():
 @login_required
 def categories():
     """List all categories with pagination"""
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    if per_page not in [10, 20, 50, 100]:
-        per_page = 10
-    
-    pagination = Category.query.order_by(Category.name.asc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
+    pagination = apply_pagination(Category.query.order_by(Category.name.asc()))
     
     return render_template('masters/categories.html', 
-                           pagination=pagination, 
-                           per_page=per_page)
+                           pagination=pagination)
 
 @masters_bp.route('/categories/create', methods=['GET', 'POST'])
 @login_required
@@ -95,18 +88,10 @@ def create_category():
 @login_required
 def uoms():
     """List all UOMs with pagination"""
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    if per_page not in [10, 20, 50, 100]:
-        per_page = 10
-    
-    pagination = UOM.query.order_by(UOM.name.asc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
+    pagination = apply_pagination(UOM.query.order_by(UOM.name.asc()))
     
     return render_template('masters/uoms.html', 
-                           pagination=pagination, 
-                           per_page=per_page)
+                           pagination=pagination)
 
 @masters_bp.route('/uoms/create', methods=['GET', 'POST'])
 @login_required
@@ -143,18 +128,10 @@ def create_uom():
 @login_required
 def tax_masters():
     """List all tax masters with pagination"""
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    if per_page not in [10, 20, 50, 100]:
-        per_page = 10
-    
-    pagination = TaxMaster.query.order_by(TaxMaster.name.asc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
+    pagination = apply_pagination(TaxMaster.query.order_by(TaxMaster.name.asc()))
     
     return render_template('masters/tax_masters.html', 
-                           pagination=pagination, 
-                           per_page=per_page)
+                           pagination=pagination)
 
 @masters_bp.route('/tax-masters/create', methods=['GET', 'POST'])
 @login_required

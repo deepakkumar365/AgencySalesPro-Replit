@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/pagination.html" import render_pagination %}
 
 {% block title %}Sales History - POS - AgencySales Pro{% endblock %}
 
@@ -9,7 +10,8 @@
         <form method="GET" id="export-form">
             <input type="hidden" name="start_date" value="{{ request.args.get('start_date', '') }}">
             <input type="hidden" name="end_date" value="{{ request.args.get('end_date', '') }}">
-            <button type="submit" formaction="{{ url_for('pos.export_sales_history') }}" class="btn btn-outline-success" title="Export Sales Records">
+            <button type="submit" formaction="{{ url_for('pos.export_sales_history') }}" class="btn btn-outline-success"
+                title="Export Sales Records">
                 <i class="fas fa-download me-2"></i>Export
             </button>
         </form>
@@ -24,7 +26,9 @@
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filters</h6>
-        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#posSalesFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}" aria-controls="posSalesFilters">
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
+            data-bs-target="#posSalesFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}"
+            aria-controls="posSalesFilters">
             <i class="fas fa-sliders-h me-1"></i> Toggle
         </button>
     </div>
@@ -33,13 +37,13 @@
             <form method="GET" class="row g-3">
                 <div class="col-md-3">
                     <label for="start_date" class="form-label">Start Date</label>
-                    <input type="date" id="start_date" name="start_date" class="form-control" 
-                           value="{{ request.args.get('start_date', '') }}">
+                    <input type="date" id="start_date" name="start_date" class="form-control"
+                        value="{{ request.args.get('start_date', '') }}">
                 </div>
                 <div class="col-md-3">
                     <label for="end_date" class="form-label">End Date</label>
-                    <input type="date" id="end_date" name="end_date" class="form-control" 
-                           value="{{ request.args.get('end_date', '') }}">
+                    <input type="date" id="end_date" name="end_date" class="form-control"
+                        value="{{ request.args.get('end_date', '') }}">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">&nbsp;</label>
@@ -68,8 +72,8 @@
         <h5 class="mb-0">Sales Records</h5>
         <div>
             {% if orders.items %}
-                Showing {{ orders.per_page * (orders.page - 1) + 1 }} to 
-                {{ orders.per_page * (orders.page - 1) + orders.items|length }} of {{ orders.total }} records
+            Showing {{ orders.per_page * (orders.page - 1) + 1 }} to
+            {{ orders.per_page * (orders.page - 1) + orders.items|length }} of {{ orders.total }} records
             {% endif %}
         </div>
     </div>
@@ -112,23 +116,23 @@
                         </td>
                         <td>
                             {% if order.status == 'completed' %}
-                                <span class="badge bg-success">Completed</span>
+                            <span class="badge bg-success">Completed</span>
                             {% elif order.status == 'pending' %}
-                                <span class="badge bg-warning">Pending</span>
+                            <span class="badge bg-warning">Pending</span>
                             {% elif order.status == 'cancelled' %}
-                                <span class="badge bg-danger">Cancelled</span>
+                            <span class="badge bg-danger">Cancelled</span>
                             {% else %}
-                                <span class="badge bg-secondary">{{ order.status|title }}</span>
+                            <span class="badge bg-secondary">{{ order.status|title }}</span>
                             {% endif %}
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ url_for('order.view_order', order_id=order.id) }}" 
-                                   class="btn btn-outline-primary" title="View Details">
+                                <a href="{{ url_for('order.view_order', order_id=order.id) }}"
+                                    class="btn btn-outline-primary" title="View Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="{{ url_for('pos.receipt', order_id=order.id) }}" 
-                                   class="btn btn-outline-success" target="_blank" title="Print Receipt">
+                                <a href="{{ url_for('pos.receipt', order_id=order.id) }}"
+                                    class="btn btn-outline-success" target="_blank" title="Print Receipt">
                                     <i class="fas fa-receipt"></i>
                                 </a>
                             </div>
@@ -140,56 +144,8 @@
         </div>
 
         <!-- Pagination -->
-        {% if orders.pages > 1 %}
-        <nav aria-label="Sales pagination" class="mt-4">
-            <ul class="pagination justify-content-center">
-                {% if orders.has_prev %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('pos.sales_history', 
-                        page=orders.prev_num, 
-                        start_date=request.args.get('start_date'),
-                        end_date=request.args.get('end_date')) }}">
-                        <i class="fas fa-chevron-left"></i>
-                    </a>
-                </li>
-                {% endif %}
-
-                {% for page_num in orders.iter_pages() %}
-                    {% if page_num %}
-                        {% if page_num != orders.page %}
-                        <li class="page-item">
-                            <a class="page-link" href="{{ url_for('pos.sales_history', 
-                                page=page_num,
-                                start_date=request.args.get('start_date'),
-                                end_date=request.args.get('end_date')) }}">
-                                {{ page_num }}
-                            </a>
-                        </li>
-                        {% else %}
-                        <li class="page-item active">
-                            <span class="page-link">{{ page_num }}</span>
-                        </li>
-                        {% endif %}
-                    {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">...</span>
-                    </li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if orders.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('pos.sales_history', 
-                        page=orders.next_num,
-                        start_date=request.args.get('start_date'),
-                        end_date=request.args.get('end_date')) }}">
-                        <i class="fas fa-chevron-right"></i>
-                    </a>
-                </li>
-                {% endif %}
-            </ul>
-        </nav>
-        {% endif %}
+        <!-- Pagination -->
+        {{ render_pagination(orders) }}
 
         {% else %}
         <div class="text-center text-muted py-5">

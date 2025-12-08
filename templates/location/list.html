@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/pagination.html" import render_pagination %}
 
 {% block title %}Locations - AgencySales Pro{% endblock %}
 
@@ -7,26 +8,29 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>
-                <i class="fas fa-map-marker-alt me-2"></i>Locations 
+                <i class="fas fa-map-marker-alt me-2"></i>Locations
             </h1>
             <div class="btn-group btn-group-sm">
                 <a href="{{ url_for('location.create_location') }}" class="btn btn-primary">
                     <i class="fas fa-plus"></i><span class="d-none d-md-inline ms-2">Add Location</span>
                 </a>
-                <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+                    data-bs-toggle="dropdown">
                     <span class="visually-hidden">Toggle Dropdown</span>
                 </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="{{ url_for('location.import_locations') }}">
-                        <i class="fas fa-upload me-2"></i>Import from CSV
-                    </a></li>
+                            <i class="fas fa-upload me-2"></i>Import from CSV
+                        </a></li>
                     <li><a class="dropdown-item" href="{{ url_for('location.export_locations') }}">
-                        <i class="fas fa-download me-2"></i>Export to CSV
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
+                            <i class="fas fa-download me-2"></i>Export to CSV
+                        </a></li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
                     <li><a class="dropdown-item" href="{{ url_for('location.download_location_template') }}">
-                        <i class="fas fa-file-csv me-2"></i>Download Template
-                    </a></li>
+                            <i class="fas fa-file-csv me-2"></i>Download Template
+                        </a></li>
                 </ul>
             </div>
         </div>
@@ -60,7 +64,8 @@
                                     {% endif %}
                                     {% if location.city or location.state %}
                                     <br><small>
-                                        {{ location.city }}{{ ', ' + location.state if location.city and location.state else location.state }}
+                                        {{ location.city }}{{ ', ' + location.state if location.city and location.state
+                                        else location.state }}
                                         {{ ' ' + location.zip_code if location.zip_code else '' }}
                                     </small>
                                     {% endif %}
@@ -82,24 +87,28 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <a href="{{ url_for('location.edit_location', location_id=location.id) }}" 
-                                           class="btn btn-outline-primary" title="Edit">
+                                        <a href="{{ url_for('location.edit_location', location_id=location.id) }}"
+                                            class="btn btn-outline-primary" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        
+
                                         {% if session.role in ['super_admin', 'agency_admin'] %}
-                                        <form method="POST" action="{{ url_for('location.toggle_location_status', location_id=location.id) }}" class="d-inline">
-                                            <button type="submit" 
-                                                    class="btn btn-outline-{{ 'warning' if location.is_active else 'success' }}"
-                                                    title="{{ 'Deactivate' if location.is_active else 'Activate' }}"
-                                                    onclick="return confirm('Are you sure?')">
+                                        <form method="POST"
+                                            action="{{ url_for('location.toggle_location_status', location_id=location.id) }}"
+                                            class="d-inline">
+                                            <button type="submit"
+                                                class="btn btn-outline-{{ 'warning' if location.is_active else 'success' }}"
+                                                title="{{ 'Deactivate' if location.is_active else 'Activate' }}"
+                                                onclick="return confirm('Are you sure?')">
                                                 <i class="fas fa-{{ 'pause' if location.is_active else 'play' }}"></i>
                                             </button>
                                         </form>
-                                        
-                                        <form method="POST" action="{{ url_for('location.delete_location', location_id=location.id) }}" class="d-inline">
+
+                                        <form method="POST"
+                                            action="{{ url_for('location.delete_location', location_id=location.id) }}"
+                                            class="d-inline">
                                             <button type="submit" class="btn btn-outline-danger" title="Delete"
-                                                    onclick="return confirm('Are you sure you want to delete this location?')">
+                                                onclick="return confirm('Are you sure you want to delete this location?')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
@@ -113,49 +122,7 @@
                 </div>
 
                 <!-- Pagination Controls -->
-                <div class="row align-items-center mt-3">
-                    <div class="col-md-auto">
-                        <div class="d-flex align-items-center">
-                            <form method="GET" action="{{ url_for('location.list_locations') }}" class="d-flex align-items-center me-3">
-                                <label for="per_page" class="form-label me-2 mb-0 text-nowrap">Rows:</label>
-                                <select name="per_page" id="per_page" class="form-select form-select-sm" onchange="this.form.submit()">
-                                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
-                                    <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
-                                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
-                                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
-                                </select>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="col-md">
-                        <div class="d-flex justify-content-md-end justify-content-center align-items-center">
-                            <span class="text-muted me-3">
-                                Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }}
-                            </span>
-                            <nav aria-label="Page navigation">
-                                <ul class="pagination mb-0">
-                                    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                                        <a class="page-link" href="{{ url_for('location.list_locations', page=pagination.prev_num, per_page=per_page) if pagination.has_prev else '#' }}">&laquo;</a>
-                                    </li>
-                                    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=1) %}
-                                        {% if page_num %}
-                                            {% if pagination.page == page_num %}
-                                            <li class="page-item active"><a class="page-link" href="#">{{ page_num }}</a></li>
-                                            {% else %}
-                                            <li class="page-item"><a class="page-link" href="{{ url_for('location.list_locations', page=page_num, per_page=per_page) }}">{{ page_num }}</a></li>
-                                            {% endif %}
-                                        {% else %}
-                                            <li class="page-item disabled"><span class="page-link">...</span></li>
-                                        {% endif %}
-                                    {% endfor %}
-                                    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                                        <a class="page-link" href="{{ url_for('location.list_locations', page=pagination.next_num, per_page=per_page) if pagination.has_next else '#' }}">&raquo;</a>
-                                    </li>
-                                </ul>
-                            </nav>
-                        </div>
-                    </div>
-                </div>
+                {{ render_pagination(pagination) }}
                 {% else %}
                 <div class="text-center py-5">
                     <i class="fas fa-map-marker-alt fa-3x mb-3"></i>

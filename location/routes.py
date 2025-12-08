@@ -6,6 +6,7 @@ from models import Location, Agency
 from location import location_bp
 from auth.utils import login_required, role_required, permission_required
 from utils.decorators import log_activity
+from utils.pagination import apply_pagination
 import pandas as pd
 from datetime import datetime
 
@@ -22,16 +23,10 @@ def list_locations(current_agency_id=None):
         # Other roles are restricted to their agency
         query = query.filter_by(agency_id=current_agency_id)
     
-    # Get pagination parameters from request args
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    if per_page not in [10, 20, 50, 100]:
-        per_page = 10
-
-    # Use the paginate() method on the query
-    pagination = query.order_by(Location.name).paginate(page=page, per_page=per_page, error_out=False)
+    # Use the apply_pagination() method on the query
+    pagination = apply_pagination(query.order_by(Location.name))
     
-    return render_template('location/list.html', pagination=pagination, per_page=per_page)
+    return render_template('location/list.html', pagination=pagination)
 
 @location_bp.route('/create', methods=['GET', 'POST'])
 @login_required

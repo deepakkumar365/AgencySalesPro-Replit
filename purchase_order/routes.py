@@ -59,11 +59,8 @@ def list_purchase_orders(current_agency_id=None):
         agencies = []
         suppliers = Supplier.query.filter_by(agency_id=current_agency_id, is_active=True).all()
 
-    purchase_orders = query.order_by(PurchaseOrder.created_at.desc()).paginate(
-        page=request.args.get('page', 1, type=int),
-        per_page=20,
-        error_out=False
-    )
+    from utils.pagination import apply_pagination
+    purchase_orders = apply_pagination(query.order_by(PurchaseOrder.created_at.desc()))
 
     return render_template(
         "purchase_order/list.html",

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/pagination.html" import render_pagination %}
 
 {% block title %}Customers - AgencySales Pro{% endblock %}
 
@@ -13,20 +14,23 @@
                 <a href="{{ url_for('customer.create_customer') }}" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i>Add Customer
                 </a>
-                <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+                    data-bs-toggle="dropdown">
                     <span class="visually-hidden">Toggle Dropdown</span>
                 </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="{{ url_for('customer.import_customers') }}">
-                        <i class="fas fa-upload me-2"></i>Import from CSV
-                    </a></li>
+                            <i class="fas fa-upload me-2"></i>Import from CSV
+                        </a></li>
                     <li><a class="dropdown-item" href="{{ url_for('customer.export_customers') }}">
-                        <i class="fas fa-download me-2"></i>Export to CSV
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
+                            <i class="fas fa-download me-2"></i>Export to CSV
+                        </a></li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
                     <li><a class="dropdown-item" href="{{ url_for('customer.download_customer_template') }}">
-                        <i class="fas fa-file-csv me-2"></i>Download Template
-                    </a></li>
+                            <i class="fas fa-file-csv me-2"></i>Download Template
+                        </a></li>
                 </ul>
             </div>
         </div>
@@ -36,13 +40,16 @@
 <!-- Filters -->
 <div class="row mb-4">
     <div class="col-12">
-        {% set has_filters = filters.date_from or filters.date_to or filters.agency or filters.location or filters.status %}
+        {% set has_filters = filters.date_from or filters.date_to or filters.agency or filters.location or
+        filters.status %}
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">
                     <i class="fas fa-filter me-2"></i>Filters
                 </h6>
-                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#customerFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}" aria-controls="customerFilters">
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#customerFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}"
+                    aria-controls="customerFilters">
                     <i class="fas fa-sliders-h me-1"></i> Toggle
                 </button>
             </div>
@@ -51,48 +58,54 @@
                     <form method="GET" class="row g-3">
                         <div class="col-md-3">
                             <label for="date_from" class="form-label">Date From</label>
-                            <input type="date" class="form-control" id="date_from" name="date_from" value="{{ filters.date_from or '' }}">
+                            <input type="date" class="form-control" id="date_from" name="date_from"
+                                value="{{ filters.date_from or '' }}">
                         </div>
                         <div class="col-md-3">
                             <label for="date_to" class="form-label">Date To</label>
-                            <input type="date" class="form-control" id="date_to" name="date_to" value="{{ filters.date_to or '' }}">
+                            <input type="date" class="form-control" id="date_to" name="date_to"
+                                value="{{ filters.date_to or '' }}">
                         </div>
-                        
+
                         {% if session.role == 'super_admin' and agencies %}
                         <div class="col-md-3">
                             <label for="agency" class="form-label">Agency</label>
                             <select class="form-select" id="agency" name="agency">
                                 <option value="">All Agencies</option>
                                 {% for agency in agencies %}
-                                <option value="{{ agency.id }}" {{ 'selected' if filters.agency == agency.id|string else '' }}>
+                                <option value="{{ agency.id }}" {{ 'selected' if filters.agency==agency.id|string
+                                    else '' }}>
                                     {{ agency.name }}
                                 </option>
                                 {% endfor %}
                             </select>
                         </div>
                         {% endif %}
-                        
+
                         <div class="col-md-3">
                             <label for="location" class="form-label">Location</label>
                             <select class="form-select" id="location" name="location">
                                 <option value="">All Locations</option>
                                 {% for location in locations %}
-                                <option value="{{ location.id }}" {{ 'selected' if filters.location == location.id|string else '' }}>
+                                <option value="{{ location.id }}" {{ 'selected' if filters.location==location.id|string
+                                    else '' }}>
                                     {{ location.name }}
                                 </option>
                                 {% endfor %}
                             </select>
                         </div>
-                        
+
                         <div class="col-md-3">
                             <label for="status" class="form-label">Status</label>
                             <select class="form-select" id="status" name="status">
                                 <option value="">All Status</option>
-                                <option value="active" {{ 'selected' if filters.status == 'active' else '' }}>Active</option>
-                                <option value="inactive" {{ 'selected' if filters.status == 'inactive' else '' }}>Inactive</option>
+                                <option value="active" {{ 'selected' if filters.status=='active' else '' }}>Active
+                                </option>
+                                <option value="inactive" {{ 'selected' if filters.status=='inactive' else '' }}>Inactive
+                                </option>
                             </select>
                         </div>
-                        
+
                         <div class="col-md-3 d-flex align-items-end">
                             <div class="btn-group w-100">
                                 <button type="submit" class="btn btn-primary">
@@ -116,7 +129,8 @@
             <div class="card-body">
                 {% if pagination.items %}
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="mb-0">{{ pagination.total }} customer{{ 's' if pagination.total != 1 else '' }} found</h6>
+                    <h6 class="mb-0">{{ pagination.total }} customer{{ 's' if pagination.total != 1 else '' }} found
+                    </h6>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover">
@@ -154,7 +168,7 @@
                                 <td>{{ customer.location.name if customer.location else 'N/A' }}</td>
                                 <td class="d-none-mobile">
                                     {% if customer.location and customer.location.agency %}
-                                        {{ customer.location.agency.name }}
+                                    {{ customer.location.agency.name }}
                                     {% else %}N/A{% endif %}
                                 </td>
                                 <td>
@@ -167,23 +181,27 @@
                                 <td class="d-none-mobile">{{ customer.created_at.strftime('%Y-%m-%d') }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <a href="{{ url_for('customer.edit_customer', customer_id=customer.id) }}" 
-                                           class="btn btn-outline-primary" title="Edit">
+                                        <a href="{{ url_for('customer.edit_customer', customer_id=customer.id) }}"
+                                            class="btn btn-outline-primary" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        
-                                        <form method="POST" action="{{ url_for('customer.toggle_customer_status', customer_id=customer.id) }}" class="d-inline">
-                                            <button type="submit" 
-                                                    class="btn btn-outline-{{ 'warning' if customer.is_active else 'success' }}"
-                                                    title="{{ 'Deactivate' if customer.is_active else 'Activate' }}"
-                                                    onclick="return confirm('Are you sure?')">
+
+                                        <form method="POST"
+                                            action="{{ url_for('customer.toggle_customer_status', customer_id=customer.id) }}"
+                                            class="d-inline">
+                                            <button type="submit"
+                                                class="btn btn-outline-{{ 'warning' if customer.is_active else 'success' }}"
+                                                title="{{ 'Deactivate' if customer.is_active else 'Activate' }}"
+                                                onclick="return confirm('Are you sure?')">
                                                 <i class="fas fa-{{ 'pause' if customer.is_active else 'play' }}"></i>
                                             </button>
                                         </form>
-                                        
-                                        <form method="POST" action="{{ url_for('customer.delete_customer', customer_id=customer.id) }}" class="d-inline">
+
+                                        <form method="POST"
+                                            action="{{ url_for('customer.delete_customer', customer_id=customer.id) }}"
+                                            class="d-inline">
                                             <button type="submit" class="btn btn-outline-danger" title="Delete"
-                                                    onclick="return confirm('Are you sure you want to delete this customer?')">
+                                                onclick="return confirm('Are you sure you want to delete this customer?')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
@@ -196,53 +214,7 @@
                 </div>
 
                 <!-- Pagination Controls -->
-                <div class="row align-items-center mt-3">
-                    <div class="col-md-auto">
-                        <div class="d-flex align-items-center">
-                            <form method="GET" action="{{ url_for('customer.list_customers') }}" class="d-flex align-items-center me-3">
-                                <input type="hidden" name="date_from" value="{{ filters.date_from or '' }}">
-                                <input type="hidden" name="date_to" value="{{ filters.date_to or '' }}">
-                                <input type="hidden" name="agency" value="{{ filters.agency or '' }}">
-                                <input type="hidden" name="location" value="{{ filters.location or '' }}">
-                                <input type="hidden" name="status" value="{{ filters.status or '' }}">
-                                <label for="per_page" class="form-label me-2 mb-0 text-nowrap">Rows:</label>
-                                <select name="per_page" id="per_page" class="form-select form-select-sm" onchange="this.form.submit()">
-                                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
-                                    <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
-                                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
-                                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
-                                </select>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="col-md">
-                        <div class="d-flex justify-content-md-end justify-content-center align-items-center">
-                            <span class="text-muted me-3">
-                                Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }}
-                            </span>
-                            <nav aria-label="Page navigation">
-                                <ul class="pagination mb-0">
-                                    {# copy filters and remove any existing page param so explicit page value wins #}
-                                    {% set _args = filters.copy() if filters is defined else {} %}
-                                    {% set _ = _args.pop('page', None) %}
-                                    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                                        <a class="page-link" href="{{ url_for('customer.list_customers', page=pagination.prev_num, per_page=per_page, **_args) if pagination.has_prev else '#' }}">&laquo;</a>
-                                    </li>
-                                    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=1) %}
-                                        {% if page_num %}
-                                            <li class="page-item {% if pagination.page == page_num %}active{% endif %}"><a class="page-link" href="{{ url_for('customer.list_customers', page=page_num, per_page=per_page, **_args) }}">{{ page_num }}</a></li>
-                                        {% else %}
-                                            <li class="page-item disabled"><span class="page-link">...</span></li>
-                                        {% endif %}
-                                    {% endfor %}
-                                    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                                        <a class="page-link" href="{{ url_for('customer.list_customers', page=pagination.next_num, per_page=per_page, **_args) if pagination.has_next else '#' }}">&raquo;</a>
-                                    </li>
-                                </ul>
-                            </nav>
-                        </div>
-                    </div>
-                </div>
+                {{ render_pagination(pagination) }}
                 {% else %}
                 <div class="text-center py-5">
                     <i class="fas fa-user-friends fa-3x mb-3"></i>

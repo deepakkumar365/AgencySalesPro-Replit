@@ -5,6 +5,7 @@ from models import Agency, User, CustomerAgency, Location
 from . import agency_bp
 from auth.utils import login_required, role_required
 from utils.decorators import log_activity
+from utils.pagination import apply_pagination
 
 @agency_bp.route('/')
 @role_required('super_admin', 'agency_admin', 'agency_manager')
@@ -12,12 +13,6 @@ def list_agencies():
     user_role = session.get('role')
     user_id = session.get('user_id')
     search = request.args.get('search')
-    
-    # Get pagination parameters from request args
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    if per_page not in [10, 20, 50, 100]:
-        per_page = 10
     
     # Subquery for user count per agency
     user_count_subquery = db.session.query(
@@ -55,11 +50,9 @@ def list_agencies():
             User.username.ilike(f'%{search}%')
         ))
 
-    pagination = query.order_by(Agency.name).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
+    pagination = apply_pagination(query.order_by(Agency.name))
     
-    return render_template('agency/list.html', pagination=pagination, search=search, per_page=per_page)
+    return render_template('agency/list.html', pagination=pagination, search=search)
 
 @agency_bp.route('/create', methods=['GET', 'POST'])
 @role_required('super_admin', 'agency_manager')
@@ -306,22 +299,13 @@ def toggle_agency_status(agency_id):
 def agency_users(agency_id):
     agency = Agency.query.get_or_404(agency_id)
     
-    # Get pagination parameters from request args
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-    if per_page not in [10, 20, 50, 100]:
-        per_page = 10
-
-    # Use the paginate() method on the query
-    pagination = User.query.filter_by(agency_id=agency_id).order_by(User.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
+    # Use the apply_pagination() method on the query
+    pagination = apply_pagination(User.query.filter_by(agency_id=agency_id).order_by(User.created_at.desc()))
     
     return render_template(
         'agency/users.html', 
         agency=agency, 
-        pagination=pagination,
-        per_page=per_page
+        pagination=pagination
     )
 
 @agency_bp.route('/<int:agency_id>/create_user', methods=['GET', 'POST'])

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/pagination.html" import render_pagination %}
 
 {% block title %}Invoices - Billing - AgencySales Pro{% endblock %}
 
@@ -11,11 +12,14 @@
 </div>
 
 <!-- Filters -->
-{% set has_filters = current_filters.status or current_filters.customer_id or current_filters.start_date or current_filters.end_date %}
+{% set has_filters = current_filters.status or current_filters.customer_id or current_filters.start_date or
+current_filters.end_date %}
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filters</h6>
-        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#billingFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}" aria-controls="billingFilters">
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
+            data-bs-target="#billingFilters" aria-expanded="{{ 'true' if has_filters else 'false' }}"
+            aria-controls="billingFilters">
             <i class="fas fa-sliders-h me-1"></i> Toggle
         </button>
     </div>
@@ -26,11 +30,12 @@
                     <label for="status" class="form-label">Status</label>
                     <select id="status" name="status" class="form-select">
                         <option value="">All Statuses</option>
-                        <option value="pending" {{ 'selected' if current_filters.status == 'pending' }}>Pending</option>
-                        <option value="paid" {{ 'selected' if current_filters.status == 'paid' }}>Paid</option>
-                        <option value="partial" {{ 'selected' if current_filters.status == 'partial' }}>Partial</option>
-                        <option value="overdue" {{ 'selected' if current_filters.status == 'overdue' }}>Overdue</option>
-                        <option value="cancelled" {{ 'selected' if current_filters.status == 'cancelled' }}>Cancelled</option>
+                        <option value="pending" {{ 'selected' if current_filters.status=='pending' }}>Pending</option>
+                        <option value="paid" {{ 'selected' if current_filters.status=='paid' }}>Paid</option>
+                        <option value="partial" {{ 'selected' if current_filters.status=='partial' }}>Partial</option>
+                        <option value="overdue" {{ 'selected' if current_filters.status=='overdue' }}>Overdue</option>
+                        <option value="cancelled" {{ 'selected' if current_filters.status=='cancelled' }}>Cancelled
+                        </option>
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -38,7 +43,8 @@
                     <select id="customer_id" name="customer_id" class="form-select">
                         <option value="">All Customers</option>
                         {% for customer in customers %}
-                        <option value="{{ customer.id }}" {{ 'selected' if current_filters.customer_id == customer.id|string }}>
+                        <option value="{{ customer.id }}" {{ 'selected' if
+                            current_filters.customer_id==customer.id|string }}>
                             {{ customer.name }}
                         </option>
                         {% endfor %}
@@ -46,13 +52,13 @@
                 </div>
                 <div class="col-md-2">
                     <label for="start_date" class="form-label">Start Date</label>
-                    <input type="date" id="start_date" name="start_date" class="form-control" 
-                           value="{{ current_filters.start_date or '' }}">
+                    <input type="date" id="start_date" name="start_date" class="form-control"
+                        value="{{ current_filters.start_date or '' }}">
                 </div>
                 <div class="col-md-2">
                     <label for="end_date" class="form-label">End Date</label>
-                    <input type="date" id="end_date" name="end_date" class="form-control" 
-                           value="{{ current_filters.end_date or '' }}">
+                    <input type="date" id="end_date" name="end_date" class="form-control"
+                        value="{{ current_filters.end_date or '' }}">
                 </div>
                 <div class="col-md-1">
                     <label class="form-label">&nbsp;</label>
@@ -81,8 +87,8 @@
         <h5 class="mb-0">Invoice Records</h5>
         <div>
             {% if invoices.items %}
-                Showing {{ invoices.per_page * (invoices.page - 1) + 1 }} to 
-                {{ invoices.per_page * (invoices.page - 1) + invoices.items|length }} of {{ invoices.total }} records
+            Showing {{ invoices.per_page * (invoices.page - 1) + 1 }} to
+            {{ invoices.per_page * (invoices.page - 1) + invoices.items|length }} of {{ invoices.total }} records
             {% endif %}
         </div>
     </div>
@@ -120,54 +126,54 @@
                         <td>{{ invoice.issue_date.strftime('%Y-%m-%d') }}</td>
                         <td>
                             {% if invoice.due_date %}
-                                {% if invoice.due_date < invoice.issue_date.__class__.now() and invoice.status != 'paid' %}
-                                    <span class="text-danger">{{ invoice.due_date.strftime('%Y-%m-%d') }}</span>
+                            {% if invoice.due_date < invoice.issue_date.__class__.now() and invoice.status !='paid' %}
+                                <span class="text-danger">{{ invoice.due_date.strftime('%Y-%m-%d') }}</span>
                                 {% else %}
-                                    {{ invoice.due_date.strftime('%Y-%m-%d') }}
+                                {{ invoice.due_date.strftime('%Y-%m-%d') }}
                                 {% endif %}
-                            {% else %}
+                                {% else %}
                                 -
-                            {% endif %}
+                                {% endif %}
                         </td>
                         <td>₹{{ "%.2f"|format(invoice.total_amount) }}</td>
                         <td>
                             {% if total_paid > 0 %}
-                                <span class="text-success">₹{{ "%.2f"|format(total_paid) }}</span>
+                            <span class="text-success">₹{{ "%.2f"|format(total_paid) }}</span>
                             {% else %}
-                                <span>₹0.00</span>
+                            <span>₹0.00</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if balance > 0 %}
-                                <span class="text-warning fw-bold">₹{{ "%.2f"|format(balance) }}</span>
+                            <span class="text-warning fw-bold">₹{{ "%.2f"|format(balance) }}</span>
                             {% else %}
-                                <span>₹0.00</span>
+                            <span>₹0.00</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if invoice.status == 'paid' %}
-                                <span class="badge bg-success">Paid</span>
+                            <span class="badge bg-success">Paid</span>
                             {% elif invoice.status == 'pending' %}
-                                <span class="badge bg-warning">Pending</span>
+                            <span class="badge bg-warning">Pending</span>
                             {% elif invoice.status == 'overdue' %}
-                                <span class="badge bg-danger">Overdue</span>
+                            <span class="badge bg-danger">Overdue</span>
                             {% elif invoice.status == 'partial' %}
-                                <span class="badge bg-info">Partial</span>
+                            <span class="badge bg-info">Partial</span>
                             {% elif invoice.status == 'cancelled' %}
-                                <span class="badge bg-secondary">Cancelled</span>
+                            <span class="badge bg-secondary">Cancelled</span>
                             {% else %}
-                                <span class="badge bg-secondary">{{ invoice.status|title }}</span>
+                            <span class="badge bg-secondary">{{ invoice.status|title }}</span>
                             {% endif %}
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ url_for('billing.view_invoice', invoice_id=invoice.id) }}" 
-                                   class="btn btn-outline-primary" title="View Details">
+                                <a href="{{ url_for('billing.view_invoice', invoice_id=invoice.id) }}"
+                                    class="btn btn-outline-primary" title="View Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 {% if invoice.status in ['pending', 'partial', 'overdue'] %}
-                                <a href="{{ url_for('billing.record_payment', invoice_id=invoice.id) }}" 
-                                   class="btn btn-outline-success" title="Record Payment">
+                                <a href="{{ url_for('billing.record_payment', invoice_id=invoice.id) }}"
+                                    class="btn btn-outline-success" title="Record Payment">
                                     <i class="fas fa-dollar-sign"></i>
                                 </a>
                                 {% endif %}
@@ -180,50 +186,8 @@
         </div>
 
         <!-- Pagination -->
-        {% if invoices.pages > 1 %}
-        <nav aria-label="Invoice pagination" class="mt-4">
-            <ul class="pagination justify-content-center">
-                {# copy current_filters and remove page param #}
-                {% set _args = current_filters.copy() if current_filters is defined else {} %}
-                {% set _ = _args.pop('page', None) %}
-                {% if invoices.has_prev %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('billing.list_invoices', page=invoices.prev_num, **_args) }}">
-                        <i class="fas fa-chevron-left"></i>
-                    </a>
-                </li>
-                {% endif %}
-
-                {% for page_num in invoices.iter_pages() %}
-                    {% if page_num %}
-                        {% if page_num != invoices.page %}
-                        <li class="page-item">
-                            <a class="page-link" href="{{ url_for('billing.list_invoices', page=page_num, **_args) }}">
-                                {{ page_num }}
-                            </a>
-                        </li>
-                        {% else %}
-                        <li class="page-item active">
-                            <span class="page-link">{{ page_num }}</span>
-                        </li>
-                        {% endif %}
-                    {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">...</span>
-                    </li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if invoices.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="{{ url_for('billing.list_invoices', page=invoices.next_num, **_args) }}">
-                        <i class="fas fa-chevron-right"></i>
-                    </a>
-                </li>
-                {% endif %}
-            </ul>
-        </nav>
-        {% endif %}
+        <!-- Pagination -->
+        {{ render_pagination(invoices) }}
 
         {% else %}
         <div class="text-center text-muted py-5">

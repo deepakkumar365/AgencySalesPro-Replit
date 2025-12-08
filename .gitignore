@@ -5,3 +5,5 @@
 *.md
 /RECEIPT_EXAMPLE.txt
 /venv311/
+/*.log
+*.log

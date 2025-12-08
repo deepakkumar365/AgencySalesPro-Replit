@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/pagination.html" import render_pagination %}
 
 {% block title %}Manage Agencies - AgencySales Pro{% endblock %}
 
@@ -16,7 +17,8 @@
         <div class="card-body">
             <form method="GET" action="{{ url_for('agency.list_agencies') }}">
                 <div class="input-group">
-                    <input type="text" name="search" class="form-control" placeholder="Search by Agency Name, Code, or Manager..." value="{{ search or '' }}">
+                    <input type="text" name="search" class="form-control"
+                        placeholder="Search by Agency Name, Code, or Manager..." value="{{ search or '' }}">
                     <button class="btn btn-outline-secondary" type="submit"><i class="fas fa-search"></i></button>
                 </div>
             </form>
@@ -43,44 +45,44 @@
                         {% for agency, manager_username, login_id_count, customer_count in pagination.items %}
                         <tr>
                             <td>
-                                <a href="{{ url_for('agency.edit_agency', agency_id=agency.id) }}" class="fw-bold">{{ agency.name }}</a>
+                                <a href="{{ url_for('agency.edit_agency', agency_id=agency.id) }}" class="fw-bold">{{
+                                    agency.name }}</a>
                                 <br>
                                 <small class="text-muted">{{ agency.email }}</small>
                             </td>
                             <td>{{ agency.code }}</td>
                             <td>
                                 {% if manager_username %}
-                                    <i class="fas fa-user-shield me-1 text-success"></i>{{ manager_username }}
+                                <i class="fas fa-user-shield me-1 text-success"></i>{{ manager_username }}
                                 {% else %}
-                                    <span class="text-muted fst-italic">Not Assigned</span>
+                                <span class="text-muted fst-italic">Not Assigned</span>
                                 {% endif %}
                             </td>
                             <td class="text-center">
                                 <span class="badge bg-info">{{ customer_count }}</span>
                             </td>
                             <td class="text-center">
-                                <a href="{{ url_for('super_admin.manage_users', agency_filter=agency.id) }}" class="badge bg-secondary text-decoration-none">{{ login_id_count }}</a>
+                                <a href="{{ url_for('super_admin.manage_users', agency_filter=agency.id) }}"
+                                    class="badge bg-secondary text-decoration-none">{{ login_id_count }}</a>
                             </td>
                             <td class="text-center">
                                 {% if agency.is_active %}
-                                    <span class="badge bg-success">Active</span>
+                                <span class="badge bg-success">Active</span>
                                 {% else %}
-                                    <span class="badge bg-danger">Inactive</span>
+                                <span class="badge bg-danger">Inactive</span>
                                 {% endif %}
                             </td>
                             <td class="text-center">
                                 <div class="btn-group">
-                                    <a href="{{ url_for('agency.edit_agency', agency_id=agency.id) }}" class="btn btn-sm btn-outline-primary" title="Edit Agency">
+                                    <a href="{{ url_for('agency.edit_agency', agency_id=agency.id) }}"
+                                        class="btn btn-sm btn-outline-primary" title="Edit Agency">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-outline-warning" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#resetPasswordModal"
-                                            data-agency-name="{{ agency.name }}"
-                                            data-manager-name="{{ manager_username or 'N/A' }}"
-                                            data-action-url="{{ url_for('super_admin.reset_agency_manager_password', agency_id=agency.id) }}"
-                                            {% if not manager_username %}disabled{% endif %}
-                                            title="Reset Manager Password">
+                                    <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal"
+                                        data-bs-target="#resetPasswordModal" data-agency-name="{{ agency.name }}"
+                                        data-manager-name="{{ manager_username or 'N/A' }}"
+                                        data-action-url="{{ url_for('super_admin.reset_agency_manager_password', agency_id=agency.id) }}"
+                                        {% if not manager_username %}disabled{% endif %} title="Reset Manager Password">
                                         <i class="fas fa-key"></i>
                                     </button>
                                 </div>
@@ -92,52 +94,7 @@
             </div>
 
             <!-- Pagination Controls -->
-            <div class="row align-items-center mt-3">
-                <div class="col-md-auto">
-                    <div class="d-flex align-items-center">
-                        <form method="GET" action="{{ url_for('agency.list_agencies') }}" class="d-flex align-items-center me-3">
-                            {% if search %}
-                            <input type="hidden" name="search" value="{{ search }}">
-                            {% endif %}
-                            <label for="per_page" class="form-label me-2 mb-0 text-nowrap">Rows:</label>
-                            <select name="per_page" id="per_page" class="form-select form-select-sm" onchange="this.form.submit()">
-                                <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
-                                <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
-                                <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
-                                <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
-                            </select>
-                        </form>
-                    </div>
-                </div>
-                <div class="col-md">
-                    <div class="d-flex justify-content-md-end justify-content-center align-items-center">
-                        <span class="text-muted me-3">
-                            Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }}
-                        </span>
-                        <nav aria-label="Page navigation">
-                            <ul class="pagination mb-0">
-                                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                                    <a class="page-link" href="{% if pagination.has_prev %}{{ url_for('agency.list_agencies', page=pagination.prev_num, per_page=per_page, search=search) }}{% else %}#{% endif %}">&laquo;</a>
-                                </li>
-                                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=1) %}
-                                    {% if page_num %}
-                                        {% if pagination.page == page_num %}
-                                        <li class="page-item active"><a class="page-link" href="#">{{ page_num }}</a></li>
-                                        {% else %}
-                                        <li class="page-item"><a class="page-link" href="{{ url_for('agency.list_agencies', page=page_num, per_page=per_page, search=search) }}">{{ page_num }}</a></li>
-                                        {% endif %}
-                                    {% else %}
-                                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                                    {% endif %}
-                                {% endfor %}
-                                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                                    <a class="page-link" href="{% if pagination.has_next %}{{ url_for('agency.list_agencies', page=pagination.next_num, per_page=per_page, search=search) }}{% else %}#{% endif %}">&raquo;</a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
-                </div>
-            </div>
+            {{ render_pagination(pagination) }}
 
             {% else %}
             <div class="alert alert-info">No agencies found.</div>
@@ -148,45 +105,47 @@
 
 <!-- Reset Password Modal -->
 <div class="modal fade" id="resetPasswordModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Confirm Password Reset</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p>Are you sure you want to reset the password for manager <strong id="managerName"></strong> of agency <strong id="agencyName"></strong>?</p>
-        <p class="text-danger">The new password will be set to: <strong>Welcome@123</strong></p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <form id="resetPasswordForm" method="POST" action="">
-            <button type="submit" class="btn btn-warning">Reset Password</button>
-        </form>
-      </div>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Password Reset</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to reset the password for manager <strong id="managerName"></strong> of agency
+                    <strong id="agencyName"></strong>?
+                </p>
+                <p class="text-danger">The new password will be set to: <strong>Welcome@123</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="resetPasswordForm" method="POST" action="">
+                    <button type="submit" class="btn btn-warning">Reset Password</button>
+                </form>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    var resetPasswordModal = document.getElementById('resetPasswordModal');
-    resetPasswordModal.addEventListener('show.bs.modal', function (event) {
-        var button = event.relatedTarget;
-        var agencyName = button.getAttribute('data-agency-name');
-        var managerName = button.getAttribute('data-manager-name');
-        var actionUrl = button.getAttribute('data-action-url');
+    document.addEventListener('DOMContentLoaded', function () {
+        var resetPasswordModal = document.getElementById('resetPasswordModal');
+        resetPasswordModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var agencyName = button.getAttribute('data-agency-name');
+            var managerName = button.getAttribute('data-manager-name');
+            var actionUrl = button.getAttribute('data-action-url');
 
-        var modalAgencyName = resetPasswordModal.querySelector('#agencyName');
-        var modalManagerName = resetPasswordModal.querySelector('#managerName');
-        var form = resetPasswordModal.querySelector('#resetPasswordForm');
+            var modalAgencyName = resetPasswordModal.querySelector('#agencyName');
+            var modalManagerName = resetPasswordModal.querySelector('#managerName');
+            var form = resetPasswordModal.querySelector('#resetPasswordForm');
 
-        modalAgencyName.textContent = agencyName;
-        modalManagerName.textContent = managerName;
-        form.action = actionUrl;
+            modalAgencyName.textContent = agencyName;
+            modalManagerName.textContent = managerName;
+            form.action = actionUrl;
+        });
     });
-});
 </script>
 {% endblock %}

@@ -11,6 +11,7 @@ from pos import pos_bp
 from auth.utils import login_required, permission_required, get_role_permissions
 from utils.decorators import log_activity
 from utils.excel_utils import export_pos_sales_to_excel
+from utils.pagination import apply_pagination
 import uuid
 import qrcode
 import io
@@ -490,11 +491,7 @@ def sales_history(current_agency_id=None):
             pass
     
     # Get orders
-    orders = query.order_by(Order.order_date.desc()).paginate(
-        page=request.args.get('page', 1, type=int),
-        per_page=20,
-        error_out=False
-    )
+    orders = apply_pagination(query.order_by(Order.order_date.desc()))
     
     return render_template('pos/sales_history.html', orders=orders)
 

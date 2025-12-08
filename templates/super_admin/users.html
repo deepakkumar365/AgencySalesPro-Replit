@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/pagination.html" import render_pagination %}
 
 {% block title %}Manage Users - AgencySales Pro{% endblock %}
 
@@ -13,20 +14,23 @@
                 <a href="{{ url_for('auth.register') }}" class="btn btn-primary">
                     <i class="fas fa-user-plus me-2"></i>Add User
                 </a>
-                <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+                    data-bs-toggle="dropdown">
                     <span class="visually-hidden">Toggle Dropdown</span>
                 </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="{{ url_for('super_admin.import_users') }}">
-                        <i class="fas fa-upload me-2"></i>Import from CSV
-                    </a></li>
+                            <i class="fas fa-upload me-2"></i>Import from CSV
+                        </a></li>
                     <li><a class="dropdown-item" href="{{ url_for('super_admin.export_users') }}">
-                        <i class="fas fa-download me-2"></i>Export to CSV
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
+                            <i class="fas fa-download me-2"></i>Export to CSV
+                        </a></li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
                     <li><a class="dropdown-item" href="{{ url_for('super_admin.download_user_template') }}">
-                        <i class="fas fa-file-csv me-2"></i>Download Template
-                    </a></li>
+                            <i class="fas fa-file-csv me-2"></i>Download Template
+                        </a></li>
                 </ul>
             </div>
         </div>
@@ -43,7 +47,7 @@
                     <select class="form-select" id="agency_filter" name="agency_filter">
                         <option value="">-- All Agencies --</option>
                         {% for agency in agencies_for_filter %}
-                        <option value="{{ agency.id }}" {{ 'selected' if agency.id == current_agency_filter else '' }}>
+                        <option value="{{ agency.id }}" {{ 'selected' if agency.id==current_agency_filter else '' }}>
                             {{ agency.name }}
                         </option>
                         {% endfor %}
@@ -89,18 +93,18 @@
                                 <td>{{ user.email }}</td>
                                 <td>
                                     {% set colors = {
-                                        'super_admin': 'danger',
-                                        'support': 'warning',
-                                        'agency_admin': 'primary',
-                                        'agency_manager': 'success',
-                                        'staff': 'info',
-                                        'salesperson': 'secondary',
-                                        'pos_user': 'dark',
-                                        'accountant': 'info'
+                                    'super_admin': 'danger',
+                                    'support': 'warning',
+                                    'agency_admin': 'primary',
+                                    'agency_manager': 'success',
+                                    'staff': 'info',
+                                    'salesperson': 'secondary',
+                                    'pos_user': 'dark',
+                                    'accountant': 'info'
                                     } %}
                                     <span class="badge bg-{{ colors.get(user.role, 'light text-dark') }}">
                                         {{ user.role.replace('_', ' ').title() }}
-                                    </span>                                    
+                                    </span>
                                 </td>
                                 <td>{{ user.agency.name if user.agency else '-' }}</td>
                                 <td>
@@ -119,32 +123,32 @@
                                 </td>
                                 <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
                                 <td>
-                                    <a href="{{ url_for('super_admin.edit_user', user_id=user.id) }}" 
-                                       class="btn btn-sm btn-outline-primary me-1"
-                                       title="Edit User">
+                                    <a href="{{ url_for('super_admin.edit_user', user_id=user.id) }}"
+                                        class="btn btn-sm btn-outline-primary me-1" title="Edit User">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <a href="{{ url_for('super_admin.reset_password', user_id=user.id) }}" 
-                                       class="btn btn-sm btn-outline-warning me-1"
-                                       title="Reset Password"
-                                       onclick="return confirm('Reset password for this user?')">
+                                    <a href="{{ url_for('super_admin.reset_password', user_id=user.id) }}"
+                                        class="btn btn-sm btn-outline-warning me-1" title="Reset Password"
+                                        onclick="return confirm('Reset password for this user?')">
                                         <i class="fas fa-key"></i>
                                     </a>
-                                    <form method="POST" action="{{ url_for('super_admin.toggle_user_status', user_id=user.id) }}" class="d-inline">
-                                        <button type="submit" 
-                                                class="btn btn-sm btn-outline-{{ 'warning' if user.is_active else 'success' }}"
-                                                title="{{ 'Deactivate' if user.is_active else 'Activate' }}"
-                                                onclick="return confirm('Are you sure?')"
-                                                {{ 'disabled' if user.role == 'super_admin' and user.is_active else '' }}>
+                                    <form method="POST"
+                                        action="{{ url_for('super_admin.toggle_user_status', user_id=user.id) }}"
+                                        class="d-inline">
+                                        <button type="submit"
+                                            class="btn btn-sm btn-outline-{{ 'warning' if user.is_active else 'success' }}"
+                                            title="{{ 'Deactivate' if user.is_active else 'Activate' }}"
+                                            onclick="return confirm('Are you sure?')" {{ 'disabled' if
+                                            user.role=='super_admin' and user.is_active else '' }}>
                                             <i class="fas fa-{{ 'pause' if user.is_active else 'play' }}"></i>
                                         </button>
                                     </form>
-                                    <form method="POST" action="{{ url_for('super_admin.delete_user', user_id=user.id) }}" class="d-inline">
-                                        <button type="submit"
-                                                class="btn btn-sm btn-outline-danger"
-                                                title="Delete User"
-                                                onclick="return confirm('Are you sure you want to permanently delete this user? This action cannot be undone.')"
-                                                {{ 'disabled' if user.role == 'super_admin' else '' }}>
+                                    <form method="POST"
+                                        action="{{ url_for('super_admin.delete_user', user_id=user.id) }}"
+                                        class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete User"
+                                            onclick="return confirm('Are you sure you want to permanently delete this user? This action cannot be undone.')"
+                                            {{ 'disabled' if user.role=='super_admin' else '' }}>
                                             <i class="fas fa-trash-alt"></i>
                                         </button>
                                     </form>
@@ -156,52 +160,7 @@
                 </div>
 
                 <!-- Pagination Controls -->
-                <div class="row align-items-center mt-3">
-                    <div class="col-md-auto">
-                        <div class="d-flex align-items-center">
-                            <form method="GET" action="{{ url_for('super_admin.manage_users') }}" class="d-flex align-items-center me-3">
-                                {% if current_agency_filter %}
-                                <input type="hidden" name="agency_filter" value="{{ current_agency_filter }}">
-                                {% endif %}
-                                <label for="per_page" class="form-label me-2 mb-0 text-nowrap">Rows:</label>
-                                <select name="per_page" id="per_page" class="form-select form-select-sm" onchange="this.form.submit()">
-                                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
-                                    <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
-                                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
-                                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
-                                </select>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="col-md">
-                        <div class="d-flex justify-content-md-end justify-content-center align-items-center">
-                            <span class="text-muted me-3">
-                                Showing {{ pagination.first }}-{{ pagination.last }} of {{ pagination.total }}
-                            </span>
-                            <nav aria-label="Page navigation">
-                                <ul class="pagination mb-0">
-                                    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                                        <a class="page-link" href="{% if pagination.has_prev %}{{ url_for('super_admin.manage_users', page=pagination.prev_num, per_page=per_page, agency_filter=current_agency_filter) }}{% else %}#{% endif %}">&laquo;</a>
-                                    </li>
-                                    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=1) %}
-                                        {% if page_num %}
-                                            {% if pagination.page == page_num %}
-                                            <li class="page-item active"><a class="page-link" href="#">{{ page_num }}</a></li>
-                                            {% else %}
-                                            <li class="page-item"><a class="page-link" href="{{ url_for('super_admin.manage_users', page=page_num, per_page=per_page, agency_filter=current_agency_filter) }}">{{ page_num }}</a></li>
-                                            {% endif %}
-                                        {% else %}
-                                            <li class="page-item disabled"><span class="page-link">...</span></li>
-                                        {% endif %}
-                                    {% endfor %}
-                                    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                                        <a class="page-link" href="{% if pagination.has_next %}{{ url_for('super_admin.manage_users', page=pagination.next_num, per_page=per_page, agency_filter=current_agency_filter) }}{% else %}#{% endif %}">&raquo;</a>
-                                    </li>
-                                </ul>
-                            </nav>
-                        </div>
-                    </div>
-                </div>
+                {{ render_pagination(pagination) }}
 
                 {% else %}
                 <div class="text-center py-5">
