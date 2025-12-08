@@ -5,6 +5,7 @@ from models import Agency, User, CustomerAgency, Location
 from . import agency_bp
 from auth.utils import login_required, role_required
 from utils.decorators import log_activity
+from utils.pagination import apply_pagination
 
 @agency_bp.route('/')
 @role_required('super_admin', 'agency_admin', 'agency_manager')
@@ -49,8 +50,9 @@ def list_agencies():
             User.username.ilike(f'%{search}%')
         ))
 
-    agencies_data = query.order_by(Agency.name).all()
-    return render_template('agency/list.html', agencies_data=agencies_data, search=search)
+    pagination = apply_pagination(query.order_by(Agency.name))
+    
+    return render_template('agency/list.html', pagination=pagination, search=search)
 
 @agency_bp.route('/create', methods=['GET', 'POST'])
 @role_required('super_admin', 'agency_manager')
@@ -296,9 +298,15 @@ def toggle_agency_status(agency_id):
 @role_required('super_admin', 'agency_admin', 'agency_manager')
 def agency_users(agency_id):
     agency = Agency.query.get_or_404(agency_id)
-    users = User.query.filter_by(agency_id=agency_id).all()
     
-    return render_template('agency/users.html', agency=agency, users=users)
+    # Use the apply_pagination() method on the query
+    pagination = apply_pagination(User.query.filter_by(agency_id=agency_id).order_by(User.created_at.desc()))
+    
+    return render_template(
+        'agency/users.html', 
+        agency=agency, 
+        pagination=pagination
+    )
 
 @agency_bp.route('/<int:agency_id>/create_user', methods=['GET', 'POST'])
 @role_required('super_admin', 'agency_admin', 'agency_manager')

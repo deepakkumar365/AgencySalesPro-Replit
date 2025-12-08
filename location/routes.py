@@ -6,6 +6,7 @@ from models import Location, Agency
 from location import location_bp
 from auth.utils import login_required, role_required, permission_required
 from utils.decorators import log_activity
+from utils.pagination import apply_pagination
 import pandas as pd
 from datetime import datetime
 
@@ -13,13 +14,19 @@ from datetime import datetime
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson'])
 def list_locations(current_agency_id=None):
     user_role = session.get('role')
+    query = Location.query
     
     if user_role == 'super_admin':
-        locations = Location.query.all()
+        # Super admin can see all locations
+        pass
     else:
-        locations = Location.query.filter_by(agency_id=current_agency_id).all()
+        # Other roles are restricted to their agency
+        query = query.filter_by(agency_id=current_agency_id)
     
-    return render_template('location/list.html', locations=locations)
+    # Use the apply_pagination() method on the query
+    pagination = apply_pagination(query.order_by(Location.name))
+    
+    return render_template('location/list.html', pagination=pagination)
 
 @location_bp.route('/create', methods=['GET', 'POST'])
 @login_required

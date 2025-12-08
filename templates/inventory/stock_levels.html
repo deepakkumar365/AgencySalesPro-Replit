@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/pagination.html" import render_pagination %}
 
 {% block title %}Stock Levels - AgencySales Pro{% endblock %}
 
@@ -16,14 +17,15 @@
         <form method="GET" class="row g-3 align-items-center">
             <div class="col-md-4">
                 <label for="search" class="visually-hidden">Search</label>
-                <input type="text" class="form-control" id="search" name="search" placeholder="Search by name or SKU..." value="{{ current_filters.search or '' }}">
+                <input type="text" class="form-control" id="search" name="search" placeholder="Search by name or SKU..."
+                    value="{{ current_filters.search or '' }}">
             </div>
             <div class="col-md-3">
                 <label for="category" class="visually-hidden">Category</label>
                 <select class="form-select" id="category" name="category">
                     <option value="">All Categories</option>
                     {% for cat in categories %}
-                    <option value="{{ cat.id }}" {{ 'selected' if current_filters.category == cat.id|string else '' }}>
+                    <option value="{{ cat.id }}" {{ 'selected' if current_filters.category==cat.id|string else '' }}>
                         {{ cat.name }}
                     </option>
                     {% endfor %}
@@ -33,9 +35,12 @@
                 <label for="stock_status" class="visually-hidden">Stock Status</label>
                 <select class="form-select" id="stock_status" name="stock_status">
                     <option value="">All Stock Statuses</option>
-                    <option value="normal" {{ 'selected' if current_filters.stock_status == 'normal' else '' }}>In Stock</option>
-                    <option value="low" {{ 'selected' if current_filters.stock_status == 'low' else '' }}>Low Stock</option>
-                    <option value="out" {{ 'selected' if current_filters.stock_status == 'out' else '' }}>Out of Stock</option>
+                    <option value="normal" {{ 'selected' if current_filters.stock_status=='normal' else '' }}>In Stock
+                    </option>
+                    <option value="low" {{ 'selected' if current_filters.stock_status=='low' else '' }}>Low Stock
+                    </option>
+                    <option value="out" {{ 'selected' if current_filters.stock_status=='out' else '' }}>Out of Stock
+                    </option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -80,16 +85,15 @@
                         <td>{{ product.category_ref.name if product.category_ref else 'N/A' }}</td>
                         <td>₹{{ "%.2f"|format(product.sell_price or 0) }}</td>
                         <td class="text-center">
-                            {% if stock <= 0 %}
-                                <span class="badge bg-danger">{{ stock|int }}</span>
-                            {% elif stock <= 10 %}
-                                <span class="badge bg-warning text-dark">{{ stock|int }}</span>
-                            {% else %}
-                                <span class="badge bg-success">{{ stock|int }}</span>
-                            {% endif %}
+                            {% if stock <= 0 %} <span class="badge bg-danger">{{ stock|int }}</span>
+                                {% elif stock <= 10 %} <span class="badge bg-warning text-dark">{{ stock|int }}</span>
+                                    {% else %}
+                                    <span class="badge bg-success">{{ stock|int }}</span>
+                                    {% endif %}
                         </td>
                         <td>
-                            <a href="{{ url_for('inventory.adjust_stock', product_id=product.id) }}" class="btn btn-sm btn-outline-warning" title="Adjust Stock">
+                            <a href="{{ url_for('inventory.adjust_stock', product_id=product.id) }}"
+                                class="btn btn-sm btn-outline-warning" title="Adjust Stock">
                                 <i class="fas fa-edit"></i>
                             </a>
                         </td>
@@ -105,22 +109,6 @@
         </div>
         {% endif %}
     </div>
-    {% if products.pages > 1 %}
-    <div class="card-footer">
-        <nav aria-label="Page navigation">
-            <ul class="pagination justify-content-center mb-0">
-                {% for page_num in products.iter_pages() %}
-                    {% if page_num %}
-                        <li class="page-item {{ 'active' if products.page == page_num else '' }}">
-                            <a class="page-link" href="{{ url_for('inventory.stock_levels', page=page_num, **request.args) }}">{{ page_num }}</a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                    {% endif %}
-                {% endfor %}
-            </ul>
-        </nav>
-    </div>
-    {% endif %}
+    {{ render_pagination(products) }}
 </div>
 {% endblock %}

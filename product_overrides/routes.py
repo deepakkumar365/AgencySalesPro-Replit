@@ -4,6 +4,7 @@ import io
 from extensions import db
 from auth.utils import login_required, permission_required
 from utils.decorators import log_activity
+from utils.pagination import apply_pagination
 from product_overrides import overrides_bp
 from models import Product, ProductAgency, Agency, Category, UOM, TaxMaster
 from sqlalchemy import func, or_, and_
@@ -66,7 +67,7 @@ def list_overrides(current_agency_id=None):
         except ValueError:
             pass
 
-    rows = query.order_by(Product.created_at.desc()).all()
+    pagination = apply_pagination(query.order_by(Product.created_at.desc()))
 
     # Dropdown data
     agencies = Agency.query.all() if user_role == 'super_admin' else Agency.query.filter_by(id=current_agency_id).all()
@@ -74,7 +75,7 @@ def list_overrides(current_agency_id=None):
 
     return render_template(
         'product_overrides/list.html',
-        rows=rows,
+        pagination=pagination,
         agencies=agencies,
         categories=categories,
         filters=filters

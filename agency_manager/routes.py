@@ -6,6 +6,7 @@ from extensions import db
 from models import Agency, User, ActivityLog
 from auth.utils import permission_required
 from . import agency_manager_bp
+from utils.pagination import apply_pagination
 
 
 @agency_manager_bp.route('/dashboard')
@@ -32,11 +33,11 @@ def manage_users():
     if agency_filter and agency_filter in managed_agency_ids:
         query = query.filter(User.agency_id == agency_filter)
 
-    users = query.all()
+    pagination = apply_pagination(query)
 
     return render_template(
         'super_admin/users.html',
-        users=users,
+        pagination=pagination,
         agencies_for_filter=managed_agencies,
         current_agency_filter=agency_filter,
     )
@@ -139,11 +140,13 @@ def view_activities():
     managed_agencies = Agency.query.filter_by(agency_manager_id=manager_id).all()
     managed_agency_ids = [agency.id for agency in managed_agencies]
 
-    activities = (
+    activities_query = (
         ActivityLog.query
         .join(User)
         .filter(User.agency_id.in_(managed_agency_ids))
         .order_by(ActivityLog.created_at.desc())
-        .paginate(page=request.args.get('page', 1, type=int), per_page=50, error_out=False)
     )
-    return render_template('agency_manager/activities.html', activities=activities)
+    pagination = apply_pagination(activities_query)
+    
+    # Use super_admin/activities.html as it is compatible
+    return render_template('super_admin/activities.html', activities=pagination)

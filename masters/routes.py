@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from models import Category, UOM, TaxMaster, Agency, db
 from functools import wraps
 from datetime import datetime
+from utils.pagination import apply_pagination
 
 def login_required(f):
     @wraps(f)
@@ -43,14 +44,11 @@ def index():
 @masters_bp.route('/categories')
 @login_required
 def categories():
-    """List all categories"""
-    user_role = session.get('role')
-    agency_id = session.get('agency_id')
+    """List all categories with pagination"""
+    pagination = apply_pagination(Category.query.order_by(Category.name.asc()))
     
-    # Global masters
-    categories = Category.query.filter_by(is_active=True).all()
-    
-    return render_template('masters/categories.html', categories=categories)
+    return render_template('masters/categories.html', 
+                           pagination=pagination)
 
 @masters_bp.route('/categories/create', methods=['GET', 'POST'])
 @login_required
@@ -89,14 +87,11 @@ def create_category():
 @masters_bp.route('/uoms')
 @login_required
 def uoms():
-    """List all UOMs"""
-    user_role = session.get('role')
-    agency_id = session.get('agency_id')
+    """List all UOMs with pagination"""
+    pagination = apply_pagination(UOM.query.order_by(UOM.name.asc()))
     
-    # Global masters
-    uoms = UOM.query.filter_by(is_active=True).all()
-    
-    return render_template('masters/uoms.html', uoms=uoms)
+    return render_template('masters/uoms.html', 
+                           pagination=pagination)
 
 @masters_bp.route('/uoms/create', methods=['GET', 'POST'])
 @login_required
@@ -132,14 +127,11 @@ def create_uom():
 @masters_bp.route('/tax-masters')
 @login_required
 def tax_masters():
-    """List all tax masters"""
-    user_role = session.get('role')
-    agency_id = session.get('agency_id')
+    """List all tax masters with pagination"""
+    pagination = apply_pagination(TaxMaster.query.order_by(TaxMaster.name.asc()))
     
-    # Global masters
-    tax_masters = TaxMaster.query.filter_by(is_active=True).all()
-    
-    return render_template('masters/tax_masters.html', tax_masters=tax_masters)
+    return render_template('masters/tax_masters.html', 
+                           pagination=pagination)
 
 @masters_bp.route('/tax-masters/create', methods=['GET', 'POST'])
 @login_required

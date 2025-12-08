@@ -1,0 +1,82 @@
+{% macro render_pagination(pagination, per_page_options=[15, 20, 50, 100]) %}
+{% if pagination.total > 0 %}
+<div class="row align-items-center mt-3">
+    <!-- Per Page Selector -->
+    <div class="col-md-auto">
+        <div class="d-flex align-items-center">
+            <form method="GET" action="{{ request.path }}" class="d-flex align-items-center">
+                {# Preserve all existing query args except page and per_page #}
+                {% for key, value in request.args.items() %}
+                {% if key != 'page' and key != 'per_page' %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+                {% endfor %}
+
+                <label for="per_page_select" class="form-label me-2 mb-0 text-nowrap text-muted small">Rows:</label>
+                <select name="per_page" id="per_page_select" class="form-select form-select-sm"
+                    onchange="this.form.submit()" style="width: auto;">
+                    {% for option in per_page_options %}
+                    <option value="{{ option }}" {% if pagination.per_page==option %}selected{% endif %}>{{ option }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <!-- Summary & Navigation -->
+    <div class="col-md">
+        <div class="d-flex justify-content-md-end justify-content-center align-items-center flex-wrap gap-2">
+            <span class="text-muted small">
+                Showing {{ (pagination.page - 1) * pagination.per_page + 1 }} to
+                {{ [pagination.page * pagination.per_page, pagination.total] | min }}
+                of {{ pagination.total }} records
+            </span>
+
+            {% if pagination.pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination pagination-sm mb-0">
+                    {# Prepare query args for pagination links #}
+                    {% set _args = request.args.to_dict() %}
+                    {% set _ = _args.pop('page', None) %}
+                    {# Ensure per_page is included if it's not default, relying on the fact that apply_pagination
+                    handles the default behavior #}
+
+                    <!-- Previous Page -->
+                    <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+                        <a class="page-link"
+                            href="{{ url_for(request.endpoint, page=pagination.prev_num, **_args) if pagination.has_prev else '#' }}"
+                            aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+
+                    <!-- Page Numbers -->
+                    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=1)
+                    %}
+                    {% if page_num %}
+                    <li class="page-item {{ 'active' if page_num == pagination.page }}">
+                        <a class="page-link" href="{{ url_for(request.endpoint, page=page_num, **_args) }}">{{ page_num
+                            }}</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                    {% endfor %}
+
+                    <!-- Next Page -->
+                    <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+                        <a class="page-link"
+                            href="{{ url_for(request.endpoint, page=pagination.next_num, **_args) if pagination.has_next else '#' }}"
+                            aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endmacro %}

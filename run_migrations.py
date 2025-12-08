@@ -12,6 +12,11 @@ import sys
 import argparse
 from pathlib import Path
 
+# Force UTF-8 encoding for stdout/stderr to handle emojis on Windows
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
 # Add migrations to path
 sys.path.insert(0, str(Path(__file__).parent))
 

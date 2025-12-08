@@ -58,7 +58,15 @@ def list_customers(current_agency_id=None):
     elif status_filter == 'inactive':
         query = query.filter(Customer.is_active == False)
     
-    customers = query.order_by(Customer.created_at.desc()).all()
+    # Get pagination parameters from request args
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    if per_page not in [10, 20, 50, 100]:
+        per_page = 20
+
+    # Use the paginate() method on the query
+    from utils.pagination import apply_pagination
+    pagination = apply_pagination(query)
     
     # Get filter options
     agencies = []
@@ -71,7 +79,8 @@ def list_customers(current_agency_id=None):
         locations = Location.query.filter_by(agency_id=current_agency_id, is_active=True).all()
     
     return render_template('customer/list.html', 
-                         customers=customers,
+                         pagination=pagination,
+                         per_page=per_page,
                          agencies=agencies,
                          locations=locations,
                          filters={

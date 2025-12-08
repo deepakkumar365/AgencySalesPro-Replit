@@ -32,16 +32,30 @@ def setup_logging():
     
     log_file = log_dir / f"migration_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - [%(name)s] - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
+    # Create logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
     
-    return logging.getLogger(__name__)
+    # Create file handler which logs even debug messages
+    fh = logging.FileHandler(log_file, encoding='utf-8')
+    fh.setLevel(logging.INFO)
+    
+    # Create console handler with a higher log level
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.INFO)
+    
+    # Create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(name)s] - %(message)s')
+    fh.setFormatter(formatter)
+    ch.setFormatter(formatter)
+    
+    # Add the handlers to the logger
+    # Check if handlers already exist to avoid duplicates if re-imported
+    if not logger.handlers:
+        logger.addHandler(fh)
+        logger.addHandler(ch)
+    
+    return logger
 
 logger = setup_logging()
 
@@ -485,6 +499,11 @@ class MigrationRunner:
         """Execute all migrations in proper sequence"""
         try:
             with self.app.app_context():
+                logger.info("Step 0/4: Ensuring base tables exist (db.create_all)...")
+                db.create_all()
+                logger.info("  ✓ Base tables verified/created")
+                logger.info("")
+
                 logger.info("Step 1/4: Creating RBAC schema tables...")
                 SchemaMigrations.create_rbac_tables()
                 

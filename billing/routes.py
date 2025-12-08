@@ -9,6 +9,7 @@ from models import (
 from . import billing_bp
 from auth.utils import login_required, permission_required, get_role_permissions
 from utils.decorators import log_activity
+from utils.pagination import apply_pagination
 import uuid
 
 @billing_bp.route('/dashboard')
@@ -107,11 +108,8 @@ def list_invoices(current_agency_id=None):
             pass
     
     # Get paginated results
-    invoices = query.order_by(Invoice.issue_date.desc()).paginate(
-        page=request.args.get('page', 1, type=int),
-        per_page=20,
-        error_out=False
-    )
+    # Get paginated results
+    invoices = apply_pagination(query.order_by(Invoice.issue_date.desc()))
     
     # Get customers for filter dropdown
     if user_role == 'super_admin':
@@ -373,8 +371,7 @@ def reports(current_agency_id=None):
     
     # Filter by date range
     period_invoices = invoice_query.filter(
-        Invoice.issue_date >= start_dt,
-        Invoice.issue_date <= end_dt
+        Invoice.issue_date.between(start_dt, end_dt)
     ).all()
     
     period_payments = payment_query.filter(
@@ -388,8 +385,8 @@ def reports(current_agency_id=None):
         'total_invoiced': sum(inv.total_amount for inv in period_invoices),
         'total_payments': len(period_payments),
         'total_collected': sum(pay.amount for pay in period_payments),
-        'avg_invoice_value': sum(inv.total_amount for inv in period_invoices) / len(period_invoices) if period_invoices else 0,
-        'avg_payment_value': sum(pay.amount for pay in period_payments) / len(period_payments) if period_payments else 0,
+        'avg_invoice_value': (sum(inv.total_amount for inv in period_invoices) / len(period_invoices)) if period_invoices else 0,
+        'avg_payment_value': (sum(pay.amount for pay in period_payments) / len(period_payments)) if period_payments else 0,
         'start_date': start_date,
         'end_date': end_date
     }
@@ -413,3 +410,19 @@ def reports(current_agency_id=None):
                          status_counts=status_counts,
                          status_amounts=status_amounts,
                          payment_method_amounts=payment_method_amounts)
+ 
+@billing_bp.route('/payments')
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def list_payments(current_agency_id=None):
+    """List all payments with filtering and pagination"""
+    user_role = session.get('role')
+    search = request.args.get('search', '').strip()
+
+    # Order the results and apply pagination
+    pagination = apply_pagination(query.order_by(Payment.payment_date.desc()))
+
+    return render_template(
+        'billing/payments.html',
+        pagination=pagination,
+        search=search
+    )
