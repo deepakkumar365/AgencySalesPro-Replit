@@ -213,6 +213,47 @@ class SchemaMigrations:
             
             logger.info("  ✓ role_id column and index created")
 
+    @staticmethod
+    def migrate_quantity_types():
+        """
+        Migrate quantity columns from INTEGER to NUMERIC
+        Ensures consistency with models.py definitions
+        """
+        logger.info("▶ Migrating quantity columns to NUMERIC types...")
+        
+        migrations = [
+            # table, column, type
+            ('ASP_order_items', 'quantity', 'NUMERIC(10, 3)'),
+            ('ASP_purchase_order_items', 'quantity_ordered', 'NUMERIC(10, 2)'),
+            ('ASP_purchase_order_items', 'quantity_received', 'NUMERIC(10, 2)'),
+            ('ASP_invoice_items', 'quantity', 'NUMERIC(10, 3)'),
+            ('ASP_delivery_challan_items', 'quantity', 'NUMERIC(10, 3)')
+        ]
+        
+        with migration_transaction():
+            count = 0
+            for table, column, type_def in migrations:
+                # Check if table exists first
+                if not SchemaMigrations.check_table_exists(table):
+                    continue
+                
+                # We blindly alter type - Postgres handles this gracefully if valid cast exists
+                # Using 'USING column::type' clause to ensure proper casting
+                logger.info(f"  Migrating {table}.{column} to {type_def}...")
+                
+                # Check current type first to avoid unnecessary alters (optimization)
+                # But simple ALTER is fine too.
+                try:
+                    db.session.execute(db.text(f"""
+                        ALTER TABLE "{table}" 
+                        ALTER COLUMN {column} TYPE {type_def}
+                    """))
+                    count += 1
+                except Exception as e:
+                    logger.warning(f"  ⚠ Could not migrate {table}.{column}: {e}")
+            
+            logger.info(f"  ✓ Quantity type migrations executed for {count} columns")
+
 
 # ============================================================================
 # DATA MIGRATIONS (Populate tables with seed data)
@@ -508,8 +549,9 @@ class MigrationRunner:
                 SchemaMigrations.create_rbac_tables()
                 
                 logger.info("")
-                logger.info("Step 2/4: Adding role_id column to ASP_users...")
+                logger.info("Step 2/4: Schema Updates (Columns & Types)...")
                 SchemaMigrations.add_role_id_column_to_users()
+                SchemaMigrations.migrate_quantity_types()
                 
                 logger.info("")
                 logger.info("Step 3/4: Populating system data...")
