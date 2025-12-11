@@ -192,6 +192,7 @@ def view_activities():
     - Super Admins see all logs.
     - Other users see only their own activity logs.
     """
+    query = ActivityLog.query.order_by(ActivityLog.created_at.desc())
     if session.get('role') != 'super_admin':
         query = query.filter_by(user_id=session.get('user_id'))
 
