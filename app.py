@@ -156,6 +156,12 @@ def create_app():
             return redirect(url_for('auth.login'))
         return render_template('index.html')
     
+    @app.route('/download-app')
+    def download_app():
+        from flask import render_template
+        return render_template('download_app.html')
+
+    
     with app.app_context():
         import models
         db.create_all()

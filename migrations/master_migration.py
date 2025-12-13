@@ -255,6 +255,22 @@ class SchemaMigrations:
             logger.info(f"  ✓ Quantity type migrations executed for {count} columns")
 
 
+    @staticmethod
+    def add_product_name_column_to_purchase_order_items():
+        """Add product_name column to ASP_purchase_order_items if missing"""
+        if SchemaMigrations.check_column_exists('ASP_purchase_order_items', 'product_name'):
+            logger.info("  ⊘ product_name column already exists in ASP_purchase_order_items")
+            return
+        logger.info("▶ Adding product_name column to ASP_purchase_order_items...")
+        with migration_transaction():
+            db.session.execute(db.text(
+                """
+                ALTER TABLE \"ASP_purchase_order_items\" 
+                ADD COLUMN product_name VARCHAR(150)
+                """
+            ))
+            logger.info("  ✓ product_name column added to ASP_purchase_order_items")
+
 # ============================================================================
 # DATA MIGRATIONS (Populate tables with seed data)
 # ============================================================================
@@ -552,6 +568,7 @@ class MigrationRunner:
                 logger.info("Step 2/4: Schema Updates (Columns & Types)...")
                 SchemaMigrations.add_role_id_column_to_users()
                 SchemaMigrations.migrate_quantity_types()
+                SchemaMigrations.add_product_name_column_to_purchase_order_items()
                 
                 logger.info("")
                 logger.info("Step 3/4: Populating system data...")

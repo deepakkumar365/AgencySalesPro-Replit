@@ -1,0 +1,160 @@
+HOW TO FIX "NOT SECURE" WARNING IN PWA DESKTOP APP
+===================================================
+
+PROBLEM
+-------
+When you install and open the PWA desktop app, Chrome shows "Not Secure" 
+in the address bar because the app is running on HTTP instead of HTTPS.
+
+CURRENT STATUS
+--------------
+✓ App works perfectly fine on your local network (192.168.1.6)
+✓ All features function correctly
+✓ Data is secure within your network
+⚠ Shows "Not Secure" warning because it's HTTP not HTTPS
+
+SOLUTIONS
+---------
+
+OPTION 1: Accept HTTP for Local Development (Easiest)
+------------------------------------------------------
+For development and internal use on your local network, HTTP is fine!
+
+What we've done:
+✓ Updated manifest.json to use "standalone" mode
+✓ Added display_override for better UI
+✓ App runs in its own window (looks like native app)
+
+The "Not Secure" warning is just Chrome being protective. Your data 
+is safe on your local network.
+
+To tell users: "This is normal for internal apps on local network."
+
+
+OPTION 2: Set Up HTTPS with Self-Signed Certificate (Medium)
+-------------------------------------------------------------
+Create a self-signed SSL certificate for local development:
+
+Step 1: Install OpenSSL
+- Download from: https://slproweb.com/products/Win32OpenSSL.html
+- Or use: choco install openssl (if you have Chocolatey)
+
+Step 2: Generate Certificate
+Create a batch file generate_cert.bat:
+
+```batch
+openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365 -subj "/CN=192.168.1.6"
+```
+
+Run it to create cert.pem and key.pem files
+
+Step 3: Update Flask to Use HTTPS
+In main.py, change:
+```python
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True, 
+            ssl_context=('cert.pem', 'key.pem'))
+```
+
+Step 4: Access via HTTPS
+- URL becomes: https://192.168.1.6:5000
+- Browser will warn about self-signed cert (click "Advanced" → "Proceed")
+- After accepting once, PWA will work without warnings!
+
+
+OPTION 3: Use ngrok for HTTPS Tunnel (Quick Test)
+--------------------------------------------------
+Great for testing, not for permanent use:
+
+Step 1: Download ngrok
+- Visit: https://ngrok.com
+- Download and extract
+
+Step 2: Run ngrok
+```batch
+ngrok http 5000
+```
+
+Step 3: Use HTTPS URL
+- ngrok gives you: https://xxxxx.ngrok.io
+- Share this URL with users
+- PWA will work perfectly with HTTPS!
+
+Note: URL changes each time you restart ngrok (unless you have paid account)
+
+
+OPTION 4: Deploy to Production with Real HTTPS (Best for Production)
+---------------------------------------------------------------------
+Deploy to a cloud service that provides free HTTPS:
+
+Popular Options:
+1. Render.com (Easy, free tier available)
+2. Railway.app (Simple deployment)
+3. Heroku (Classic choice)
+4. PythonAnywhere (Python-specific)
+5. DigitalOcean App Platform
+
+All provide:
+✓ Free HTTPS certificates
+✓ Custom domain support
+✓ No "Not Secure" warnings
+✓ Professional appearance
+
+
+OPTION 5: Hide the Address Bar Completely (Already Done!)
+----------------------------------------------------------
+We've already updated the manifest.json to minimize browser UI.
+
+What this does:
+✓ App opens in standalone window
+✓ Minimal browser chrome
+✓ Looks more like native app
+
+Users will still see "Not Secure" in the small address bar at top,
+but it's much less prominent.
+
+For truly hiding everything, only HTTPS will work.
+
+
+RECOMMENDATION
+--------------
+For Current Use (Development/Internal):
+→ Use OPTION 1 (Accept HTTP) - It's safe for local network
+
+For Testing PWA Features:
+→ Use OPTION 3 (ngrok) - Quick HTTPS for testing
+
+For Production/External Users:
+→ Use OPTION 4 (Cloud deployment) - Professional HTTPS
+
+
+IMPORTANT NOTES
+---------------
+1. HTTP is safe for local network development
+2. HTTPS is required for:
+   - Public internet access
+   - Full PWA features (geolocation, camera, etc.)
+   - Professional appearance
+   - User trust
+
+3. The "Not Secure" warning doesn't mean your app is unsafe,
+   it just means the connection isn't encrypted.
+
+4. On your local network (192.168.1.6), encryption isn't 
+   necessary since data doesn't leave your network.
+
+
+QUICK WIN: Add a Notice to Users
+---------------------------------
+We can add a small notice in the app for users:
+
+"This app runs on your local network. The 'Not Secure' 
+notification is normal and your data is safe."
+
+This educates users and prevents confusion!
+
+
+NEED HELP?
+----------
+Let me know which option you'd like to implement, and I'll 
+help you set it up step-by-step!
