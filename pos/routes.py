@@ -103,114 +103,111 @@ def new_sale(current_agency_id=None):
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user', 'staff'])
 def search_products(current_agency_id=None):
     """Search products for POS with robust error handling"""
-    query = (request.args.get('q') or '').strip()
+    q = (request.args.get('q') or '').strip()
     user_role = session.get('role')
-
-    if not query:
+    
+    if not q:
         return jsonify([])
 
-    # Resolve effective agency context
+    # Resolve effective agency context strictly like order/routes.py
     filter_agency = request.args.get('agency_id', type=int)
-    effective_agency_id = None
-    if user_role != 'super_admin':
-        effective_agency_id = current_agency_id
-    else:
-        effective_agency_id = filter_agency or current_agency_id
+    effective_agency_id = filter_agency or current_agency_id or session.get('agency_id')
+    
+    try:
+        if effective_agency_id:
+            effective_agency_id = int(effective_agency_id)
+    except:
+        effective_agency_id = None
 
-    # For non-super-admins, agency context must be present
-    if user_role != 'super_admin' and not effective_agency_id:
-        return jsonify({'error': 'Agency context missing'}), 400
-
-    def safe_float(val, default=0.0):
-        try:
-            return float(val) if val is not None else default
-        except Exception:
-            return default
+    # Debugging
+    print(f"POS Search: q='{q}', role='{user_role}', agency_id={effective_agency_id}")
 
     try:
-        # Build query similar to order search to respect agency mappings and overrides
-        if user_role != 'super_admin':
-            products_query = db.session.query(Product, ProductAgency).join(
+        # Base query setup
+        if effective_agency_id and user_role != 'super_admin':
+            # Non-super-admins: Strict Inner Join on active mapping
+            products_query = db.session.query(Product).join(
                 ProductAgency,
                 db.and_(
                     ProductAgency.product_id == Product.id,
                     ProductAgency.agency_id == effective_agency_id,
                     ProductAgency.is_active == True
                 )
-            ).filter(Product.is_active == True)
+            )
         else:
-            if effective_agency_id:
-                products_query = db.session.query(Product, ProductAgency).join(
-                    ProductAgency,
-                    db.and_(
-                        ProductAgency.product_id == Product.id,
-                        ProductAgency.agency_id == effective_agency_id,
-                        ProductAgency.is_active == True
-                    )
-                ).filter(Product.is_active == True)
-            else:
-                # Super admin without a specific agency: allow global search with optional active mapping
-                products_query = db.session.query(Product, ProductAgency).outerjoin(
-                    ProductAgency,
-                    db.and_(
-                        ProductAgency.product_id == Product.id,
-                        ProductAgency.is_active == True
-                    )
-                ).filter(Product.is_active == True)
-
-        # Apply search filter: match on master name/SKU/category and agency display_name
+            # Super admin or no agency: Outer join
+            products_query = db.session.query(Product).outerjoin(
+                ProductAgency,
+                db.and_(
+                    ProductAgency.product_id == Product.id,
+                    ProductAgency.agency_id == effective_agency_id
+                    # Note: We don't strictly require is_active=True in outer join for super admin to see everything
+                    # but typically we want to see effective prices if they exist.
+                )
+            )
+        
+        # Add ProductAgency entity to result format
+        products_query = products_query.add_entity(ProductAgency)
+        
+        # Active products only
+        products_query = products_query.filter(Product.is_active == True)
+        
+        # Filter Logic - Match Order Routes (Name & SKU)
+        # We can add display_name if needed, but lets start with what works
+        like = f"%{q}%"
         products_query = products_query.filter(db.or_(
-            Product.name.ilike(f'%{query}%'),
-            Product.sku.ilike(f'%{query}%'),
-            Product.description.ilike(f'%{query}%'),
-            ProductAgency.display_name.ilike(f'%{query}%'),
-            Product.category_ref.has(Category.name.ilike(f'%{query}%'))
+            Product.name.ilike(like),
+            Product.sku.ilike(like),
+            ProductAgency.display_name.ilike(like)
         ))
 
         results = products_query.limit(50).all()
+        
+        print(f"POS Search Found {len(results)} results")
 
-        # Build safe response, prioritizing agency overrides when present
-        response = [{
-            'id': p.id,
-            'name': (pa.display_name if pa and pa.display_name else p.name),
-            'sku': p.sku,
-            'price': safe_float(pa.sell_price if pa and getattr(pa, 'sell_price', None) is not None else p.sell_price, 0.0),
-            'stock_available': True,
-            'category': (pa.category_ref.name if pa and getattr(pa, 'category_ref', None) else (p.category_ref.name if getattr(p, 'category_ref', None) else ''))
-        } for (p, pa) in results]
+        # Response formatting
+        response = []
+        for p, pa in results:
+            response.append({
+                'id': p.id,
+                'name': (pa.display_name if pa and pa.display_name else p.name),
+                'sku': p.sku,
+                'price': float(pa.sell_price if pa and getattr(pa, 'sell_price', None) is not None else (p.sell_price or 0)),
+                'stock_available': True,
+                'category': (pa.category_ref.name if pa and getattr(pa, 'category_ref', None) else (p.category_ref.name if getattr(p, 'category_ref', None) else '')),
+                'uom': (p.uom_ref.short_name if p.uom_ref else 'pcs')
+            })
 
         return jsonify(response)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Failed to search products', 'details': str(e)}), 500
 
 @pos_bp.route('/api/get_customer')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user', 'staff'])
 def get_customer(current_agency_id=None):
     """Get or create customer for POS sale"""
-    phone = request.args.get('phone', '').strip()
-    email = request.args.get('email', '').strip()
+    search_term = request.args.get('search_term', '').strip()
     user_role = session.get('role')
     
-    if not phone and not email:
-        return jsonify({'error': 'Phone or email required'}), 400
+    if not search_term:
+        return jsonify({'error': 'Search term required'}), 400
     
-    # Search for existing customer
-    if user_role == 'super_admin':
-        if phone:
-            customer = Customer.query.filter_by(phone=phone).first()
-        else:
-            customer = Customer.query.filter_by(email=email).first()
-    else:
-        if phone:
-            customer = Customer.query.join(Location).filter(
-                Customer.phone == phone,
-                Location.agency_id == current_agency_id
-            ).first()
-        else:
-            customer = Customer.query.join(Location).filter(
-                Customer.email == email,
-                Location.agency_id == current_agency_id
-            ).first()
+    # Base query
+    query = Customer.query
+    
+    # Apply agency filter if not super admin
+    if user_role != 'super_admin':
+        query = query.join(Location).filter(Location.agency_id == current_agency_id)
+    
+    # Search by phone OR email
+    customer = query.filter(
+        db.or_(
+            Customer.phone == search_term,
+            Customer.email == search_term
+        )
+    ).first()
     
     if customer:
         return jsonify({

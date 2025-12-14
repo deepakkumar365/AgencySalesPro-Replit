@@ -1,7 +1,6 @@
 const CACHE_NAME = 'agencysalespro-v1';
 const urlsToCache = [
     '/',
-    '/static/css/style.css',
     '/static/js/main.js',
     '/static/manifest.json'
 ];
