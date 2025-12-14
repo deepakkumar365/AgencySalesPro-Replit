@@ -6,57 +6,26 @@
 <link href="{{ url_for('static', filename='css/pos.css') }}" rel="stylesheet">
 <style>
     /* ========================================
-       PRODUCT SEARCH - ENHANCED UX/UI
+       PRODUCT SEARCH - COMPACT
        ======================================== */
 
     /* Search Section Container */
     .search-section {
-        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-        border-radius: 16px;
-        padding: 2rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-
-        /* Hover effect for the search container */
-        .search-section:hover {
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-            transform: translateY(-2px);
-            transition: all 0.2s ease;
-        }
-
-        /* Focus within effect to highlight active input */
-        .search-section:focus-within {
-            border-color: #0d6efd;
-            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.2);
-        }
-    }
-
-    .search-section .form-label {
-        font-weight: 600;
-        font-size: 0.95rem;
-        color: #2c3e50;
-        margin-bottom: 0.75rem;
-        display: flex;
-        align-items: center;
-    }
-
-    .search-section .form-label i {
-        color: #0d6efd;
-        font-size: 1.1rem;
+        background: transparent;
+        padding: 0;
+        margin-bottom: 0.5rem;
     }
 
     .search-row {
         display: flex;
         gap: 0.5rem;
-        align-items: stretch;
+        align-items: center;
         width: 100%;
     }
 
     .search-product {
         flex: 1;
         min-width: 0;
-        /* Prevent overflow and allow full width */
         width: 100%;
     }
 
@@ -64,83 +33,68 @@
         width: 100% !important;
     }
 
-    /* TomSelect Enhanced Styling */
+    /* TomSelect Compact Styling */
     .ts-wrapper {
-        flex-grow: 1;
         width: 100% !important;
-        border: none !important;
-        padding: 0 !important;
     }
 
     .ts-control {
-        background: white !important;
-        border: 2px solid #dee2e6 !important;
-        border-radius: 12px !important;
-        min-height: 60px !important;
-        padding: 1rem 1.25rem !important;
-        font-size: 1.15rem !important;
+        background: #f8f9fa !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 8px !important;
+        min-height: 42px !important;
+        padding: 0.5rem 1rem !important;
+        font-size: 0.95rem !important;
         width: 100% !important;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+        transition: all 0.2s ease;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
     }
 
     .ts-control:hover {
-        border-color: #0d6efd !important;
-        box-shadow: 0 4px 8px rgba(13, 110, 253, 0.1);
+        border-color: #adb5bd !important;
+        background: #fff !important;
     }
 
     .ts-control:focus,
     .ts-wrapper.focus .ts-control {
         border-color: #0d6efd !important;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
-        outline: none;
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15) !important;
+        background: #fff !important;
     }
 
     .ts-control input {
-        font-size: 1rem !important;
-        color: #495057;
-    }
-
-    .ts-control input::placeholder {
-        color: #adb5bd;
-        font-weight: 400;
+        font-size: 0.95rem !important;
     }
 
     /* Dropdown Styling */
     .ts-dropdown {
         z-index: 9999 !important;
-        border: 2px solid #0d6efd !important;
-        border-radius: 12px !important;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
-        margin-top: 0.5rem !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+        margin-top: 4px !important;
         overflow: hidden;
     }
 
     .ts-dropdown .option {
-        padding: 1rem !important;
-        border-bottom: 1px solid #f1f3f5;
-        transition: all 0.2s ease;
+        padding: 8px 12px !important;
+        font-size: 0.9rem;
     }
 
-    .ts-dropdown .option:hover,
     .ts-dropdown .option.active {
-        background: linear-gradient(90deg, #e7f3ff 0%, #f8f9fa 100%) !important;
+        background: #e7f1ff !important;
         color: #0d6efd !important;
-    }
-
-    .ts-dropdown .option:last-child {
-        border-bottom: none;
     }
 
     /* Loading State */
     .ts-wrapper.loading .ts-control::after {
         content: '';
         position: absolute;
-        right: 1rem;
+        right: 0.75rem;
         top: 50%;
         transform: translateY(-50%);
-        width: 20px;
-        height: 20px;
+        width: 16px;
+        height: 16px;
         border: 2px solid #0d6efd;
         border-top-color: transparent;
         border-radius: 50%;
@@ -153,10 +107,10 @@
         }
     }
 
-    /* Catalog Header */
+    /* Catalog Header Override */
     .catalog-header {
-        overflow: visible !important;
-        padding: 1rem;
+        padding: 10px !important;
+        border-bottom: 1px solid #e2e8f0;
     }
 </style>
 {% endblock %}
