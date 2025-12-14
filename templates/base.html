@@ -4,14 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}AgencySales Pro{% endblock %}</title>
+    <title>{% block title %}Noltrion OneSuite{% endblock %}</title>
 
     <!-- PWA Meta Tags -->
     <meta name="description" content="Complete Sales and Inventory Management Platform">
     <meta name="theme-color" content="#667eea">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="AgencySalesPro">
+    <meta name="apple-mobile-web-app-title" content="Noltrion OneSuite">
     <meta name="mobile-web-app-capable" content="yes">
 
     <!-- PWA Manifest -->
@@ -36,6 +36,7 @@
 
     <!-- Custom CSS -->
     <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
+    {% block styles %}{% endblock %}
 
     <!-- PWA Standalone Mode Styles -->
     <style>
@@ -67,7 +68,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for(get_dashboard_url(session.role)) }}">
-                <i class="fas fa-chart-line me-2"></i>AgencySales Pro
+                <i class="fas fa-chart-line me-2"></i>Noltrion OneSuite
             </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
