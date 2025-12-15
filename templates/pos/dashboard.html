@@ -3,62 +3,92 @@
 {% block title %}POS Dashboard - AgencySales Pro{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="fas fa-cash-register me-2"></i>POS Dashboard</h2>
-    <a href="{{ url_for('pos.new_sale') }}" class="btn btn-primary">
-        <i class="fas fa-plus-circle me-2"></i>New Sale
-    </a>
+<div class="row dashboard-header align-items-center">
+    <div class="col-md-8">
+        <h1 class="h3 fw-bold text-primary-dark mb-1">POS Dashboard</h1>
+        <p class="text-muted mb-0">Daily sales overview and quick actions.</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <a href="{{ url_for('pos.new_sale') }}" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
+            <i class="fas fa-plus-circle me-2"></i>New Sale
+        </a>
+    </div>
 </div>
 
 <!-- Today's Stats -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-dollar-sign fa-2x me-3"></i>
+<div class="row g-4 mb-4">
+    <!-- Total Sales -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="h4 mb-0">₹{{ "%.2f"|format(today_stats.total_sales) }}</div>
-                        <small>Today's Sales</small>
+                        <div class="stat-label mb-1">Today's Sales</div>
+                        <h2 class="stat-value">₹{{ "{:,.2f}".format(today_stats.total_sales) }}</h2>
+                        <span class="stat-subtext text-muted">Gross Revenue</span>
+                    </div>
+                    <div class="icon-wrapper bg-soft-primary">
+                        <i class="fas fa-coins"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-success text-white">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-shopping-cart fa-2x me-3"></i>
+
+    <!-- Orders Today -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="h4 mb-0">{{ today_stats.total_orders }}</div>
-                        <small>Orders Today</small>
+                        <div class="stat-label mb-1">Orders Today</div>
+                        <h2 class="stat-value">{{ today_stats.total_orders }}</h2>
+                        <span class="stat-subtext text-success">
+                            Completed Orders
+                        </span>
+                    </div>
+                    <div class="icon-wrapper bg-soft-success">
+                        <i class="fas fa-shopping-cart"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-info text-white">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-box fa-2x me-3"></i>
+
+    <!-- Items Sold -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="h4 mb-0">{{ today_stats.total_items }}</div>
-                        <small>Items Sold</small>
+                        <div class="stat-label mb-1">Items Sold</div>
+                        <h2 class="stat-value">{{ today_stats.total_items }}</h2>
+                        <span class="stat-subtext text-info">
+                            Units Moved
+                        </span>
+                    </div>
+                    <div class="icon-wrapper bg-soft-info">
+                        <i class="fas fa-box"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-warning text-white">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-chart-line fa-2x me-3"></i>
+
+    <!-- Avg Order Value -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="h4 mb-0">${{ "%.2f"|format(today_stats.avg_order_value) }}</div>
-                        <small>Avg Order Value</small>
+                        <div class="stat-label mb-1">Avg Order Value</div>
+                        <h2 class="stat-value">₹{{ "{:,.2f}".format(today_stats.avg_order_value) }}</h2>
+                        <span class="stat-subtext text-warning">
+                            Per Transaction
+                        </span>
+                    </div>
+                    <div class="icon-wrapper bg-soft-warning">
+                        <i class="fas fa-chart-line"></i>
                     </div>
                 </div>
             </div>
@@ -66,37 +96,41 @@
     </div>
 </div>
 
-<div class="row">
+<div class="row g-4 mb-4">
     <!-- Recent Orders -->
     <div class="col-md-8">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Recent Orders</h5>
-                <a href="{{ url_for('pos.sales_history') }}" class="btn btn-sm btn-outline-primary">View All</a>
+        <div class="card chart-card shadow-sm h-100">
+            <div class="card-header chart-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="chart-title"><i class="fas fa-history text-muted me-2"></i>Recent Orders</h5>
+                <a href="{{ url_for('pos.sales_history') }}" class="btn btn-sm btn-outline-primary action-btn">View
+                    All</a>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 {% if recent_orders %}
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover table-custom mb-0">
                         <thead>
                             <tr>
-                                <th>Order #</th>
+                                <th class="ps-4">Order #</th>
                                 <th>Customer</th>
-                                <th>Total</th>
+                                <th class="text-end">Total</th>
                                 <th>Time</th>
-                                <th>Actions</th>
+                                <th class="text-end pe-4">Receipt</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for order in recent_orders %}
                             <tr>
-                                <td>{{ order.order_number }}</td>
-                                <td>{{ order.customer.name }}</td>
-                                <td>${{ "%.2f"|format(order.total_amount) }}</td>
-                                <td>{{ order.created_at.strftime('%H:%M') }}</td>
+                                <td class="ps-4 fw-medium text-primary">{{ order.order_number }}</td>
                                 <td>
-                                    <a href="{{ url_for('pos.receipt', order_id=order.id) }}" 
-                                       class="btn btn-sm btn-outline-primary" target="_blank">
+                                    <div class="fw-medium text-dark">{{ order.customer.name }}</div>
+                                </td>
+                                <td class="text-end fw-bold text-success">₹{{ "{:,.2f}".format(order.total_amount) }}
+                                </td>
+                                <td class="text-muted">{{ order.created_at.strftime('%H:%M') }}</td>
+                                <td class="text-end pe-4">
+                                    <a href="{{ url_for('pos.receipt', order_id=order.id) }}"
+                                        class="btn btn-sm btn-outline-secondary action-btn" target="_blank">
                                         <i class="fas fa-receipt"></i>
                                     </a>
                                 </td>
@@ -106,9 +140,9 @@
                     </table>
                 </div>
                 {% else %}
-                <div class="text-center text-muted py-4">
-                    <i class="fas fa-shopping-cart fa-3x mb-3"></i>
-                    <p>No recent orders</p>
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-shopping-cart fa-3x mb-3 opacity-25"></i>
+                    <p>No sales recorded today.</p>
                 </div>
                 {% endif %}
             </div>
@@ -117,48 +151,21 @@
 
     <!-- Sidebar -->
     <div class="col-md-4">
-        <!-- Low Stock Alerts -->
-        <div class="card mb-3">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Low Stock Alerts</h6>
-            </div>
-            <div class="card-body">
-                {% if low_stock_products %}
-                <div class="list-group list-group-flush">
-                    {% for product in low_stock_products %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center p-2">
-                        <div>
-                            <div class="fw-bold">{{ product.name }}</div>
-                            <small>{{ product.sku }}</small>
-                        </div>
-                        <span class="badge bg-warning">{{ product.stock_quantity }}</span>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center text-muted">
-                    <i class="fas fa-check-circle text-success"></i>
-                    <p class="mb-0">All products in stock</p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
         <!-- Quick Actions -->
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h6>
+        <div class="card chart-card shadow-sm mb-4">
+            <div class="card-header chart-header bg-white">
+                <h5 class="chart-title"><i class="fas fa-bolt text-warning me-2"></i>Quick Actions</h5>
             </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('pos.new_sale') }}" class="btn btn-primary">
-                        <i class="fas fa-plus-circle me-2"></i>New Sale
+            <div class="card-body p-4">
+                <div class="d-grid gap-3">
+                    <a href="{{ url_for('pos.new_sale') }}" class="btn btn-primary py-2 shadow-sm">
+                        <i class="fas fa-plus-circle me-2"></i>Start New Sale
                     </a>
-                    <a href="{{ url_for('pos.sales_history') }}" class="btn btn-outline-secondary">
+                    <a href="{{ url_for('pos.sales_history') }}" class="btn btn-outline-secondary py-2">
                         <i class="fas fa-history me-2"></i>Sales History
                     </a>
                     {% if session.role in ['agency_admin', 'super_admin'] %}
-                    <a href="{{ url_for('product.list_products') }}" class="btn btn-outline-secondary">
+                    <a href="{{ url_for('product.list_products') }}" class="btn btn-outline-secondary py-2">
                         <i class="fas fa-box me-2"></i>Manage Products
                     </a>
                     {% endif %}
@@ -169,11 +176,11 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
 <script>
-// Auto-refresh dashboard every 5 minutes
-setTimeout(() => {
-    location.reload();
-}, 300000);
+    // Auto-refresh dashboard every 5 minutes
+    setTimeout(() => {
+        location.reload();
+    }, 300000);
 </script>
 {% endblock %}

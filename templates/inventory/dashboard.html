@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - AgencySales Pro{% endblock %}
+{% block title %}Inventory Dashboard - AgencySales Pro{% endblock %}
 
 {% block head %}
 {{ super() }}
@@ -8,70 +8,98 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="fas fa-boxes me-2"></i>Dashboard</h2>
-    <div class="btn-group">
-        <a href="{{ url_for('inventory.stock_levels') }}" class="btn btn-outline-primary" title="View All Stock Levels">
-            <i class="fas fa-list me-2"></i>Stock List
-        </a>
-        <a href="{{ url_for('inventory.bulk_adjust_stock') }}" class="btn btn-outline-success" title="Bulk Adjust Stock via Upload">
-            <i class="fas fa-file-upload me-2"></i>Bulk Adjust
-        </a>
-        <a href="{{ url_for('inventory.reports') }}" class="btn btn-outline-info">
-            <i class="fas fa-chart-bar me-2"></i>Reports
-        </a>
+<div class="row dashboard-header align-items-center">
+    <div class="col-md-6">
+        <h1 class="h3 fw-bold text-primary-dark mb-1">Inventory Dashboard</h1>
+        <p class="text-muted mb-0">Overview of stock levels, values, and movements.</p>
+    </div>
+    <div class="col-md-6 text-md-end mt-3 mt-md-0">
+        <div class="btn-group shadow-sm">
+            <a href="{{ url_for('inventory.stock_levels') }}" class="btn btn-outline-primary btn-sm px-3">
+                <i class="fas fa-list me-2"></i>Stock List
+            </a>
+            <a href="{{ url_for('inventory.bulk_adjust_stock') }}" class="btn btn-outline-success btn-sm px-3">
+                <i class="fas fa-file-upload me-2"></i>Bulk Adjust
+            </a>
+            <a href="{{ url_for('inventory.reports') }}" class="btn btn-outline-info btn-sm px-3">
+                <i class="fas fa-chart-bar me-2"></i>Reports
+            </a>
+            <button type="button" class="btn btn-primary btn-sm px-3" data-bs-toggle="modal"
+                data-bs-target="#adjustStockModal">
+                <i class="fas fa-edit me-2"></i>Adjust Stock
+            </button>
+        </div>
     </div>
 </div>
 
 <!-- Key Metrics -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-box fa-2x me-3"></i>
+<div class="row g-4 mb-4">
+    <!-- Total Products -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="h4 mb-0">{{ stats.total_products }}</div>
-                        <small>Total Products</small>
+                        <div class="stat-label mb-1">Total Products</div>
+                        <h2 class="stat-value">{{ stats.total_products }}</h2>
+                        <span class="stat-subtext text-muted">Active SKUs</span>
+                    </div>
+                    <div class="icon-wrapper bg-soft-primary">
+                        <i class="fas fa-box"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-success text-white">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-dollar-sign fa-2x me-3"></i>
+
+    <!-- Inventory Value -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="h4 mb-0">₹{{ "%.0f"|format(stats.total_inventory_value) }}</div>
-                        <small>Inventory Value</small>
+                        <div class="stat-label mb-1">Inventory Value</div>
+                        <h2 class="stat-value">₹{{ "{:,.0f}".format(stats.total_inventory_value) }}</h2>
+                        <span class="stat-subtext text-muted">Current Valuation</span>
+                    </div>
+                    <div class="icon-wrapper bg-soft-success">
+                        <i class="fas fa-coins"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-warning text-white">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+
+    <!-- Low Stock -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="h4 mb-0">{{ stats.low_stock_count }}</div>
-                        <small>Low Stock Items</small>
+                        <div class="stat-label mb-1">Low Stock</div>
+                        <h2 class="stat-value text-warning">{{ stats.low_stock_count }}</h2>
+                        <span class="stat-subtext text-muted">Items Below Threshold</span>
+                    </div>
+                    <div class="icon-wrapper bg-soft-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-danger text-white">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-times-circle fa-2x me-3"></i>
+
+    <!-- Out of Stock -->
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm h-100">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="h4 mb-0">{{ stats.out_of_stock_count }}</div>
-                        <small>Out of Stock</small>
+                        <div class="stat-label mb-1">Out of Stock</div>
+                        <h2 class="stat-value text-danger">{{ stats.out_of_stock_count }}</h2>
+                        <span class="stat-subtext text-muted">Restock Required</span>
+                    </div>
+                    <div class="icon-wrapper border" style="color: var(--bs-danger); background-color: #ffffff;">
+                        <i class="fas fa-ban"></i>
                     </div>
                 </div>
             </div>
@@ -79,117 +107,181 @@
     </div>
 </div>
 
-<!-- Movement Summary -->
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>30-Day Movement Summary</h6>
+<!-- Movement and Alerts Row -->
+<div class="row g-4 mb-4">
+    <!-- Movement Summary -->
+    <div class="col-md-4">
+        <div class="card chart-card shadow-sm h-100">
+            <div class="card-header chart-header bg-white">
+                <h5 class="chart-title">30-Day Movement</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 {% if stats.total_in_30_days > 0 or stats.total_out_30_days > 0 %}
-                    <div class="row text-center">
-                        <div class="col-6">
-                            <div class="h3 text-success">{{ stats.total_in_30_days }}</div>
-                            <div>Items In</div>
-                        </div>
-                        <div class="col-6">
-                            <div class="h3 text-danger">{{ stats.total_out_30_days }}</div>
-                            <div>Items Out</div>
-                        </div>
+                <div class="row text-center mb-4">
+                    <div class="col-6 border-end">
+                        <h3 class="text-success fw-bold mb-0">{{ stats.total_in_30_days }}</h3>
+                        <small class="text-muted">Inbound</small>
                     </div>
-                    <div class="mt-3">
-                        <div class="progress">
-                            {% set total_movement = stats.total_in_30_days + stats.total_out_30_days %}
-                            {% set in_percentage = (stats.total_in_30_days / total_movement * 100) if total_movement > 0 else 0 %}
-                            <div class="progress-bar bg-success" style="width: {{ in_percentage }}%"></div>
-                            <div class="progress-bar bg-danger" style="width: {{ 100 - in_percentage }}%"></div>
-                        </div>
-                        <small>Movement ratio for the last 30 days</small>
+                    <div class="col-6">
+                        <h3 class="text-danger fw-bold mb-0">{{ stats.total_out_30_days }}</h3>
+                        <small class="text-muted">Outbound</small>
                     </div>
+                </div>
+                <div>
+                    {% set total_movement = stats.total_in_30_days + stats.total_out_30_days %}
+                    {% set in_percentage = (stats.total_in_30_days / total_movement * 100) if total_movement > 0 else 0
+                    %}
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-success" style="width: {{ in_percentage }}%"></div>
+                        <div class="progress-bar bg-danger" style="width: {{ 100 - in_percentage }}%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2">
+                        <small class="text-success">{{ "%.0f"|format(in_percentage) }}% In</small>
+                        <small class="text-danger">{{ "%.0f"|format(100 - in_percentage) }}% Out</small>
+                    </div>
+                </div>
                 {% else %}
-                    <div class="text-center text-muted py-3">
-                        <p class="mb-0">No inventory movement in the last 30 days.</p>
-                    </div>
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-exchange-alt fa-2x mb-3 opacity-25"></i>
+                    <p class="mb-0">No movement data available.</p>
+                </div>
                 {% endif %}
             </div>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-tools me-2"></i>Quick Actions</h6>
+
+    <!-- Low Stock Alerts List -->
+    <div class="col-md-4">
+        <div class="card chart-card shadow-sm h-100">
+            <div class="card-header chart-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="chart-title text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Low Stock</h5>
+                <a href="{{ url_for('inventory.stock_levels', stock_status='low') }}"
+                    class="btn btn-sm btn-outline-warning">View All</a>
             </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('inventory.stock_levels', stock_status='low') }}" class="btn btn-outline-warning btn-sm">
-                        <i class="fas fa-exclamation-triangle me-2"></i>Review Low Stock Items
-                    </a>
-                    <a href="{{ url_for('inventory.stock_levels', stock_status='out') }}" class="btn btn-outline-danger btn-sm">
-                        <i class="fas fa-times-circle me-2"></i>Check Out of Stock
-                    </a>
-                    <a href="{{ url_for('inventory.transaction_history') }}" class="btn btn-outline-info btn-sm">
-                        <i class="fas fa-history me-2"></i>View Transactions
-                    </a>
-                    <a href="{{ url_for('inventory.list_suppliers') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="fas fa-truck me-2"></i>Manage Suppliers
-                    </a>
+            <div class="card-body p-0">
+                {% if low_stock_products %}
+                <div class="list-group list-group-flush">
+                    {% for product in low_stock_products[:5] %}
+                    <div
+                        class="list-group-item border-0 border-bottom d-flex justify-content-between align-items-center px-4 py-3">
+                        <div>
+                            <div class="fw-medium text-dark">{{ product.name }}</div>
+                            <small class="text-muted">{{ product.sku }}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-soft-warning text-dark">{{ product.stock_quantity }} Left</span>
+                            <a href="{{ url_for('inventory.adjust_stock', product_id=product.id) }}"
+                                class="btn btn-sm btn-link text-primary p-0 ms-2">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-check-circle fa-2x mb-3 text-success opacity-50"></i>
+                    <p class="mb-0">Stock levels are healthy.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Out of Stock Alerts List -->
+    <div class="col-md-4">
+        <div class="card chart-card shadow-sm h-100">
+            <div class="card-header chart-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="chart-title text-danger"><i class="fas fa-times-circle me-2"></i>Out of Stock</h5>
+                <a href="{{ url_for('inventory.stock_levels', stock_status='out') }}"
+                    class="btn btn-sm btn-outline-danger">View All</a>
+            </div>
+            <div class="card-body p-0">
+                {% if out_of_stock_products %}
+                <div class="list-group list-group-flush">
+                    {% for product in out_of_stock_products[:5] %}
+                    <div
+                        class="list-group-item border-0 border-bottom d-flex justify-content-between align-items-center px-4 py-3">
+                        <div>
+                            <div class="fw-medium text-dark">{{ product.name }}</div>
+                            <small class="text-muted">{{ product.sku }}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-soft-danger text-danger">0 Left</span>
+                            <a href="{{ url_for('inventory.adjust_stock', product_id=product.id) }}"
+                                class="btn btn-sm btn-link text-primary p-0 ms-2">
+                                <i class="fas fa-plus-circle"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-check-circle fa-2x mb-3 text-success opacity-50"></i>
+                    <p class="mb-0">No items out of stock.</p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 
-<div class="row">
-    <!-- Recent Transactions -->
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Transactions</h5>
-                <a href="{{ url_for('inventory.transaction_history') }}" class="btn btn-sm btn-outline-primary">View All</a>
+<!-- Transactions Table -->
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="card chart-card shadow-sm">
+            <div class="card-header chart-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="chart-title">Recent Transactions</h5>
+                <a href="{{ url_for('inventory.transaction_history') }}" class="btn btn-sm btn-outline-primary">View
+                    Full History</a>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 {% if recent_transactions %}
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover table-custom mb-0">
                         <thead>
                             <tr>
-                                <th>Product</th>
-                                <th>Type</th>
+                                <th class="ps-4">Product Details</th>
+                                <th>Transaction Type</th>
                                 <th>Change</th>
                                 <th>New Qty</th>
-                                <th>Date</th>
-                                <th>User</th>
+                                <th>Date & Time</th>
+                                <th class="pe-4">User</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for transaction in recent_transactions %}
                             <tr>
-                                <td>
-                                    <div class="fw-bold">{{ transaction.product.get_display_name_for_agency(transaction.agency_id) }}</div>
-                                    <small>{{ transaction.product.sku }}</small>
+                                <td class="ps-4">
+                                    <div class="fw-medium text-dark">{{
+                                        transaction.product.get_display_name_for_agency(transaction.agency_id) }}</div>
+                                    <small class="text-muted">{{ transaction.product.sku }}</small>
                                 </td>
                                 <td>
-                                    <span class="badge bg-secondary">{{ transaction.transaction_type|replace('_', ' ')|title }}</span>
+                                    <span class="badge bg-soft-secondary text-dark border">{{
+                                        transaction.transaction_type|replace('_', ' ')|title }}</span>
                                 </td>
                                 <td>
                                     {% if transaction.quantity_change > 0 %}
-                                        <span class="text-success">+{{ transaction.quantity_change }}</span>
+                                    <span class="fw-bold text-success">+{{ transaction.quantity_change }}</span>
                                     {% else %}
-                                        <span class="text-danger">{{ transaction.quantity_change }}</span>
+                                    <span class="fw-bold text-danger">{{ transaction.quantity_change }}</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ transaction.quantity_after }}</td>
+                                <td><span class="fw-bold">{{ transaction.quantity_after }}</span></td>
                                 <td>
                                     <div>{{ transaction.created_at.strftime('%Y-%m-%d') }}</div>
-                                    <small>{{ transaction.created_at.strftime('%H:%M') }}</small>
+                                    <small class="text-muted">{{ transaction.created_at.strftime('%H:%M') }}</small>
                                 </td>
-                                <td>
-                                    {% if transaction.created_by_user %}
+                                <td class="pe-4">
+                                    <span class="text-muted">
+                                        {% if transaction.created_by_user %}
                                         {{ transaction.created_by_user.full_name }}
-                                    {% else %}
+                                        {% else %}
                                         System
-                                    {% endif %}
+                                        {% endif %}
+                                    </span>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -197,166 +289,95 @@
                     </table>
                 </div>
                 {% else %}
-                <div class="text-center text-muted py-4">
-                    <i class="fas fa-history fa-3x mb-3"></i>
-                    <p>No recent transactions</p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Sidebar Alerts -->
-    <div class="col-md-4">
-        <!-- Low Stock Alerts -->
-        <div class="card mb-3">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Low Stock Alerts</h6>
-            </div>
-            <div class="card-body">
-                {% if low_stock_products %}
-                <div class="list-group list-group-flush">
-                    {% for product in low_stock_products %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center p-2">
-                        <div>
-                            <div class="fw-bold">{{ product.name }}</div>
-                            <small>{{ product.sku }}</small>
-                        </div>
-                        <div class="text-end">
-                            <span class="badge bg-warning">{{ product.stock_quantity }}</span>
-                            <div>
-                                <a href="{{ url_for('inventory.adjust_stock', product_id=product.id) }}"
-                                   class="btn btn-sm btn-outline-primary mt-1">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center text-muted">
-                    <i class="fas fa-check-circle text-success"></i>
-                    <p class="mb-0">No low stock items</p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Out of Stock Alerts -->
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="fas fa-times-circle me-2 text-danger"></i>Out of Stock</h6>
-            </div>
-            <div class="card-body">
-                {% if out_of_stock_products %}
-                <div class="list-group list-group-flush">
-                    {% for product in out_of_stock_products %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center p-2">
-                        <div>
-                            <div class="fw-bold">{{ product.name }}</div>
-                            <small>{{ product.sku }}</small>
-                        </div>
-                        <div>
-                            <span class="badge bg-danger">0</span>
-                            <div>
-                                <a href="{{ url_for('inventory.adjust_stock', product_id=product.id) }}"
-                                   class="btn btn-sm btn-outline-primary mt-1">
-                                    <i class="fas fa-plus"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center text-muted">
-                    <i class="fas fa-check-circle text-success"></i>
-                    <p class="mb-0">All products in stock</p>
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-history fa-3x mb-3 opacity-25"></i>
+                    <p class="mb-0">No transaction history found.</p>
                 </div>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
+
 {% endblock %}
+
 {% block scripts %}
 {{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-refresh dashboard every 5 minutes
-    setTimeout(() => {
-        location.reload();
-    }, 300000);
+    document.addEventListener('DOMContentLoaded', function () {
+        // Auto-refresh dashboard every 5 minutes
+        setTimeout(() => {
+            location.reload();
+        }, 300000);
 
-    // --- Adjust Stock Modal Logic ---
-    const adjustStockModal = document.getElementById('adjustStockModal');
-    if (adjustStockModal) {
-        const productSearchInput = document.getElementById('modalProductSearch');
-        const goToAdjustBtn = document.getElementById('goToAdjustBtn');
-        let selectedProductId = null;
+        // --- Adjust Stock Modal Logic ---
+        const adjustStockModal = document.getElementById('adjustStockModal');
+        if (adjustStockModal) {
+            const productSearchInput = document.getElementById('modalProductSearch');
+            const goToAdjustBtn = document.getElementById('goToAdjustBtn');
+            let selectedProductId = null;
 
-        const tomSelect = new TomSelect(productSearchInput, {
-            valueField: 'id',
-            labelField: 'display_text',
-            searchField: ['name', 'sku', 'display_text'],
-            maxOptions: 50,
-            create: false,
-            placeholder: 'Type name or SKU to search...',
-            load: function(query, callback) {
-                if (!query || query.length < 2) return callback();
-                // Using the order search API as it's versatile
-                fetch(`{{ url_for('order.search_products_v2') }}?q=${encodeURIComponent(query)}`)
-                    .then(res => res.json())
-                    .then(items => callback(items))
-                    .catch(() => callback());
-            },
-            render: {
-                option: function(item, escape) { return `<div>${escape(item.display_text)}</div>`; },
-                item: function(item, escape) { return `<div>${escape(item.display_text)}</div>`; }
-            },
-            onChange: function(value) {
-                selectedProductId = value;
-                goToAdjustBtn.disabled = !value;
-            }
-        });
+            const tomSelect = new TomSelect(productSearchInput, {
+                valueField: 'id',
+                labelField: 'display_text',
+                searchField: ['name', 'sku', 'display_text'],
+                maxOptions: 50,
+                create: false,
+                placeholder: 'Type name or SKU to search...',
+                load: function (query, callback) {
+                    if (!query || query.length < 2) return callback();
+                    // Using the order search API as it's versatile
+                    fetch(`{{ url_for('order.search_products_v2') }}?q=${encodeURIComponent(query)}`)
+                        .then(res => res.json())
+                        .then(items => callback(items))
+                        .catch(() => callback());
+                },
+                render: {
+                    option: function (item, escape) { return `<div>${escape(item.display_text)}</div>`; },
+                    item: function (item, escape) { return `<div>${escape(item.display_text)}</div>`; }
+                },
+                onChange: function (value) {
+                    selectedProductId = value;
+                    goToAdjustBtn.disabled = !value;
+                }
+            });
 
-        goToAdjustBtn.addEventListener('click', function() {
-            if (selectedProductId) {
-                window.location.href = `/inventory/adjust_stock/${selectedProductId}`;
-            }
-        });
+            goToAdjustBtn.addEventListener('click', function () {
+                if (selectedProductId) {
+                    window.location.href = `/inventory/adjust_stock/${selectedProductId}`;
+                }
+            });
 
-        // Clear selection when modal is hidden
-        adjustStockModal.addEventListener('hidden.bs.modal', function () {
-            tomSelect.clear();
-            selectedProductId = null;
-            goToAdjustBtn.disabled = true;
-        });
-    }
-});
+            // Clear selection when modal is hidden
+            adjustStockModal.addEventListener('hidden.bs.modal', function () {
+                tomSelect.clear();
+                selectedProductId = null;
+                goToAdjustBtn.disabled = true;
+            });
+        }
+    });
 </script>
 {% endblock %}
 
 {% block modals %}
 <!-- Adjust Stock Modal -->
 <div class="modal fade" id="adjustStockModal" tabindex="-1" aria-labelledby="adjustStockModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="adjustStockModalLabel"><i class="fas fa-edit me-2"></i>Adjust Stock</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>Search for the product you want to adjust.</p>
-        <select id="modalProductSearch" class="form-control"></select>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="goToAdjustBtn" disabled>Go to Adjust Page</button>
-      </div>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="adjustStockModalLabel"><i class="fas fa-edit me-2"></i>Adjust Stock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-2">Search for the product you want to adjust.</p>
+                <select id="modalProductSearch" class="form-control" autocomplete="off"></select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="goToAdjustBtn" disabled>Go to Adjust Page</button>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 {% endblock %}
