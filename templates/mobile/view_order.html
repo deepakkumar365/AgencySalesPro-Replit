@@ -1,0 +1,134 @@
+{% extends "mobile/base.html" %}
+
+{% block title %}Order Details - Mobile{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="mb-4">
+    <a href="{{ url_for('order.list_orders_mobile') }}"
+        class="text-decoration-none text-secondary d-inline-flex align-items-center mb-2">
+        <i class="fas fa-arrow-left me-2"></i>
+        <span>Back to Orders</span>
+    </a>
+    <h2 class="mb-1 text-dark fw-bold">#{{ order.order_number }}</h2>
+    <div class="d-flex align-items-center gap-2">
+        <span
+            class="badge bg-{{ 'success' if order.status == 'delivered' else 'warning' if order.status == 'pending' else 'primary' if order.status == 'confirmed' else 'danger' if order.status == 'cancelled' else 'secondary' }} rounded-pill">
+            {{ order.status|upper }}
+        </span>
+        <small class="text-muted">{{ order.created_at.strftime('%d %b %Y, %I:%M %p') }}</small>
+    </div>
+</div>
+
+<!-- Customer Info -->
+<div class="bg-white rounded-3 shadow-sm p-3 mb-3">
+    <h6 class="text-secondary mb-2 fw-bold small">CUSTOMER</h6>
+    <div class="fw-bold text-dark mb-1">{{ order.customer.name }}</div>
+    {% if order.customer.phone %}
+    <div class="text-muted small mb-1">
+        <i class="fas fa-phone me-2"></i>{{ order.customer.phone }}
+    </div>
+    {% endif %}
+    {% if order.customer.email %}
+    <div class="text-muted small mb-1">
+        <i class="fas fa-envelope me-2"></i>{{ order.customer.email }}
+    </div>
+    {% endif %}
+    {% if order.customer.address %}
+    <div class="text-muted small">
+        <i class="fas fa-map-marker-alt me-2"></i>{{ order.customer.address }}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Order Items -->
+<div class="bg-white rounded-3 shadow-sm p-3 mb-3">
+    <h6 class="text-secondary mb-3 fw-bold small">ITEMS ({{ order.order_items|length }})</h6>
+    {% for item in order.order_items %}
+    <div
+        class="d-flex justify-content-between align-items-start mb-3 pb-3 {{ 'border-bottom' if not loop.last else '' }}">
+        <div class="flex-grow-1">
+            <div class="fw-medium text-dark mb-1">{{ item.product_name or item.product.name }}</div>
+            <div class="text-muted small">
+                {{ item.quantity }} {{ item.uom }} × ₹{{ "{:,.2f}".format(item.unit_price) }}
+            </div>
+            {% if item.discount_percentage > 0 %}
+            <div class="text-success small">
+                <i class="fas fa-tag me-1"></i>{{ item.discount_percentage }}% off
+            </div>
+            {% endif %}
+        </div>
+        <div class="text-end ms-2">
+            <div class="fw-bold text-dark">₹{{ "{:,.2f}".format(item.line_total) }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Order Summary -->
+<div class="bg-white rounded-3 shadow-sm p-3 mb-3">
+    <h6 class="text-secondary mb-3 fw-bold small">SUMMARY</h6>
+    <div class="d-flex justify-content-between mb-2">
+        <span class="text-muted">Subtotal</span>
+        <span class="text-dark">₹{{ "{:,.2f}".format(order.subtotal_amount) }}</span>
+    </div>
+    {% if order.discount > 0 %}
+    <div class="d-flex justify-content-between mb-2 text-success">
+        <span>Discount</span>
+        <span>- ₹{{ "{:,.2f}".format(order.discount) }}</span>
+    </div>
+    {% endif %}
+    {% if order.tax > 0 %}
+    <div class="d-flex justify-content-between mb-2">
+        <span class="text-muted">Tax</span>
+        <span class="text-dark">₹{{ "{:,.2f}".format(order.tax) }}</span>
+    </div>
+    {% endif %}
+    {% if order.handling_charges > 0 %}
+    <div class="d-flex justify-content-between mb-2">
+        <span class="text-muted">Handling Charges</span>
+        <span class="text-dark">₹{{ "{:,.2f}".format(order.handling_charges) }}</span>
+    </div>
+    {% endif %}
+    <hr class="my-2">
+    <div class="d-flex justify-content-between align-items-center">
+        <span class="fw-bold text-dark fs-5">Total</span>
+        <span class="fw-bold text-primary fs-4">₹{{ "{:,.2f}".format(order.total_amount) }}</span>
+    </div>
+</div>
+
+<!-- Additional Info -->
+{% if order.notes or order.payment_mode or order.salesperson %}
+<div class="bg-white rounded-3 shadow-sm p-3 mb-5 pb-5">
+    <h6 class="text-secondary mb-3 fw-bold small">ADDITIONAL INFO</h6>
+
+    {% if order.payment_mode %}
+    <div class="mb-2">
+        <small class="text-muted d-block">Payment Mode</small>
+        <div class="text-dark">{{ order.payment_mode|title }}</div>
+    </div>
+    {% endif %}
+
+    {% if order.salesperson %}
+    <div class="mb-2">
+        <small class="text-muted d-block">Salesperson</small>
+        <div class="text-dark">{{ order.salesperson.full_name }}</div>
+    </div>
+    {% endif %}
+
+    {% if order.delivery_date %}
+    <div class="mb-2">
+        <small class="text-muted d-block">Delivery Date</small>
+        <div class="text-dark">{{ order.delivery_date.strftime('%d %b %Y') }}</div>
+    </div>
+    {% endif %}
+
+    {% if order.notes %}
+    <div>
+        <small class="text-muted d-block">Notes</small>
+        <div class="text-dark">{{ order.notes }}</div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

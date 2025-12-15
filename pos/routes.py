@@ -71,6 +71,74 @@ def dashboard(current_agency_id=None):
                          low_stock_products=low_stock_products,
                          payment_methods=payment_methods)
 
+@pos_bp.route('/mobile/dashboard')
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user', 'staff'])
+def dashboard_mobile(current_agency_id=None):
+    """Mobile POS Dashboard with quick stats and recent transactions"""
+    user_role = session.get('role')
+    user_id = session.get('user_id')
+    
+    # Get today's stats
+    today = datetime.utcnow().date()
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+    
+    # Base query for orders
+    if user_role == 'super_admin':
+        base_query = Order.query
+    elif user_role == 'pos_user':
+        base_query = Order.query.filter_by(salesperson_id=user_id)
+    else:
+        base_query = Order.query.filter_by(agency_id=current_agency_id)
+    
+    # Today's stats
+    today_orders = base_query.filter(
+        Order.created_at >= today_start,
+        Order.created_at <= today_end
+    ).all()
+    
+    today_stats = {
+        'total_sales': sum(order.total_amount for order in today_orders),
+        'total_orders': len(today_orders),
+        'total_items': sum(len(order.order_items) for order in today_orders),
+        'avg_order_value': sum(order.total_amount for order in today_orders) / len(today_orders) if today_orders else 0
+    }
+    
+    # Recent orders (last 10)
+    recent_orders = base_query.order_by(Order.created_at.desc()).limit(10).all()
+    
+    return render_template('mobile/dashboard.html',
+                         today_stats=today_stats,
+                         recent_orders=recent_orders)
+
+@pos_bp.route('/mobile/sale')
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user', 'staff'])
+def new_sale_mobile(current_agency_id=None):
+    """Mobile POS Sale Interface"""
+    user_role = session.get('role')
+    
+    # Get products for the agency
+    if user_role == 'super_admin':
+        products = Product.query.filter_by(is_active=True).all()
+        locations = Location.query.filter_by(is_active=True).all()
+    else:
+        products = db.session.query(Product).join(ProductAgency, ProductAgency.product_id == Product.id)\
+            .filter(ProductAgency.agency_id == current_agency_id, Product.is_active == True).all()
+        locations = Location.query.filter_by(agency_id=current_agency_id, is_active=True).all()
+    
+    # Get payment methods
+    if user_role == 'super_admin':
+        payment_methods = PaymentMethod.query.filter_by(is_active=True).all()
+    else:
+        payment_methods = PaymentMethod.query.filter_by(
+            agency_id=current_agency_id, is_active=True
+        ).all()
+    
+    return render_template('mobile/pos_sale.html',
+                         products=products,
+                         locations=locations,
+                         payment_methods=payment_methods)
+
 @pos_bp.route('/sale')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'pos_user', 'staff'])
 def new_sale(current_agency_id=None):

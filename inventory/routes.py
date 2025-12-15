@@ -140,6 +140,96 @@ def dashboard(current_agency_id=None):
                          out_of_stock_products=out_of_stock_products[:5],
                          recent_transactions=recent_transactions)
 
+@inventory_bp.route('/mobile/dashboard')
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
+def dashboard_mobile(current_agency_id=None):
+    """Mobile Inventory Dashboard"""
+    from sqlalchemy import func
+    user_role = session.get('role')
+
+    # Subquery to calculate current stock for each product
+    stock_subquery = db.session.query(
+        InventoryTransaction.product_id,
+        func.sum(InventoryTransaction.quantity_change).label('stock_quantity')
+    ).group_by(InventoryTransaction.product_id).subquery()
+
+    # Base query joining products, agency mappings, and the calculated stock
+    query = db.session.query(
+        ProductAgency.id,
+        ProductAgency.display_name,
+        ProductAgency.buy_price,
+        ProductAgency.agency_id,
+        Agency,
+        Product,
+        stock_subquery.c.stock_quantity
+    ).join(Product, ProductAgency.product_id == Product.id)\
+     .join(Agency, ProductAgency.agency_id == Agency.id)\
+     .outerjoin(stock_subquery, Product.id == stock_subquery.c.product_id)\
+     .filter(ProductAgency.is_active == True)
+
+    if user_role != 'super_admin':
+        query = query.filter(ProductAgency.agency_id == current_agency_id)
+
+    results = query.all()
+
+    low_stock_products = []
+    out_of_stock_products = []
+    
+    for pa_id, pa_display_name, pa_buy_price, agency_id, agency, product, stock_quantity in results:
+        stock = stock_quantity or 0
+        low_stock_threshold = 10 
+
+        product_info = {
+            'id': product.id,
+            'name': pa_display_name or product.name,
+            'sku': product.sku,
+            'stock_quantity': stock
+        }
+        if stock <= 0:
+            out_of_stock_products.append(product_info)
+        elif stock <= low_stock_threshold:
+            low_stock_products.append(product_info)
+
+    # Recent inventory transactions
+    if user_role == 'super_admin':
+        recent_transactions = InventoryTransaction.query.order_by(
+            InventoryTransaction.created_at.desc()
+        ).limit(10).all()
+        
+        # Stock movement trends (last 30 days)
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        movement_transactions = InventoryTransaction.query.filter(
+            InventoryTransaction.created_at >= thirty_days_ago
+        ).all()
+    else:
+        recent_transactions = InventoryTransaction.query.filter_by(
+            agency_id=current_agency_id
+        ).order_by(InventoryTransaction.created_at.desc()).limit(10).all()
+        
+        # Stock movement trends (last 30 days)
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        movement_transactions = InventoryTransaction.query.filter(
+            InventoryTransaction.agency_id == current_agency_id,
+            InventoryTransaction.created_at >= thirty_days_ago,
+        ).all()
+
+    total_in = sum(t.quantity_change for t in movement_transactions if t.quantity_change > 0)
+    total_out = abs(sum(t.quantity_change for t in movement_transactions if t.quantity_change < 0))
+
+    dashboard_stats = {
+        'total_products': len(results),
+        'low_stock_count': len(low_stock_products),
+        'out_of_stock_count': len(out_of_stock_products),
+        'total_in_30_days': total_in,
+        'total_out_30_days': total_out
+    }
+
+    return render_template('mobile/inventory_dashboard.html',
+                         stats=dashboard_stats,
+                         low_stock_products=low_stock_products[:5],
+                         out_of_stock_products=out_of_stock_products[:5],
+                         recent_transactions=recent_transactions)
+
 @inventory_bp.route('/stock_levels')
 @permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff'])
 def stock_levels(current_agency_id=None):

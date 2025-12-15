@@ -1,4 +1,4 @@
-const CACHE_NAME = 'agencysalespro-v1';
+const CACHE_NAME = 'agencysalespro-v2';
 const urlsToCache = [
     '/',
     '/static/js/main.js',

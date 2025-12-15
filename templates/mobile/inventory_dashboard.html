@@ -1,0 +1,110 @@
+{% extends "mobile/base.html" %}
+
+{% block title %}Inventory - Mobile{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h5 class="mb-0 text-secondary">Inventory</h5>
+    <h2 class="mb-0 text-dark fw-bold">Overview</h2>
+</div>
+
+<!-- Key Stats Grid -->
+<div class="row g-3 mb-4">
+    <div class="col-6">
+        <div class="mobile-stat-card h-100">
+            <div class="mobile-stat-value">{{ stats.total_products }}</div>
+            <div class="mobile-stat-label">Total Products</div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="mobile-stat-card h-100">
+            <div class="mobile-stat-value text-danger">{{ stats.low_stock_count + stats.out_of_stock_count }}</div>
+            <div class="mobile-stat-label">Stock Alerts</div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="mobile-stat-card h-100">
+            <div class="mobile-stat-value text-success">+{{ stats.total_in_30_days }}</div>
+            <div class="mobile-stat-label">In (30 days)</div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="mobile-stat-card h-100">
+            <div class="mobile-stat-value text-danger">-{{ stats.total_out_30_days }}</div>
+            <div class="mobile-stat-label">Out (30 days)</div>
+        </div>
+    </div>
+</div>
+
+<!-- Alerts Section -->
+{% if low_stock_products or out_of_stock_products %}
+<h5 class="mb-3 fw-bold text-dark">Alerts</h5>
+<div class="list-group mb-4 shadow-sm rounded-3 overflow-hidden border-0">
+    {% for product in out_of_stock_products %}
+    <div class="list-group-item border-0 border-bottom p-3 bg-soft-danger">
+        <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+            <h6 class="mb-0 fw-bold text-danger">{{ product.name }}</h6>
+            <span class="badge bg-danger rounded-pill">Out of Stock</span>
+        </div>
+        <small class="text-danger-emphasis">SKU: {{ product.sku }}</small>
+    </div>
+    {% endfor %}
+
+    {% for product in low_stock_products %}
+    <div class="list-group-item border-0 border-bottom p-3">
+        <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+            <h6 class="mb-0 fw-bold text-warning">{{ product.name }}</h6>
+            <span class="badge bg-warning text-dark rounded-pill">{{ product.stock_quantity }} left</span>
+        </div>
+        <small class="text-muted">SKU: {{ product.sku }}</small>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Quick Actions -->
+<h5 class="mb-3 fw-bold text-dark">Manage</h5>
+<div class="quick-actions-grid">
+    <a href="{{ url_for('inventory.stock_levels') }}" class="quick-action-btn">
+        <i class="fas fa-boxes"></i>
+        <span>Stock Levels</span>
+    </a>
+    <a href="#" class="quick-action-btn text-muted">
+        <i class="fas fa-truck"></i>
+        <span>Suppliers</span>
+    </a>
+    <a href="#" class="quick-action-btn text-muted">
+        <i class="fas fa-exchange-alt"></i>
+        <span>Transactions</span>
+    </a>
+    <a href="#" class="quick-action-btn text-muted">
+        <i class="fas fa-plus-circle"></i>
+        <span>Add Product</span>
+    </a>
+</div>
+
+<!-- Recent Activity -->
+<h5 class="mb-3 fw-bold text-dark">Recent Activity</h5>
+<div class="list-group mb-5 shadow-sm rounded-3 overflow-hidden border-0">
+    {% for tx in recent_transactions %}
+    <div class="list-group-item border-0 border-bottom p-3">
+        <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+            <h6 class="mb-0 fw-bold">{{ tx.product.name }}</h6>
+            {% if tx.quantity_change > 0 %}
+            <span class="badge bg-soft-success text-success rounded-pill">+{{ tx.quantity_change }}</span>
+            {% else %}
+            <span class="badge bg-soft-danger text-danger rounded-pill">{{ tx.quantity_change }}</span>
+            {% endif %}
+        </div>
+        <div class="d-flex w-100 justify-content-between">
+            <small class="text-muted">{{ tx.transaction_type|replace('_', ' ')|title }}</small>
+            <small class="text-muted">{{ tx.created_at.strftime('%d %b, %H:%M') }}</small>
+        </div>
+    </div>
+    {% else %}
+    <div class="list-group-item p-3 text-center text-muted">
+        No recent activity
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

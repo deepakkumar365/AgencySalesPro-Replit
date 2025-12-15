@@ -1,0 +1,147 @@
+/* Mobile First Styles */
+
+:root {
+    --mobile-nav-height: 60px;
+    --mobile-header-height: 50px;
+}
+
+body.mobile-mode {
+    padding-bottom: var(--mobile-nav-height);
+    /* Space for bottom nav */
+    padding-top: var(--mobile-header-height);
+    /* Space for top header */
+    background-color: #f4f6f9;
+}
+
+/* Mobile Header */
+.mobile-header {
+    height: var(--mobile-header-height);
+    background-color: white;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.mobile-brand {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--bs-primary);
+}
+
+/* Mobile Bottom Navigation */
+.mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--mobile-nav-height);
+    background-color: white;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 1px solid #e9ecef;
+    z-index: 1040;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #6c757d;
+    font-size: 0.7rem;
+    width: 20%;
+    height: 100%;
+}
+
+.mobile-nav-item i {
+    font-size: 1.2rem;
+    margin-bottom: 2px;
+}
+
+.mobile-nav-item.active {
+    color: var(--bs-primary);
+}
+
+/* Content Area */
+.mobile-content {
+    width: 100%;
+    overflow-x: hidden;
+}
+
+/* Dashboard Cards */
+.mobile-stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    border: none;
+}
+
+.mobile-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--bs-dark);
+}
+
+.mobile-stat-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* Quick Actions Grid */
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.quick-action-btn {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    text-decoration: none;
+    color: var(--bs-dark);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.quick-action-btn i {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    color: var(--bs-primary);
+}
+
+.quick-action-btn span {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Full Width Utilities */
+.w-full {
+    width: 100%;
+}
+
+.no-scroll-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scroll-bar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}

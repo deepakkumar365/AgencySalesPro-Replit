@@ -4,14 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Noltrion OneSuite{% endblock %}</title>
+    <title>{% block title %}MyQless{% endblock %}</title>
 
     <!-- PWA Meta Tags -->
     <meta name="description" content="Complete Sales and Inventory Management Platform">
     <meta name="theme-color" content="#667eea">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Noltrion OneSuite">
+    <meta name="apple-mobile-web-app-title" content="MyQless">
     <meta name="mobile-web-app-capable" content="yes">
 
     <!-- PWA Manifest -->
@@ -44,6 +44,7 @@
         @media all and (display-mode: standalone) {
             body {
                 /* Add any PWA-specific styling here */
+                padding-top: env(safe-area-inset-top);
             }
 
             /* Optional: Add a subtle indicator that app is running in standalone mode */
@@ -68,7 +69,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for(get_dashboard_url(session.role)) }}">
-                <i class="fas fa-chart-line me-2"></i>Noltrion OneSuite
+                <i class="fas fa-chart-line me-2"></i>MyQless
             </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -505,6 +506,9 @@
                             <li><a class="dropdown-item" href="{{ url_for('download_app') }}">
                                     <i class="fas fa-download me-1"></i>Download Desktop App
                                 </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="switchToMobile()">
+                                    <i class="fas fa-mobile-alt me-1"></i>Switch to Mobile View
+                                </a></li>
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
@@ -522,20 +526,39 @@
     <!-- Main Content -->
     <main class="container mt-4">
         <!-- Flash Messages -->
+
+
+        {% block content %}{% endblock %}
+    </main>
+
+
+    <!-- Toast Container -->
+    <div id="toast-container">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
-        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+        <div class="custom-toast toast-{{ 'error' if category == 'danger' or category == 'error' else category }}"
             role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <div class="toast-icon">
+                {% if category == 'success' %}
+                <i class="fas fa-check-circle"></i>
+                {% elif category == 'error' or category == 'danger' %}
+                <i class="fas fa-exclamation-circle"></i>
+                {% elif category == 'warning' %}
+                <i class="fas fa-exclamation-triangle"></i>
+                {% else %}
+                <i class="fas fa-info-circle"></i>
+                {% endif %}
+            </div>
+            <div class="toast-content">{{ message }}</div>
+            <button type="button" class="toast-close" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
         {% endfor %}
         {% endif %}
         {% endwith %}
-
-        {% block content %}{% endblock %}
-    </main>
+    </div>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -552,6 +575,15 @@
     <a href="#" id="back-to-top-btn" class="btn btn-primary back-to-top-btn d-none" title="Go to top">
         <i class="fas fa-arrow-up"></i>
     </a>
+
+    <script>
+        function switchToMobile() {
+            sessionStorage.removeItem('force_desktop');
+            // Check if control is available in global scope before redirecting
+            // We use a safe check because this template might be rendered where the route is not available
+            window.location.href = "/pos/mobile/dashboard";
+        }
+    </script>
 
     {% block scripts %}{% endblock %}
 </body>

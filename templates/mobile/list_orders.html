@@ -1,0 +1,89 @@
+{% extends "mobile/base.html" %}
+
+{% block title %}Orders - Mobile{% endblock %}
+
+{% block content %}
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <div>
+        <h5 class="mb-0 text-secondary">Orders</h5>
+        <h2 class="mb-0 text-dark fw-bold">Recent History</h2>
+    </div>
+    <a href="{{ url_for('order.create_order') }}" class="btn btn-primary rounded-circle shadow-sm"
+        style="width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;">
+        <i class="fas fa-plus"></i>
+    </a>
+</div>
+
+<!-- Search/Filter -->
+<div class="mb-4">
+    <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white border">
+        <span class="input-group-text border-0 bg-transparent ps-3"><i class="fas fa-search text-muted"></i></span>
+        <input type="text" id="order-search" class="form-control border-0 shadow-none ps-1"
+            placeholder="Search orders..." onkeyup="filterOrders()">
+    </div>
+</div>
+
+<!-- Orders List -->
+<div class="mb-5 pb-5">
+    {% for order in orders %}
+    {% set is_po = order.type == 'PO' %}
+    <a href="{{ url_for('order.view_order_mobile', order_id=order.id) if not is_po else '#' }}"
+        class="d-block text-decoration-none mb-3 order-item"
+        data-search="{{ order.order_number }} {{ order.customer.name if order.customer else order.supplier.name }} {{ order.status }}">
+        <div
+            class="bg-white rounded-3 shadow-sm p-3 border-start border-4 border-{{ 'success' if order.status == 'delivered' else 'warning' if order.status == 'pending' else 'primary' if order.status == 'confirmed' else 'danger' if order.status == 'cancelled' else 'secondary' }}">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div class="flex-grow-1">
+                    <h6 class="mb-1 fw-bold text-dark">
+                        {% if is_po %}
+                        {{ order.supplier.name }}
+                        {% else %}
+                        {{ order.customer.name }}
+                        {% endif %}
+                    </h6>
+                    <small class="text-muted">#{{ order.order_number }}</small>
+                </div>
+                <div class="text-end ms-2">
+                    <div class="fw-bold text-primary">₹{{ "{:,.0f}".format(order.total_amount) }}</div>
+                    <small class="text-muted">{{ order.total_items_count if order.total_items_count else 0 }}
+                        items</small>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">
+                    <i class="far fa-clock me-1"></i>{{ order.created_at.strftime('%d %b, %I:%M %p') }}
+                </small>
+                <span
+                    class="badge bg-{{ 'success' if order.status == 'delivered' else 'warning' if order.status == 'pending' else 'primary' if order.status == 'confirmed' else 'danger' if order.status == 'cancelled' else 'secondary' }} rounded-pill px-2 py-1"
+                    style="font-size: 0.7rem;">
+                    {{ order.status|upper }}
+                </span>
+            </div>
+        </div>
+    </a>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+        <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i>
+        <p class="mb-0">No orders yet</p>
+        <small>Create your first order to get started</small>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+    function filterOrders() {
+        const input = document.getElementById('order-search');
+        const filter = input.value.toLowerCase();
+        const items = document.querySelectorAll('.order-item');
+
+        items.forEach(item => {
+            const text = item.getAttribute('data-search').toLowerCase();
+            if (text.includes(filter)) {
+                item.style.display = "";
+            } else {
+                item.style.display = "none";
+            }
+        });
+    }
+</script>
+{% endblock %}

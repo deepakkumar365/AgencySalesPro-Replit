@@ -651,5 +651,22 @@
             checkPaymentValidity();
         }
     };
+
+    // Mobile Redirect Logic
+    document.addEventListener('DOMContentLoaded', function () {
+        // Build the URL using Jinja2
+        const mobileUrl = "{{ url_for('pos.new_sale_mobile') }}";
+
+        // Define mobile breakpoint (Bootstrap 'md' is 768px)
+        const isMobile = window.innerWidth <= 768;
+
+        // Check if user has opted for desktop view
+        const forceDesktop = sessionStorage.getItem('force_desktop') === 'true';
+
+        // Redirect if mobile device and not forced desktop
+        if (isMobile && !forceDesktop) {
+            window.location.replace(mobileUrl);
+        }
+    });
 </script>
 {% endblock %}

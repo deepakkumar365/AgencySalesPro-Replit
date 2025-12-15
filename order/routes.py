@@ -154,6 +154,46 @@ def list_orders(current_agency_id=None):
                              'status': status_filter
                          })
 
+@order_bp.route('/mobile')
+@permission_required(roles=['super_admin', 'agency_admin', 'agency_manager', 'staff', 'salesperson'])
+def list_orders_mobile(current_agency_id=None):
+    """Mobile Order List View"""
+    user_role = session.get('role')
+    user_id = session.get('user_id')    
+
+    # Get filters from request
+    status_filter = request.args.get('status')
+    
+    # --- Sales Orders (SO) Query ---
+    so_query = Order.query
+    if user_role == 'salesperson':
+        so_query = so_query.filter(Order.salesperson_id == user_id)
+    elif user_role != 'super_admin':
+        so_query = so_query.filter(Order.agency_id == current_agency_id)
+    
+    if status_filter:
+        so_query = so_query.filter(Order.status == status_filter)
+    
+    sales_orders = so_query.order_by(Order.created_at.desc()).limit(50).all()
+
+    # --- Purchase Orders (PO) Query ---
+    po_query = PurchaseOrder.query
+    if user_role != 'super_admin':
+        po_query = po_query.filter(PurchaseOrder.agency_id == current_agency_id)
+
+    if status_filter:
+        po_query = po_query.filter(PurchaseOrder.status == status_filter)
+
+    purchase_orders = po_query.order_by(PurchaseOrder.created_at.desc()).limit(50).all()
+
+    # --- Combine and Sort ---
+    for so in sales_orders: so.type = 'SO'
+    for po in purchase_orders: po.type = 'PO'
+    
+    combined_list = sorted(sales_orders + purchase_orders, key=lambda x: x.created_at, reverse=True)[:50]
+
+    return render_template('mobile/list_orders.html', orders=combined_list)
+
 @order_bp.route('/cart')
 @login_required
 def view_cart():
@@ -538,6 +578,26 @@ def view_order(order_id):
         return redirect(url_for('order.list_orders'))
     
     return render_template('order/view.html', order=order)
+
+@order_bp.route('/<int:order_id>/mobile')
+@login_required
+def view_order_mobile(order_id):
+    """Mobile Order Details View"""
+    order = Order.query.get_or_404(order_id)
+    
+    user_role = session.get('role')
+    current_agency_id = session.get('agency_id')
+    user_id = session.get('user_id')
+    
+    # Check permissions
+    if user_role == 'salesperson' and order.salesperson_id != user_id:
+        flash('You can only view your own orders', 'error')
+        return redirect(url_for('order.list_orders_mobile'))
+    elif user_role not in ['super_admin', 'salesperson'] and order.agency_id != current_agency_id:
+        flash('You can only view orders from your agency', 'error')
+        return redirect(url_for('order.list_orders_mobile'))
+    
+    return render_template('mobile/view_order.html', order=order)
 
 @order_bp.route('/<int:order_id>/edit', methods=['GET', 'POST'])
 @login_required

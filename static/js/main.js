@@ -3,35 +3,35 @@
  * Provides common functionality across the application
  */
 
-document.addEventListener('DOMContentLoaded', function() {
-    
+document.addEventListener('DOMContentLoaded', function () {
+
     // Initialize Bootstrap components
     initializeBootstrapComponents();
-    
+
     // Setup form validations
     setupFormValidation();
-    
+
     // Setup confirmation dialogs
     setupConfirmationDialogs();
-    
+
     // Setup dynamic form behaviors
     setupDynamicForms();
-    
+
     // Setup utility functions
     setupUtilities();
-    
+
     // Setup order form enhancements
     setupOrderFormEnhancements();
-    
+
     // Setup table enhancements
     setupTableEnhancements();
-    
+
     // Setup notification handling
     setupNotifications();
 
     // Setup Back to Top button
     setupBackToTopButton();
-    
+
     console.log('AgencySales Pro JavaScript initialized');
 });
 
@@ -41,19 +41,19 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeBootstrapComponents() {
     // Initialize tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function(tooltipTriggerEl) {
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
-    
+
     // Initialize popovers
     const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-    popoverTriggerList.map(function(popoverTriggerEl) {
+    popoverTriggerList.map(function (popoverTriggerEl) {
         return new bootstrap.Popover(popoverTriggerEl);
     });
-    
+
     // Initialize modals
     const modalElements = document.querySelectorAll('.modal');
-    modalElements.forEach(function(modalEl) {
+    modalElements.forEach(function (modalEl) {
         new bootstrap.Modal(modalEl);
     });
 }
@@ -63,24 +63,24 @@ function initializeBootstrapComponents() {
  */
 function setupFormValidation() {
     const forms = document.querySelectorAll('.needs-validation');
-    
-    Array.prototype.slice.call(forms).forEach(function(form) {
-        form.addEventListener('submit', function(event) {
+
+    Array.prototype.slice.call(forms).forEach(function (form) {
+        form.addEventListener('submit', function (event) {
             if (!form.checkValidity()) {
                 event.preventDefault();
                 event.stopPropagation();
-                
+
                 // Focus on first invalid field
                 const firstInvalid = form.querySelector(':invalid');
                 if (firstInvalid) {
                     firstInvalid.focus();
                 }
             }
-            
+
             form.classList.add('was-validated');
         }, false);
     });
-    
+
     // Real-time validation for specific fields
     setupRealTimeValidation();
 }
@@ -91,27 +91,27 @@ function setupFormValidation() {
 function setupRealTimeValidation() {
     // Email validation
     const emailInputs = document.querySelectorAll('input[type="email"]');
-    emailInputs.forEach(function(input) {
-        input.addEventListener('blur', function() {
+    emailInputs.forEach(function (input) {
+        input.addEventListener('blur', function () {
             validateEmail(input);
         });
     });
-    
+
     // Password confirmation
     const passwordConfirmInputs = document.querySelectorAll('input[name="confirm_password"]');
-    passwordConfirmInputs.forEach(function(input) {
-        input.addEventListener('input', function() {
+    passwordConfirmInputs.forEach(function (input) {
+        input.addEventListener('input', function () {
             const password = document.querySelector('input[name="password"]');
             if (password) {
                 validatePasswordMatch(password, input);
             }
         });
     });
-    
+
     // SKU uniqueness (basic client-side check)
     const skuInputs = document.querySelectorAll('input[name="sku"]');
-    skuInputs.forEach(function(input) {
-        input.addEventListener('blur', function() {
+    skuInputs.forEach(function (input) {
+        input.addEventListener('blur', function () {
             validateSKUFormat(input);
         });
     });
@@ -123,7 +123,7 @@ function setupRealTimeValidation() {
 function validateEmail(input) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const isValid = emailRegex.test(input.value);
-    
+
     if (input.value && !isValid) {
         input.setCustomValidity('Please enter a valid email address');
         input.classList.add('is-invalid');
@@ -152,7 +152,7 @@ function validatePasswordMatch(passwordInput, confirmInput) {
 function validateSKUFormat(input) {
     const skuRegex = /^[A-Z0-9-]{3,20}$/;
     const isValid = skuRegex.test(input.value);
-    
+
     if (input.value && !isValid) {
         input.setCustomValidity('SKU should be 3-20 characters, uppercase letters, numbers, and hyphens only');
         input.classList.add('is-invalid');
@@ -168,8 +168,8 @@ function validateSKUFormat(input) {
 function setupConfirmationDialogs() {
     // Delete confirmations
     const deleteButtons = document.querySelectorAll('[onclick*="confirm"]');
-    deleteButtons.forEach(function(button) {
-        button.addEventListener('click', function(e) {
+    deleteButtons.forEach(function (button) {
+        button.addEventListener('click', function (e) {
             const message = button.getAttribute('onclick').match(/'([^']+)'/);
             if (message && !confirm(message[1])) {
                 e.preventDefault();
@@ -177,11 +177,11 @@ function setupConfirmationDialogs() {
             }
         });
     });
-    
+
     // Status change confirmations
     const statusButtons = document.querySelectorAll('button[title*="activate"], button[title*="Activate"], button[title*="deactivate"], button[title*="Deactivate"]');
-    statusButtons.forEach(function(button) {
-        button.addEventListener('click', function(e) {
+    statusButtons.forEach(function (button) {
+        button.addEventListener('click', function (e) {
             const action = button.getAttribute('title').toLowerCase();
             if (!confirm(`Are you sure you want to ${action} this item?`)) {
                 e.preventDefault();
@@ -197,24 +197,24 @@ function setupConfirmationDialogs() {
 function setupDynamicForms() {
     // Auto-format phone numbers
     const phoneInputs = document.querySelectorAll('input[type="tel"]');
-    phoneInputs.forEach(function(input) {
-        input.addEventListener('input', function() {
+    phoneInputs.forEach(function (input) {
+        input.addEventListener('input', function () {
             formatPhoneNumber(input);
         });
     });
-    
+
     // Auto-uppercase SKU inputs
     const skuInputs = document.querySelectorAll('input[name="sku"]');
-    skuInputs.forEach(function(input) {
-        input.addEventListener('input', function() {
+    skuInputs.forEach(function (input) {
+        input.addEventListener('input', function () {
             input.value = input.value.toUpperCase();
         });
     });
-    
+
     // Auto-format currency inputs
     const currencyInputs = document.querySelectorAll('input[step="0.01"]');
-    currencyInputs.forEach(function(input) {
-        input.addEventListener('blur', function() {
+    currencyInputs.forEach(function (input) {
+        input.addEventListener('blur', function () {
             formatCurrency(input);
         });
     });
@@ -250,10 +250,10 @@ function formatCurrency(input) {
  */
 function setupUtilities() {
     // Copy to clipboard functionality
-    window.copyToClipboard = function(text) {
-        navigator.clipboard.writeText(text).then(function() {
+    window.copyToClipboard = function (text) {
+        navigator.clipboard.writeText(text).then(function () {
             showNotification('Copied to clipboard!', 'success');
-        }).catch(function() {
+        }).catch(function () {
             // Fallback for older browsers
             const textArea = document.createElement('textarea');
             textArea.value = text;
@@ -264,22 +264,22 @@ function setupUtilities() {
             showNotification('Copied to clipboard!', 'success');
         });
     };
-    
+
     // Format number with commas
-    window.formatNumber = function(num) {
+    window.formatNumber = function (num) {
         return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     };
-    
+
     // Format currency
-    window.formatCurrency = function(amount, currency = 'USD') {
+    window.formatCurrency = function (amount, currency = 'USD') {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: currency
         }).format(amount);
     };
-    
+
     // Debounce function
-    window.debounce = function(func, wait) {
+    window.debounce = function (func, wait) {
         let timeout;
         return function executedFunction(...args) {
             const later = () => {
@@ -298,7 +298,7 @@ function setupUtilities() {
 function setupOrderFormEnhancements() {
     const orderForm = document.getElementById('orderForm');
     if (!orderForm) return;
-    
+
     // Already implemented in the template, but adding additional enhancements
     setupProductSearch();
     setupOrderCalculations();
@@ -310,9 +310,9 @@ function setupOrderFormEnhancements() {
  */
 function setupProductSearch() {
     const productSelects = document.querySelectorAll('select[name="products"]');
-    productSelects.forEach(function(select) {
+    productSelects.forEach(function (select) {
         // Add search functionality to product selects
-        select.addEventListener('change', function() {
+        select.addEventListener('change', function () {
             const selectedOption = select.options[select.selectedIndex];
             if (selectedOption && selectedOption.dataset.price) {
                 const quantityInput = select.closest('.order-item').querySelector('input[name="quantities"]');
@@ -331,41 +331,41 @@ function setupProductSearch() {
 function setupOrderCalculations() {
     const orderForm = document.getElementById('orderForm');
     if (!orderForm) return;
-    
+
     // Enhanced calculation with real-time updates
-    const calculateTotal = window.debounce(function() {
+    const calculateTotal = window.debounce(function () {
         let subtotal = 0;
         const items = orderForm.querySelectorAll('.order-item');
-        
-        items.forEach(function(item) {
+
+        items.forEach(function (item) {
             const select = item.querySelector('select[name="products"]');
             const quantityInput = item.querySelector('input[name="quantities"]');
-            
+
             if (select && select.value && quantityInput && quantityInput.value) {
                 const price = parseFloat(select.options[select.selectedIndex].dataset.price || 0);
                 const quantity = parseInt(quantityInput.value || 0);
                 subtotal += price * quantity;
             }
         });
-        
+
         const discount = parseFloat(document.getElementById('discount')?.value || 0);
         const tax = parseFloat(document.getElementById('tax')?.value || 0);
-        
+
         const total = Math.max(0, subtotal - discount + tax);
         const totalElement = document.getElementById('totalAmount');
-        
+
         if (totalElement) {
             totalElement.textContent = window.formatCurrency(total);
             totalElement.classList.add('fade-in');
         }
-        
+
         // Update subtotal display if exists
         const subtotalElement = document.getElementById('subtotalAmount');
         if (subtotalElement) {
             subtotalElement.textContent = window.formatCurrency(subtotal);
         }
     }, 300);
-    
+
     // Attach event listeners
     orderForm.addEventListener('change', calculateTotal);
     orderForm.addEventListener('input', calculateTotal);
@@ -377,26 +377,26 @@ function setupOrderCalculations() {
 function setupOrderValidation() {
     const orderForm = document.getElementById('orderForm');
     if (!orderForm) return;
-    
-    orderForm.addEventListener('submit', function(e) {
+
+    orderForm.addEventListener('submit', function (e) {
         let hasValidItems = false;
         const items = orderForm.querySelectorAll('.order-item');
-        
-        items.forEach(function(item) {
+
+        items.forEach(function (item) {
             const select = item.querySelector('select[name="products"]');
             const quantityInput = item.querySelector('input[name="quantities"]');
-            
+
             if (select && select.value && quantityInput && quantityInput.value > 0) {
                 hasValidItems = true;
             }
         });
-        
+
         if (!hasValidItems) {
             e.preventDefault();
             showNotification('Please add at least one product to the order', 'warning');
             return false;
         }
-        
+
         // Show loading state
         const submitButton = orderForm.querySelector('button[type="submit"]');
         if (submitButton) {
@@ -412,13 +412,13 @@ function setupOrderValidation() {
 function setupTableEnhancements() {
     // Add sorting functionality to tables
     const sortableTables = document.querySelectorAll('.table-sortable');
-    sortableTables.forEach(function(table) {
+    sortableTables.forEach(function (table) {
         setupTableSorting(table);
     });
-    
+
     // Add search functionality
     setupTableSearch();
-    
+
     // Add row selection functionality
     setupRowSelection();
 }
@@ -428,23 +428,23 @@ function setupTableEnhancements() {
  */
 function setupTableSorting(table) {
     const headers = table.querySelectorAll('th[data-sort]');
-    headers.forEach(function(header) {
+    headers.forEach(function (header) {
         header.style.cursor = 'pointer';
-        header.addEventListener('click', function() {
+        header.addEventListener('click', function () {
             const column = header.dataset.sort;
             const currentSort = header.dataset.sortDirection || 'asc';
             const newSort = currentSort === 'asc' ? 'desc' : 'asc';
-            
+
             // Remove sort indicators from other headers
-            headers.forEach(function(h) {
+            headers.forEach(function (h) {
                 h.classList.remove('sort-asc', 'sort-desc');
                 delete h.dataset.sortDirection;
             });
-            
+
             // Add sort indicator to current header
             header.classList.add(`sort-${newSort}`);
             header.dataset.sortDirection = newSort;
-            
+
             sortTable(table, column, newSort);
         });
     });
@@ -456,27 +456,27 @@ function setupTableSorting(table) {
 function sortTable(table, column, direction) {
     const tbody = table.querySelector('tbody');
     const rows = Array.from(tbody.querySelectorAll('tr'));
-    
-    rows.sort(function(a, b) {
+
+    rows.sort(function (a, b) {
         const aValue = a.querySelector(`td[data-${column}]`)?.textContent || a.cells[getColumnIndex(table, column)]?.textContent || '';
         const bValue = b.querySelector(`td[data-${column}]`)?.textContent || b.cells[getColumnIndex(table, column)]?.textContent || '';
-        
+
         // Try to parse as numbers
         const aNum = parseFloat(aValue.replace(/[^0-9.-]/g, ''));
         const bNum = parseFloat(bValue.replace(/[^0-9.-]/g, ''));
-        
+
         if (!isNaN(aNum) && !isNaN(bNum)) {
             return direction === 'asc' ? aNum - bNum : bNum - aNum;
         }
-        
+
         // Sort as strings
-        return direction === 'asc' 
+        return direction === 'asc'
             ? aValue.localeCompare(bValue)
             : bValue.localeCompare(aValue);
     });
-    
+
     // Reorder DOM elements
-    rows.forEach(function(row) {
+    rows.forEach(function (row) {
         tbody.appendChild(row);
     });
 }
@@ -499,10 +499,10 @@ function getColumnIndex(table, column) {
  */
 function setupTableSearch() {
     const searchInputs = document.querySelectorAll('.table-search');
-    searchInputs.forEach(function(input) {
+    searchInputs.forEach(function (input) {
         const targetTable = document.querySelector(input.dataset.target);
         if (targetTable) {
-            input.addEventListener('input', window.debounce(function() {
+            input.addEventListener('input', window.debounce(function () {
                 filterTable(targetTable, input.value);
             }, 300));
         }
@@ -515,17 +515,17 @@ function setupTableSearch() {
 function filterTable(table, searchTerm) {
     const rows = table.querySelectorAll('tbody tr');
     const term = searchTerm.toLowerCase();
-    
-    rows.forEach(function(row) {
+
+    rows.forEach(function (row) {
         const text = row.textContent.toLowerCase();
         const shouldShow = !term || text.includes(term);
         row.style.display = shouldShow ? '' : 'none';
     });
-    
+
     // Show no results message if needed
     const visibleRows = table.querySelectorAll('tbody tr:not([style*="display: none"])');
     const noResultsRow = table.querySelector('.no-results');
-    
+
     if (visibleRows.length === 0 && term && !noResultsRow) {
         const tbody = table.querySelector('tbody');
         const colCount = table.querySelectorAll('thead th').length;
@@ -543,23 +543,23 @@ function filterTable(table, searchTerm) {
  */
 function setupRowSelection() {
     const selectAllCheckboxes = document.querySelectorAll('.select-all');
-    selectAllCheckboxes.forEach(function(checkbox) {
-        checkbox.addEventListener('change', function() {
+    selectAllCheckboxes.forEach(function (checkbox) {
+        checkbox.addEventListener('change', function () {
             const table = checkbox.closest('table');
             const rowCheckboxes = table.querySelectorAll('tbody input[type="checkbox"]');
-            rowCheckboxes.forEach(function(rowCheckbox) {
+            rowCheckboxes.forEach(function (rowCheckbox) {
                 rowCheckbox.checked = checkbox.checked;
             });
             updateBulkActions(table);
         });
     });
-    
+
     // Individual row selection
     const tables = document.querySelectorAll('table');
-    tables.forEach(function(table) {
+    tables.forEach(function (table) {
         const rowCheckboxes = table.querySelectorAll('tbody input[type="checkbox"]');
-        rowCheckboxes.forEach(function(checkbox) {
-            checkbox.addEventListener('change', function() {
+        rowCheckboxes.forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
                 updateSelectAll(table);
                 updateBulkActions(table);
             });
@@ -574,7 +574,7 @@ function updateSelectAll(table) {
     const selectAllCheckbox = table.querySelector('.select-all');
     const rowCheckboxes = table.querySelectorAll('tbody input[type="checkbox"]');
     const checkedBoxes = table.querySelectorAll('tbody input[type="checkbox"]:checked');
-    
+
     if (selectAllCheckbox) {
         if (checkedBoxes.length === 0) {
             selectAllCheckbox.indeterminate = false;
@@ -595,8 +595,8 @@ function updateSelectAll(table) {
 function updateBulkActions(table) {
     const checkedBoxes = table.querySelectorAll('tbody input[type="checkbox"]:checked');
     const bulkActions = document.querySelectorAll('.bulk-actions');
-    
-    bulkActions.forEach(function(actions) {
+
+    bulkActions.forEach(function (actions) {
         if (checkedBoxes.length > 0) {
             actions.style.display = 'block';
             actions.classList.add('slide-up');
@@ -610,60 +610,83 @@ function updateBulkActions(table) {
  * Setup notification handling
  */
 function setupNotifications() {
-    // Auto-dismiss alerts after 5 seconds (except alert-info which should remain visible)
-    const alerts = document.querySelectorAll('.alert:not(.alert-permanent):not(.alert-info)');
-    alerts.forEach(function(alert) {
-        setTimeout(function() {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
+    // Auto-dismiss existing toasts (e.g. from server flash messages)
+    const toasts = document.querySelectorAll('.custom-toast:not(.toast-persistent)');
+    toasts.forEach(function (toast) {
+        setTimeout(function () {
+            hideToast(toast);
         }, 5000);
     });
-    
+
     // Global notification function
-    window.showNotification = function(message, type = 'info', duration = 5000) {
-        const alertContainer = document.getElementById('alert-container') || createAlertContainer();
-        
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
-        alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    window.showNotification = function (message, type = 'info', duration = 5000) {
+        const toastContainer = document.getElementById('toast-container') || createToastContainer();
+
+        // Map type to class
+        const typeClass = type === 'error' ? 'toast-error' : `toast-${type}`;
+
+        // Icon mapping
+        let iconHtml = '<i class="fas fa-info-circle"></i>';
+        if (type === 'success') iconHtml = '<i class="fas fa-check-circle"></i>';
+        else if (type === 'error' || type === 'danger') iconHtml = '<i class="fas fa-exclamation-circle"></i>';
+        else if (type === 'warning') iconHtml = '<i class="fas fa-exclamation-triangle"></i>';
+
+        const toastDiv = document.createElement('div');
+        toastDiv.className = `custom-toast ${typeClass}`;
+        toastDiv.setAttribute('role', 'alert');
+        toastDiv.innerHTML = `
+            <div class="toast-icon">${iconHtml}</div>
+            <div class="toast-content">${message}</div>
+            <button type="button" class="toast-close" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
         `;
-        
-        alertContainer.appendChild(alertDiv);
-        
+
+        // Add close handler
+        toastDiv.querySelector('.toast-close').addEventListener('click', function () {
+            hideToast(toastDiv);
+        });
+
+        toastContainer.appendChild(toastDiv);
+
         // Auto-dismiss
         if (duration > 0) {
-            setTimeout(function() {
-                const bsAlert = new bootstrap.Alert(alertDiv);
-                bsAlert.close();
+            setTimeout(function () {
+                hideToast(toastDiv);
             }, duration);
         }
-        
-        return alertDiv;
+
+        return toastDiv;
     };
 }
 
 /**
- * Create alert container if it doesn't exist
+ * Helper to hide and remove toast with animation
  */
-function createAlertContainer() {
+function hideToast(toast) {
+    if (!toast) return;
+    toast.classList.add('toast-hiding');
+    toast.addEventListener('animationend', function () {
+        if (toast.parentElement) {
+            toast.remove();
+        }
+    });
+}
+
+/**
+ * Create toast container if it doesn't exist
+ */
+function createToastContainer() {
     const container = document.createElement('div');
-    container.id = 'alert-container';
-    container.style.position = 'fixed';
-    container.style.top = '20px';
-    container.style.right = '20px';
-    container.style.zIndex = '9999';
-    container.style.maxWidth = '400px';
-    
-    document.body.appendChild(container);
+    container.id = 'toast-container';
+    document.body.appendChild(container); // The styles are already in CSS
     return container;
 }
 
 /**
  * Global error handler
  */
-window.addEventListener('error', function(e) {
+window.addEventListener('error', function (e) {
     console.error('JavaScript Error:', e.error);
     showNotification('An unexpected error occurred. Please refresh the page.', 'error');
 });
@@ -671,7 +694,7 @@ window.addEventListener('error', function(e) {
 /**
  * Handle unhandled promise rejections
  */
-window.addEventListener('unhandledrejection', function(e) {
+window.addEventListener('unhandledrejection', function (e) {
     console.error('Unhandled Promise Rejection:', e.reason);
     showNotification('An error occurred while processing your request.', 'error');
 });
@@ -679,21 +702,21 @@ window.addEventListener('unhandledrejection', function(e) {
 /**
  * Utility function to format dates
  */
-window.formatDate = function(dateString, options = {}) {
+window.formatDate = function (dateString, options = {}) {
     const date = new Date(dateString);
     const defaultOptions = {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
     };
-    
+
     return date.toLocaleDateString('en-US', { ...defaultOptions, ...options });
 };
 
 /**
  * Utility function to format date and time
  */
-window.formatDateTime = function(dateString) {
+window.formatDateTime = function (dateString) {
     return window.formatDate(dateString, {
         year: 'numeric',
         month: 'short',

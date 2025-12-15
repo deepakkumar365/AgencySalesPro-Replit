@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}AgencySalesPro Mobile{% endblock %}</title>
+
+    <!-- PWA -->
+    <meta name="theme-color" content="#124170">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/mobile.css') }}" rel="stylesheet">
+
+    {% block styles %}{% endblock %}
+</head>
+
+<body class="mobile-mode">
+
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+        <div class="mobile-brand">
+            <i class="fas fa-chart-line me-2"></i>MyQless
+        </div>
+        <div class="header-actions">
+            <a href="#" class="text-secondary position-relative">
+                <i class="fas fa-bell"></i>
+                <span
+                    class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
+                    <span class="visually-hidden">New alerts</span>
+                </span>
+            </a>
+            <a href="{{ url_for('auth.logout') }}" class="text-secondary ms-3">
+                <i class="fas fa-sign-out-alt"></i>
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="mobile-content container-fluid px-3 pt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show p-2 mb-3 fs-7" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close p-2" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="mobile-bottom-nav">
+        <a href="{{ url_for('pos.dashboard_mobile') }}"
+            class="mobile-nav-item {{ 'active' if 'pos.dashboard' in request.endpoint else '' }}">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </a>
+        <a href="{{ url_for('pos.new_sale_mobile') }}"
+            class="mobile-nav-item {{ 'active' if 'pos.new_sale' in request.endpoint else '' }}">
+            <i class="fas fa-cash-register"></i>
+            <span>POS</span>
+        </a>
+        <a href="{{ url_for('order.list_orders_mobile') }}"
+            class="mobile-nav-item {{ 'active' if 'order.' in request.endpoint else '' }}">
+            <i class="fas fa-list-alt"></i>
+            <span>Orders</span>
+        </a>
+        <a href="{{ url_for('inventory.dashboard_mobile') }}"
+            class="mobile-nav-item {{ 'active' if 'inventory.' in request.endpoint else '' }}">
+            <i class="fas fa-boxes"></i>
+            <span>Stock</span>
+        </a>
+        <a href="#" class="mobile-nav-item" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu">
+            <i class="fas fa-bars"></i>
+            <span>Menu</span>
+        </a>
+    </nav>
+
+    <!-- Mobile Menu Offcanvas (for other links) -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="mobileMenuLabel">MyQless Menu</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="list-group list-group-flush">
+                <a href="{{ url_for('auth.profile') }}" class="list-group-item list-group-item-action">Profile</a>
+                <a href="#" class="list-group-item list-group-item-action">Settings</a>
+                <a href="#" class="list-group-item list-group-item-action" onclick="switchToDesktop()">Switch to
+                    Desktop</a>
+                <!-- Add more links here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    {% block scripts %}
+    <script>
+        function switchToDesktop() {
+            sessionStorage.setItem('force_desktop', 'true');
+            window.location.href = "{{ url_for('pos.dashboard') }}";
+        }
+    </script>
+    {% endblock %}
+</body>
+
+</html>

@@ -1,0 +1,573 @@
+{% extends "mobile/base.html" %}
+
+{% block title %}Mobile POS - AgencySales Pro{% endblock %}
+
+{% block styles %}
+<style>
+    /* Mobile POS Specific Styles */
+    .category-scroll {
+        display: flex;
+        overflow-x: auto;
+        gap: 10px;
+        padding-bottom: 5px;
+        margin-bottom: 15px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        /* Firefox */
+    }
+
+    .category-scroll::-webkit-scrollbar {
+        display: none;
+        /* Chrome/Safari */
+    }
+
+    .cat-pill-mobile {
+        white-space: nowrap;
+        padding: 8px 16px;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        color: #495057;
+        transition: all 0.2s;
+    }
+
+    .cat-pill-mobile.active {
+        background: var(--bs-primary);
+        color: #fff;
+        border-color: var(--bs-primary);
+        box-shadow: 0 2px 4px rgba(var(--bs-primary-rgb), 0.3);
+    }
+
+    .mobile-product-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        padding-bottom: 80px;
+        /* Space for bottom cart bar */
+    }
+
+    .mobile-product-card {
+        background: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        padding: 12px;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        transition: transform 0.1s;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .mobile-product-card:active {
+        transform: scale(0.98);
+        background-color: #f8f9fa;
+    }
+
+    .mob-prod-price {
+        font-weight: 700;
+        color: var(--bs-primary);
+        font-size: 1rem;
+        margin-top: 4px;
+    }
+
+    .mob-prod-name {
+        font-size: 0.85rem;
+        color: #333;
+        line-height: 1.3;
+        height: 2.6em;
+        /* 2 lines */
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .mob-prod-sku {
+        font-size: 0.7rem;
+        color: #adb5bd;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    /* Cart Floating Bar */
+    .cart-float-bar {
+        position: fixed;
+        bottom: 70px;
+        /* Above bottom nav */
+        left: 15px;
+        right: 15px;
+        background: #343a40;
+        color: white;
+        border-radius: 12px;
+        padding: 12px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        transform: translateY(150%);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .cart-float-bar.visible {
+        transform: translateY(0);
+    }
+
+    .cart-count-badge {
+        background: var(--bs-danger);
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: bold;
+        margin-left: 8px;
+    }
+
+    /* Cart Offcanvas Override */
+    .cart-offcanvas {
+        height: 85vh !important;
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+    }
+
+    .mob-cart-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #f1f3f5;
+    }
+
+    .mob-qty-control {
+        display: flex;
+        align-items: center;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+
+    .mob-qty-btn {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--bs-primary);
+        cursor: pointer;
+    }
+
+    .mob-qty-val {
+        width: 30px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Search & Filter -->
+<div class="mb-3">
+    <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white border mb-3">
+        <span class="input-group-text border-0 bg-transparent ps-3"><i class="fas fa-search text-muted"></i></span>
+        <input type="text" id="mob-search" class="form-control border-0 shadow-none ps-1"
+            placeholder="Search products..." onkeyup="filterProducts()">
+    </div>
+
+    <!-- Category Pills -->
+    <div class="category-scroll" id="mob-categories">
+        <div class="cat-pill-mobile active" onclick="setCategory('all', this)">All</div>
+        <!-- Injected via JS -->
+    </div>
+</div>
+
+<!-- Product Grid -->
+<div class="mobile-product-grid" id="mob-grid">
+    <!-- Injected via JS -->
+</div>
+
+<!-- Empty State -->
+<div id="mob-empty" class="text-center py-5 d-none">
+    <i class="fas fa-box-open fa-3x text-muted mb-3 opacity-25"></i>
+    <p class="text-muted">No products found</p>
+</div>
+
+<!-- Cart Floating Bar -->
+<div class="cart-float-bar" id="cart-bar" onclick="openCart()">
+    <div class="d-flex align-items-center">
+        <i class="fas fa-shopping-cart text-warning me-2"></i>
+        <span class="fw-bold fs-5" id="bar-total">₹0.00</span>
+        <span class="cart-count-badge" id="bar-count">0</span>
+    </div>
+    <div class="d-flex align-items-center">
+        <span class="me-2 text-white-50 small">View Cart</span>
+        <i class="fas fa-chevron-right"></i>
+    </div>
+</div>
+
+<!-- Cart Offcanvas -->
+<div class="offcanvas offcanvas-bottom cart-offcanvas" tabindex="-1" id="cartCanvas" aria-labelledby="cartCanvasLabel">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title fw-bold" id="cartCanvasLabel">Current Sale</h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column p-0">
+        <!-- Customer Selection -->
+        <div class="p-3 bg-light border-bottom">
+            <div class="d-flex gap-2">
+                <div class="flex-grow-1" onclick="toggleCustomerModal()">
+                    <div class="fw-bold text-dark" id="mob-cust-name">Walk-in Customer</div>
+                    <small class="text-muted" id="mob-cust-contact">Tap to change</small>
+                </div>
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-sm btn-outline-secondary rounded-circle" onclick="resetCustomer()">
+                        <i class="fas fa-user-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cart Items (Scrollable) -->
+        <div class="flex-grow-1 p-3 overflow-auto" id="mob-cart-list">
+            <!-- Items injected here -->
+        </div>
+
+        <!-- Footer (Totals & Action) -->
+        <div class="p-3 border-top bg-white">
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <label class="small text-muted mb-1">Discount</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" id="mob-discount" class="form-control" placeholder="0"
+                            oninput="renderCart()">
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <label class="small text-muted mb-1">Tax</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" id="mob-tax" class="form-control" placeholder="0" oninput="renderCart()">
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <select id="mob-payment" class="form-select" onchange="checkPaymentValidity()">
+                    <option value="" disabled selected>Select Payment Method</option>
+                    {% for method in payment_methods %}
+                    <option value="{{ method.id }}">{{ method.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-end mb-3">
+                <span class="text-muted">Total Amount</span>
+                <span class="display-6 fw-bold text-primary" id="mob-total-display">₹0.00</span>
+            </div>
+
+            <button class="btn btn-primary w-100 py-3 rounded-pill fw-bold shadow-sm" id="mob-pay-btn"
+                onclick="processSale()" disabled>
+                Complete Payment
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Modal (Reused Logic) -->
+<div class="modal fade" id="mobCustomerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Customer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group mb-3">
+                    <input type="text" id="mob-cust-search" class="form-control" placeholder="Search phone/email">
+                    <button class="btn btn-primary" onclick="searchCustomerMobile()"><i
+                            class="fas fa-search"></i></button>
+                </div>
+                <div id="mob-cust-result" class="alert d-none py-2 px-3 small"></div>
+
+                <div class="border-top pt-3 mt-3">
+                    <h6 class="small text-muted fw-bold mb-3">NEW CUSTOMER DETAILS</h6>
+                    <input type="text" id="mob-new-name" class="form-control mb-2" placeholder="Full Name">
+                    <input type="tel" id="mob-new-phone" class="form-control mb-2" placeholder="Phone Number">
+                    <input type="email" id="mob-new-email" class="form-control" placeholder="Email Address">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary w-100" onclick="saveCustomerMobile()">Set Customer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Extract products from server-side template
+    const rawProducts = [
+        {% for p in products %}
+    {
+        id: { { p.id } },
+        name: { { (p.name if p.name else '') | tojson } },
+        sku: { { (p.sku if p.sku else '') | tojson } },
+        price: { { p.sell_price or 0 } },
+        category: { { (p.category_ref.name if p.category_ref else 'Other') | tojson } }
+    },
+    {% endfor %}
+    ];
+
+    // State
+    let state = {
+        cart: [],
+        currentCategory: 'all',
+        searchTerm: '',
+        customer: { name: 'Walk-in Customer', phone: '', email: '' }
+    };
+
+    // UI Elements
+    const els = {
+        grid: document.getElementById('mob-grid'),
+        categories: document.getElementById('mob-categories'),
+        search: document.getElementById('mob-search'),
+        empty: document.getElementById('mob-empty'),
+        bar: document.getElementById('cart-bar'),
+        barTotal: document.getElementById('bar-total'),
+        barCount: document.getElementById('bar-count'),
+        cartCanvas: new bootstrap.Offcanvas(document.getElementById('cartCanvas')),
+        cartList: document.getElementById('mob-cart-list'),
+        totalDisplay: document.getElementById('mob-total-display'),
+        payBtn: document.getElementById('mob-pay-btn'),
+        paymentMethod: document.getElementById('mob-payment'),
+        custName: document.getElementById('mob-cust-name'),
+        custContact: document.getElementById('mob-cust-contact')
+    };
+
+    // --- Init ---
+    document.addEventListener('DOMContentLoaded', () => {
+        renderCategories();
+        renderGrid();
+    });
+
+    // --- Rendering ---
+    function renderCategories() {
+        const categories = ['all', ...new Set(rawProducts.map(p => p.category))];
+        els.categories.innerHTML = categories.map(cat => `
+            <div class="cat-pill-mobile ${cat === 'all' ? 'active' : ''}" 
+                 onclick="setCategory('${cat}', this)">${cat === 'all' ? 'All' : cat}</div>
+        `).join('');
+    }
+
+    window.setCategory = (cat, el) => {
+        state.currentCategory = cat;
+        // Update active pill
+        document.querySelectorAll('.cat-pill-mobile').forEach(e => e.classList.remove('active'));
+        el.classList.add('active');
+        renderGrid();
+    };
+
+    window.filterProducts = () => {
+        state.searchTerm = els.search.value.toLowerCase();
+        renderGrid();
+    };
+
+    function renderGrid() {
+        const term = state.searchTerm;
+        const filtered = rawProducts.filter(p => {
+            const matchesSearch = !term || p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term);
+            const matchesCat = state.currentCategory === 'all' || p.category === state.currentCategory;
+            return matchesSearch && matchesCat;
+        });
+
+        if (filtered.length === 0) {
+            els.grid.innerHTML = '';
+            els.empty.classList.remove('d-none');
+        } else {
+            els.empty.classList.add('d-none');
+            els.grid.innerHTML = filtered.map(p => `
+                <div class="mobile-product-card" onclick="addToCart(${p.id})">
+                    <span class="mob-prod-sku">${p.sku}</span>
+                    <div class="mob-prod-name">${p.name}</div>
+                    <div class="mob-prod-price">₹${p.price.toFixed(2)}</div>
+                </div>
+            `).join('');
+        }
+    }
+
+    function renderCart() {
+        const cartLen = state.cart.reduce((sum, i) => sum + i.quantity, 0);
+        const inputTax = parseFloat(document.getElementById('mob-tax').value) || 0;
+        const inputDisc = parseFloat(document.getElementById('mob-discount').value) || 0;
+        const subtotal = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const total = Math.max(0, subtotal + inputTax - inputDisc);
+
+        // Update Floating Bar
+        els.barTotal.textContent = `₹${total.toFixed(2)}`;
+        els.barCount.textContent = cartLen;
+
+        if (state.cart.length > 0) {
+            els.bar.classList.add('visible');
+        } else {
+            els.bar.classList.remove('visible');
+            els.cartCanvas.hide(); // Close cart if empty
+        }
+
+        // Update Cart List inside Offcanvas
+        els.cartList.innerHTML = state.cart.map(item => `
+            <div class="mob-cart-item">
+                <div>
+                    <div class="fw-medium text-dark">${item.name}</div>
+                    <div class="small text-muted">@ ₹${item.price.toFixed(2)}</div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="mob-qty-control me-3">
+                        <div class="mob-qty-btn" onclick="updateQty(${item.id}, -1)">-</div>
+                        <div class="mob-qty-val">${item.quantity}</div>
+                        <div class="mob-qty-btn" onclick="updateQty(${item.id}, 1)">+</div>
+                    </div>
+                    <div class="fw-bold">₹${(item.price * item.quantity).toFixed(2)}</div>
+                </div>
+            </div>
+        `).join('');
+
+        els.totalDisplay.textContent = `₹${total.toFixed(2)}`;
+        checkPaymentValidity();
+    }
+
+    function checkPaymentValidity() {
+        els.payBtn.disabled = (state.cart.length === 0) || (els.paymentMethod.value === "");
+    }
+
+    // --- Actions ---
+    window.addToCart = (id) => {
+        const product = rawProducts.find(p => p.id === id);
+        const existing = state.cart.find(i => i.id === id);
+
+        if (existing) {
+            existing.quantity++;
+        } else {
+            state.cart.push({ ...product, quantity: 1 });
+        }
+
+        // Visual feedback
+        // Could use toast or vibration here
+        if (navigator.vibrate) navigator.vibrate(50);
+
+        renderCart();
+    };
+
+    window.updateQty = (id, delta) => {
+        const item = state.cart.find(i => i.id === id);
+        if (!item) return;
+
+        item.quantity += delta;
+        if (item.quantity <= 0) {
+            state.cart = state.cart.filter(i => i.id !== id);
+        }
+        renderCart();
+    };
+
+    window.openCart = () => els.cartCanvas.show();
+
+    // --- Customer Logic ---
+    let customerModal;
+
+    window.toggleCustomerModal = () => {
+        if (!customerModal) customerModal = new bootstrap.Modal(document.getElementById('mobCustomerModal'));
+        customerModal.show();
+    };
+
+    window.searchCustomerMobile = async () => {
+        const query = document.getElementById('mob-cust-search').value;
+        const resEl = document.getElementById('mob-cust-result');
+        if (!query) return;
+
+        try {
+            const res = await fetch(`/pos/api/get_customer?search_term=${query}`);
+            const data = await res.json();
+
+            resEl.classList.remove('d-none');
+            if (data.error) {
+                resEl.className = "alert alert-warning py-2 mb-2 d-block";
+                resEl.textContent = "Not found. Enter details below.";
+            } else {
+                document.getElementById('mob-new-name').value = data.name;
+                document.getElementById('mob-new-phone').value = data.phone;
+                document.getElementById('mob-new-email').value = data.email;
+                resEl.className = "alert alert-success py-2 mb-2 d-block";
+                resEl.textContent = "Found: " + data.name;
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    window.saveCustomerMobile = () => {
+        const name = document.getElementById('mob-new-name').value;
+        const phone = document.getElementById('mob-new-phone').value;
+        const email = document.getElementById('mob-new-email').value;
+
+        if (name) {
+            state.customer = { name, phone, email };
+            els.custName.textContent = name;
+            els.custContact.textContent = phone || email;
+            customerModal.hide();
+        }
+    };
+
+    window.resetCustomer = (e) => {
+        if (e) e.stopPropagation();
+        state.customer = { name: 'Walk-in Customer', phone: '', email: '' };
+        els.custName.textContent = 'Walk-in Customer';
+        els.custContact.textContent = 'Tap to change';
+    };
+
+    // --- Payment ---
+    window.processSale = async () => {
+        const btn = els.payBtn;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = 'Processing...';
+
+        const payload = {
+            customer_info: state.customer,
+            items: state.cart.map(i => ({
+                product_id: i.id,
+                quantity: i.quantity,
+                unit_price: i.price
+            })),
+            payment_method_id: parseInt(els.paymentMethod.value),
+            tax: parseFloat(document.getElementById('mob-tax').value) || 0,
+            discount: parseFloat(document.getElementById('mob-discount').value) || 0,
+            notes: "Mobile POS Sale"
+        };
+
+        try {
+            const res = await fetch('/pos/api/create_sale', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                window.location.href = `/pos/receipt/${data.order_id}`;
+            } else {
+                alert('Error: ' + data.error);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        } catch (e) {
+            alert('Connection Failed');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    };
+</script>
+{% endblock %}

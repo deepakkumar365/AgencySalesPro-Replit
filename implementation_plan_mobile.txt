@@ -1,0 +1,40 @@
+# Mobile View Implementation Plan
+
+## Objective
+Create a separate, minimalistic mobile-first generic template and a dashboard view, designed to maximize screen usage ("max page").
+
+## Strategy
+We will create a dedicated mobile layout rather than just making the desktop view responsive. This allows for a bottom-navigation bar, simplified headers, and touch-optimized touch targets.
+
+## Steps
+
+### 1. Structure Setup
+- Create directory: `templates/mobile`
+- Create Base Template: `templates/mobile/base.html`
+  - **Header**: Minimal branding, user profile icon.
+  - **Content**: Full-width container (`container-fluid`).
+  - **Footer**: Sticky bottom navigation bar (Home, Sales, Inventory, Menu).
+  - **Assets**: Include Bootstrap 5, FontAwesome, and a new `static/css/mobile.css` (or appended to `custom.css`).
+
+### 2. Styles (CSS)
+- Create `static/css/mobile.css` to handle:
+  - Bottom navigation bar styling.
+  - Removal of default container paddings for "max page" effect.
+  - Card-based layouts for mobile readability.
+  - Touch-friendly button sizes.
+
+### 3. Dashboard Implementation
+- Create `templates/mobile/dashboard.html` extending `mobile/base.html`.
+- **Components**:
+  - **Summary Cards**: Horizontal scroll or compact grid.
+  - **Quick Actions**: Large, easy-to-tap buttons for common tasks (New Sale, Add Customer).
+  - **Recent Activity**: Simplified list view.
+
+### 4. Routing
+- Add a new route `/mobile` or `/m/dashboard` in `main.py` (or appropriate blueprint) to render the new template.
+- *Future*: We can implement device detection to redirect mobile users automatically.
+
+## Design Aesthetic
+- **Visuals**: Clean, white/light-gray background, "Premium" look with subtle shadows.
+- **Navigation**: Solely bottom-based for ease of thumb reach.
+- **Top Bar**: Very minimal, sticky.

@@ -1,0 +1,86 @@
+{% extends "mobile/base.html" %}
+
+{% block title %}Dashboard - Mobile{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h5 class="mb-0 text-secondary">Hello, {{ session.username }}</h5>
+    <h2 class="mb-0 text-dark fw-bold">Overview</h2>
+</div>
+
+<!-- Today's Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-6">
+        <div class="mobile-stat-card h-100">
+            <div class="mobile-stat-value">₹{{ "%.2f"|format(today_stats.total_sales) }}</div>
+            <div class="mobile-stat-label">Today's Sales</div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="mobile-stat-card h-100">
+            <div class="mobile-stat-value">{{ today_stats.total_orders }}</div>
+            <div class="mobile-stat-label">Orders</div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="mobile-stat-card h-100">
+            <div class="mobile-stat-value">{{ today_stats.total_items }}</div>
+            <div class="mobile-stat-label">Items Sold</div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="mobile-stat-card h-100">
+            <div class="mobile-stat-value">₹{{ "%.2f"|format(today_stats.avg_order_value) }}</div>
+            <div class="mobile-stat-label">Avg. Order</div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<h5 class="mb-3 fw-bold text-dark">Quick Actions</h5>
+<div class="quick-actions-grid">
+    <a href="{{ url_for('pos.new_sale') }}" class="quick-action-btn">
+        <i class="fas fa-shopping-cart"></i>
+        <span>New Sale</span>
+    </a>
+    <a href="{{ url_for('customer.create_customer') }}" class="quick-action-btn">
+        <i class="fas fa-user-plus"></i>
+        <span>Add Customer</span>
+    </a>
+    <a href="{{ url_for('inventory.stock_levels') }}" class="quick-action-btn">
+        <i class="fas fa-box-open"></i>
+        <span>Check Stock</span>
+    </a>
+    <a href="{{ url_for('pos.sales_history') }}" class="quick-action-btn">
+        <i class="fas fa-history"></i>
+        <span>History</span>
+    </a>
+</div>
+
+<!-- Recent Orders -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0 fw-bold text-dark">Recent Orders</h5>
+    <a href="{{ url_for('pos.sales_history') }}" class="text-decoration-none small">View All</a>
+</div>
+
+<div class="list-group mb-5 shadow-sm rounded-3 overflow-hidden border-0">
+    {% for order in recent_orders %}
+    <a href="{{ url_for('pos.receipt', order_id=order.id) }}"
+        class="list-group-item list-group-item-action border-0 border-bottom p-3">
+        <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+            <h6 class="mb-0 fw-bold">{{ order.customer.name }}</h6>
+            <span class="badge bg-soft-success text-success rounded-pill">₹{{ "%.2f"|format(order.total_amount)
+                }}</span>
+        </div>
+        <div class="d-flex w-100 justify-content-between">
+            <small class="text-muted">{{ order.order_number }}</small>
+            <small class="text-muted">{{ order.order_date.strftime('%H:%M') }}</small>
+        </div>
+    </a>
+    {% else %}
+    <div class="list-group-item p-3 text-center text-muted">
+        No recent orders
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -178,6 +178,24 @@
 
 {% block scripts %}
 <script>
+    // Mobile Redirect Logic
+    document.addEventListener('DOMContentLoaded', function () {
+        // Build the URL using Jinja2
+        // We use string concatenation to ensure it's treated as a string in JS
+        const mobileUrl = "{{ url_for('pos.dashboard_mobile') }}";
+
+        // Define mobile breakpoint (Bootstrap 'md' is 768px)
+        const isMobile = window.innerWidth <= 768;
+
+        // Check if user has opted for desktop view
+        const forceDesktop = sessionStorage.getItem('force_desktop') === 'true';
+
+        // Redirect if mobile device and not forced desktop
+        if (isMobile && !forceDesktop) {
+            window.location.replace(mobileUrl);
+        }
+    });
+
     // Auto-refresh dashboard every 5 minutes
     setTimeout(() => {
         location.reload();
