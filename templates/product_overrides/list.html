@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/pagination.html" import render_pagination %}
 
 {% block title %}Product Overrides - AgencySales Pro{% endblock %}
 
@@ -9,13 +10,16 @@
         <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-cogs me-2"></i>Product Overrides</h1>
         <div>
             {% if session.role in ['super_admin', 'agency_admin', 'agency_manager', 'staff'] %}
-            <a href="{{ url_for('product_overrides.export_overrides', agency=filters.agency if filters.agency else '') }}" class="btn btn-outline-info btn-sm shadow-sm me-2">
+            <a href="{{ url_for('product_overrides.export_overrides', agency=filters.agency if filters.agency else '') }}"
+                class="btn btn-outline-info btn-sm shadow-sm me-2">
                 <i class="fas fa-download fa-sm me-2"></i>Export
             </a>
-            <a href="{{ url_for('product_overrides.bulk_upload_overrides', agency=filters.agency) }}" class="btn btn-info btn-sm shadow-sm me-2">
+            <a href="{{ url_for('product_overrides.bulk_upload_overrides', agency=filters.agency) }}"
+                class="btn btn-info btn-sm shadow-sm me-2">
                 <i class="fas fa-file-upload fa-sm text-white-50 me-2"></i>Bulk Upload
             </a>
-            <a href="{{ url_for('product.create_product', agency_id=filters.agency) }}" class="btn btn-primary btn-sm shadow-sm">
+            <a href="{{ url_for('product.create_product', agency_id=filters.agency) }}"
+                class="btn btn-primary btn-sm shadow-sm">
                 <i class="fas fa-plus fa-sm text-white-50 me-2"></i>Add / Create Product
             </a>
             {% endif %}
@@ -36,21 +40,24 @@
                         <select name="agency" id="agency" class="form-select">
                             <option value="">All Agencies</option>
                             {% for a in agencies %}
-                            <option value="{{ a.id }}" {{ 'selected' if filters.agency and filters.agency|int == a.id }}>{{ a.name }}</option>
+                            <option value="{{ a.id }}" {{ 'selected' if filters.agency and filters.agency|int==a.id }}>
+                                {{ a.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     {% endif %}
                     <div class="col-md-3 mb-3">
                         <label for="search" class="form-label">Search</label>
-                        <input type="text" name="search" id="search" class="form-control" placeholder="Name or SKU..." value="{{ filters.search }}">
+                        <input type="text" name="search" id="search" class="form-control" placeholder="Name or SKU..."
+                            value="{{ filters.search }}">
                     </div>
                     <div class="col-md-2 mb-3">
                         <label for="category" class="form-label">Category</label>
                         <select name="category" id="category" class="form-select">
                             <option value="">All Categories</option>
                             {% for c in categories %}
-                            <option value="{{ c.id }}" {{ 'selected' if filters.category and filters.category|int == c.id }}>{{ c.name }}</option>
+                            <option value="{{ c.id }}" {{ 'selected' if filters.category and filters.category|int==c.id
+                                }}>{{ c.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -58,8 +65,8 @@
                         <label for="status" class="form-label">Status</label>
                         <select name="status" id="status" class="form-select">
                             <option value="">All</option>
-                            <option value="active" {{ 'selected' if filters.status == 'active' }}>Active</option>
-                            <option value="inactive" {{ 'selected' if filters.status == 'inactive' }}>Inactive</option>
+                            <option value="active" {{ 'selected' if filters.status=='active' }}>Active</option>
+                            <option value="inactive" {{ 'selected' if filters.status=='inactive' }}>Inactive</option>
                         </select>
                     </div>
                     <div class="col-md-2 d-flex align-items-end mb-3">
@@ -93,7 +100,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for product, mapping in rows %}
+                        {% if pagination.items %}
+                        {% for product, mapping in pagination.items %}
                         <tr>
                             <td>
                                 <span>{{ mapping.display_name or product.name }}</span>
@@ -110,34 +118,38 @@
                             </td>
                             <td>
                                 {% if mapping.uom_ref %}
-                                    {{ mapping.uom_ref.name }} <span class="badge bg-warning text-dark">Override</span>
+                                {{ mapping.uom_ref.name }} <span class="badge bg-warning text-dark">Override</span>
                                 {% elif product.uom_ref %}
-                                    {{ product.uom_ref.name }}
+                                {{ product.uom_ref.name }}
                                 {% else %}
-                                    N/A
+                                N/A
                                 {% endif %}
                             </td>
                             <td>
-                                <span class="badge bg-secondary">₹{{ "%.2f"|format(mapping.buy_price or product.buy_price) }}</span>
-                                <span class="badge bg-success">₹{{ "%.2f"|format(mapping.sell_price or product.sell_price) }}</span>
-                                <span class="badge bg-info text-dark">₹{{ "%.2f"|format(mapping.mrp_price or product.mrp_price) }}</span>
+                                <span class="badge bg-secondary">₹{{ "%.2f"|format(mapping.buy_price or
+                                    product.buy_price) }}</span>
+                                <span class="badge bg-success">₹{{ "%.2f"|format(mapping.sell_price or
+                                    product.sell_price) }}</span>
+                                <span class="badge bg-info text-dark">₹{{ "%.2f"|format(mapping.mrp_price or
+                                    product.mrp_price) }}</span>
                             </td>
                             <td>
                                 {% if mapping.category_ref %}
-                                    {{ mapping.category_ref.name }} <span class="badge bg-warning text-dark">Override</span>
+                                {{ mapping.category_ref.name }} <span class="badge bg-warning text-dark">Override</span>
                                 {% elif product.category_ref %}
-                                    {{ product.category_ref.name }}
+                                {{ product.category_ref.name }}
                                 {% else %}
-                                    N/A
+                                N/A
                                 {% endif %}
                             </td>
                             <td>
                                 {% if mapping.tax_master_ref %}
-                                    <span class="badge bg-info">{{ "%.2f"|format(mapping.tax_master_ref.tax_rate) }}%</span>
+                                <span class="badge bg-info">{{ "%.2f"|format(mapping.tax_master_ref.tax_rate) }}%</span>
                                 {% elif product.tax_master_ref %}
-                                    <span class="badge bg-secondary">{{ "%.2f"|format(product.tax_master_ref.tax_rate) }}%</span>
+                                <span class="badge bg-secondary">{{ "%.2f"|format(product.tax_master_ref.tax_rate)
+                                    }}%</span>
                                 {% else %}
-                                    <span class="badge bg-light text-dark">-</span>
+                                <span class="badge bg-light text-dark">-</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -148,19 +160,24 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{{ url_for('product_overrides.edit_override', product_id=product.id, agency=mapping.agency_id) }}" class="btn btn-sm btn-warning">
+                                <a href="{{ url_for('product_overrides.edit_override', product_id=product.id, agency=mapping.agency_id) }}"
+                                    class="btn btn-sm btn-warning">
                                     <i class="fas fa-edit"></i> Edit
                                 </a>
                             </td>
                         </tr>
+                        {% endfor %}
                         {% else %}
                         <tr>
-                            <td colspan="10" class="text-center">No product overrides found for the selected criteria.</td>
+                            <td colspan="10" class="text-center">No product overrides found for the selected criteria.
+                            </td>
                         </tr>
-                        {% endfor %}
+                        {% endif %}
                     </tbody>
                 </table>
             </div>
+            <!-- Pagination Controls -->
+            {{ render_pagination(pagination) }}
         </div>
     </div>
 </div>
@@ -169,9 +186,12 @@
     .table-responsive {
         overflow-x: auto;
     }
-    .table th, .table td {
+
+    .table th,
+    .table td {
         white-space: nowrap;
     }
+
     .table td strong {
         display: block;
     }
@@ -182,14 +202,14 @@
 {% block scripts %}
 {{ super() }}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // If super admin changes agency, submit the form
-    const agencySelect = document.getElementById('agency');
-    if (agencySelect) {
-        agencySelect.addEventListener('change', function() {
-            this.form.submit();
-        });
-    }
-});
+    document.addEventListener('DOMContentLoaded', function () {
+        // If super admin changes agency, submit the form
+        const agencySelect = document.getElementById('agency');
+        if (agencySelect) {
+            agencySelect.addEventListener('change', function () {
+                this.form.submit();
+            });
+        }
+    });
 </script>
 {% endblock %}

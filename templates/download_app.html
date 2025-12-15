@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}Download Desktop App - Noltrion OneSuite{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <style>
+        .download-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .hero-section {
+            text-align: center;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            color: white;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .hero-section h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .hero-section p {
+            font-size: 1.3rem;
+            opacity: 0.95;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .download-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+
+        .download-card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px 30px;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .download-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+            border-color: #667eea;
+        }
+
+        .download-card .icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            color: white;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .download-card h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2d3748;
+        }
+
+        .download-card p {
+            color: #718096;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .download-btn {
+            display: inline-block;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .download-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+            color: white;
+            text-decoration: none;
+        }
+
+        .features-section {
+            background: #f7fafc;
+            border-radius: 16px;
+            padding: 40px;
+            margin: 40px 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: start;
+            gap: 15px;
+        }
+
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .feature-content h4 {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .feature-content p {
+            color: #718096;
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .install-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #48bb78;
+            color: white;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        #installButton {
+            display: none;
+        }
+
+        .system-requirements {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 40px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .system-requirements h3 {
+            color: #2d3748;
+            margin-bottom: 20px;
+        }
+
+        .system-requirements ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .system-requirements li {
+            padding: 10px 0;
+            color: #4a5568;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .system-requirements li:before {
+            content: "✓";
+            color: #48bb78;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+    </style>
+
+    <div class="download-container">
+        <div class="hero-section">
+            <h1>📱 Get Noltrion OneSuite Desktop App</h1>
+            <p>Experience the power of Noltrion OneSuite on your desktop. Fast, secure, and always accessible.</p>
+        </div>
+
+        <div class="download-options">
+            <!-- PWA Install Option -->
+            <div class="download-card" id="pwaCard">
+                <div class="icon">🚀</div>
+                <h3>Quick Install</h3>
+                <p>Install directly from Chrome as a Progressive Web App. No download required!</p>
+                <button id="installButton" class="download-btn">Install Now</button>
+                <a href="#instructions" class="download-btn" id="manualInstallBtn">View Instructions</a>
+            </div>
+
+            <!-- Windows Download (Future) -->
+            <div class="download-card">
+                <div class="icon">🪟</div>
+                <h3>Windows Desktop</h3>
+                <p>Native Windows application with full offline support and system integration.</p>
+                <div id="windowsDownload">
+                    <button class="download-btn" disabled style="opacity: 0.6; cursor: not-allowed;">
+                        Coming Soon
+                    </button>
+                </div>
+            </div>
+
+            <!-- macOS Download (Future) -->
+            <div class="download-card">
+                <div class="icon">🍎</div>
+                <h3>macOS Desktop</h3>
+                <p>Optimized for macOS with native notifications and performance.</p>
+                <button class="download-btn" disabled style="opacity: 0.6; cursor: not-allowed;">
+                    Coming Soon
+                </button>
+            </div>
+        </div>
+
+        <div class="features-section">
+            <h2 style="text-align: center; color: #2d3748; margin-bottom: 10px;">Why Use the Desktop App?</h2>
+            <p style="text-align: center; color: #718096; margin-bottom: 30px;">Get the best experience with these
+                powerful features</p>
+
+            <div class="features-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-content">
+                        <h4>Lightning Fast</h4>
+                        <p>Optimized performance for instant loading and smooth interactions</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🔔</div>
+                    <div class="feature-content">
+                        <h4>Push Notifications</h4>
+                        <p>Stay updated with real-time notifications for orders and updates</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">📴</div>
+                    <div class="feature-content">
+                        <h4>Offline Access</h4>
+                        <p>Access your data even when you're offline</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🔒</div>
+                    <div class="feature-content">
+                        <h4>Secure & Private</h4>
+                        <p>Your data is encrypted and stored securely</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🎯</div>
+                    <div class="feature-content">
+                        <h4>App Shortcuts</h4>
+                        <p>Quick access from your taskbar or dock</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🔄</div>
+                    <div class="feature-content">
+                        <h4>Auto Updates</h4>
+                        <p>Always get the latest features automatically</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="instructions" class="system-requirements">
+            <h3>📖 Manual Installation Instructions for Chrome</h3>
+            <ul>
+                <li>Open Noltrion OneSuite in Chrome browser</li>
+                <li>Click the three dots menu (⋮) in the top right corner</li>
+                <li>Look for "Install Noltrion OneSuite" or "Install app"</li>
+                <li>Click it and confirm the installation</li>
+                <li>The app will appear in your applications folder and can be pinned to your taskbar</li>
+            </ul>
+            <div style="margin-top: 20px; padding: 15px; background: #edf2f7; border-radius: 8px;">
+                <strong>💡 Tip:</strong> You can also look for the install icon (⊕ or computer icon) in the address bar!
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let deferredPrompt;
+    const installButton = document.getElementById('installButton');
+    const manualInstallBtn = document.getElementById('manualInstallBtn');
+
+    // Listen for the beforeinstallprompt event
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent the mini-infobar from appearing on mobile
+        e.preventDefault();
+        // Stash the event so it can be triggered later
+        deferredPrompt = e;
+        // Update UI to show install button
+        installButton.style.display = 'inline-block';
+        manualInstallBtn.style.display = 'none';
+
+        console.log('PWA install prompt available');
+    });
+
+    // Handle install button click
+    installButton.addEventListener('click', async () => {
+        if (!deferredPrompt) {
+            alert('Installation is not available. Please use the manual instructions below.');
+            return;
+        }
+
+        // Show the install prompt
+        deferredPrompt.prompt();
+
+        // Wait for the user to respond to the prompt
+        const { outcome } = await deferredPrompt.userChoice;
+
+        if (outcome === 'accepted') {
+            console.log('User accepted the install prompt');
+            // Show success message
+            installButton.textContent = 'Installed! ✓';
+            installButton.style.background = '#48bb78';
+            setTimeout(() => {
+                installButton.textContent = 'Open App';
+            }, 2000);
+        } else {
+            console.log('User dismissed the install prompt');
+        }
+
+        // Clear the deferredPrompt
+        deferredPrompt = null;
+    });
+
+    // Detect if app is already installed
+    window.addEventListener('appinstalled', () => {
+        console.log('PWA was installed');
+        installButton.textContent = 'Already Installed ✓';
+        installButton.disabled = true;
+        installButton.style.opacity = '0.6';
+        installButton.style.cursor = 'not-allowed';
+    });
+
+    // Check if running in standalone mode (already installed)
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+        document.getElementById('pwaCard').innerHTML = `
+            <div class="icon">✅</div>
+            <h3>App Installed!</h3>
+            <p>You're already running the desktop app version.</p>
+            <span class="install-badge">Running as Desktop App</span>
+        `;
+    }
+</script>
+{% endblock %}

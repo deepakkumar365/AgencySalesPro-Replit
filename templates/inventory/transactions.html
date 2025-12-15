@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/pagination.html" import render_pagination %}
 
 {% block title %}Inventory Transactions{% endblock %}
 
@@ -21,7 +22,8 @@
                         <select name="product_id" id="product_id" class="form-select">
                             <option value="">All Products</option>
                             {% for p_filter in products_for_filter %}
-                                <option value="{{ p_filter.id }}" {% if current_filters.product_id == p_filter.id|string %}selected{% endif %}>{{ p_filter.display_name }}</option>
+                            <option value="{{ p_filter.id }}" {% if current_filters.product_id==p_filter.id|string
+                                %}selected{% endif %}>{{ p_filter.display_name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -29,19 +31,25 @@
                         <label for="transaction_type" class="form-label">Transaction Type</label>
                         <select name="transaction_type" id="transaction_type" class="form-select">
                             <option value="">All Types</option>
-                            <option value="sale" {% if current_filters.transaction_type == 'sale' %}selected{% endif %}>Sale</option>
-                            <option value="purchase" {% if current_filters.transaction_type == 'purchase' %}selected{% endif %}>Purchase</option>
-                            <option value="adjustment" {% if current_filters.transaction_type == 'adjustment' %}selected{% endif %}>Adjustment</option>
-                            <option value="return" {% if current_filters.transaction_type == 'return' %}selected{% endif %}>Return</option>
+                            <option value="sale" {% if current_filters.transaction_type=='sale' %}selected{% endif %}>
+                                Sale</option>
+                            <option value="purchase" {% if current_filters.transaction_type=='purchase' %}selected{%
+                                endif %}>Purchase</option>
+                            <option value="adjustment" {% if current_filters.transaction_type=='adjustment' %}selected{%
+                                endif %}>Adjustment</option>
+                            <option value="return" {% if current_filters.transaction_type=='return' %}selected{% endif
+                                %}>Return</option>
                         </select>
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="start_date" class="form-label">Start Date</label>
-                        <input type="date" name="start_date" id="start_date" class="form-control" value="{{ current_filters.start_date or '' }}">
+                        <input type="date" name="start_date" id="start_date" class="form-control"
+                            value="{{ current_filters.start_date or '' }}">
                     </div>
                     <div class="col-md-3 mb-3">
                         <label for="end_date" class="form-label">End Date</label>
-                        <input type="date" name="end_date" id="end_date" class="form-control" value="{{ current_filters.end_date or '' }}">
+                        <input type="date" name="end_date" id="end_date" class="form-control"
+                            value="{{ current_filters.end_date or '' }}">
                     </div>
                 </div>
                 <div class="d-flex justify-content-end">
@@ -76,27 +84,30 @@
                         <tr>
                             <td>{{ tx.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td>
-                                <a href="{{ url_for('product.edit_product', product_id=tx.product.id) }}">{{ tx.product.get_display_name_for_agency(tx.agency_id) }}</a>
+                                <a href="{{ url_for('product.edit_product', product_id=tx.product.id) }}">{{
+                                    tx.product.get_display_name_for_agency(tx.agency_id) }}</a>
                                 <br><small class="text-muted">{{ tx.product.sku }}</small>
                             </td>
                             <td><span class="badge bg-secondary">{{ tx.transaction_type|capitalize }}</span></td>
                             <td>{{ tx.quantity_before }}</td>
                             <td>
                                 {% if tx.quantity_change > 0 %}
-                                    <span class="text-success fw-bold">+{{ tx.quantity_change }}</span>
+                                <span class="text-success fw-bold">+{{ tx.quantity_change }}</span>
                                 {% else %}
-                                    <span class="text-danger fw-bold">{{ tx.quantity_change }}</span>
+                                <span class="text-danger fw-bold">{{ tx.quantity_change }}</span>
                                 {% endif %}
                             </td>
                             <td>{{ tx.quantity_after }}</td>
                             <td>{{ "₹%.2f"|format(tx.unit_cost) if tx.unit_cost is not none else 'N/A' }}</td>
                             <td>
                                 {% if tx.reference_type == 'order' and tx.reference_id %}
-                                    <a href="{{ url_for('order.view_order', order_id=tx.reference_id) }}" title="View Order">Order #{{ tx.reference_id }}</a>
+                                <a href="{{ url_for('order.view_order', order_id=tx.reference_id) }}"
+                                    title="View Order">Order #{{ tx.reference_id }}</a>
                                 {% elif tx.reference_type == 'purchase_order' and tx.reference_id %}
-                                    <a href="{{ url_for('purchase_order.view_purchase_order', purchase_order_id=tx.reference_id) }}" title="View Purchase Order">PO #{{ tx.reference_id }}</a>
+                                <a href="{{ url_for('purchase_order.view_purchase_order', purchase_order_id=tx.reference_id) }}"
+                                    title="View Purchase Order">PO #{{ tx.reference_id }}</a>
                                 {% else %}
-                                    {{ tx.reference_type|replace('_', ' ')|title }}: {{ tx.reference_id or 'N/A' }}
+                                {{ tx.reference_type|replace('_', ' ')|title }}: {{ tx.reference_id or 'N/A' }}
                                 {% endif %}
                             </td>
                             <td>{{ tx.notes }}</td>
@@ -111,19 +122,8 @@
                 </table>
             </div>
             <!-- Pagination -->
-            {% if transactions.pages > 1 %}
-            <nav>
-                <ul class="pagination justify-content-center">
-                    {% for page_num in transactions.iter_pages() %}
-                        {% if page_num %}
-                            <li class="page-item {% if transactions.page == page_num %}active{% endif %}">
-                                <a class="page-link" href="{{ url_for('inventory.transaction_history', page=page_num, **current_filters) }}">{{ page_num }}</a>
-                            </li>
-                        {% endif %}
-                    {% endfor %}
-                </ul>
-            </nav>
-            {% endif %}
+            <!-- Pagination -->
+            {{ render_pagination(transactions) }}
         </div>
     </div>
 </div>

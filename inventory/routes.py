@@ -11,6 +11,7 @@ from models import (
 from inventory import inventory_bp
 from auth.utils import login_required, permission_required, get_role_permissions
 from utils.decorators import log_activity
+from utils.pagination import apply_pagination
 import uuid
 
 
@@ -206,11 +207,8 @@ def stock_levels(current_agency_id=None):
         query = query.order_by(Product.name)
 
     # Get paginated results
-    products_with_stock = query.paginate(
-        page=request.args.get('page', 1, type=int),
-        per_page=20,
-        error_out=False
-    )
+    from utils.pagination import apply_pagination
+    products_with_stock = apply_pagination(query)
     
     categories = Category.query.filter_by(is_active=True).all()
     
@@ -378,11 +376,8 @@ def transaction_history(current_agency_id=None):
             pass
     
     # Get paginated results
-    transactions = query.order_by(InventoryTransaction.created_at.desc()).paginate(
-        page=request.args.get('page', 1, type=int),
-        per_page=20,
-        error_out=False
-    )
+    from utils.pagination import apply_pagination
+    transactions = apply_pagination(query)
     
     # Get products for filter dropdown
     if user_role == 'super_admin':
@@ -436,11 +431,7 @@ def list_suppliers(current_agency_id=None):
             )
         )
 
-    suppliers = query.order_by(Supplier.name).paginate(
-        page=request.args.get('page', 1, type=int),
-        per_page=20,
-        error_out=False
-    )
+    suppliers = apply_pagination(query.order_by(Supplier.name))
     return render_template('inventory/suppliers.html', suppliers=suppliers)
 
 @inventory_bp.route('/add_supplier', methods=['GET', 'POST'])

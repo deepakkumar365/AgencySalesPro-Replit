@@ -1,5 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash, session, make_response
 import csv, io
+import openpyxl
 import re
 from datetime import datetime
 from sqlalchemy import func, and_
@@ -58,7 +59,15 @@ def list_customers(current_agency_id=None):
     elif status_filter == 'inactive':
         query = query.filter(Customer.is_active == False)
     
-    customers = query.order_by(Customer.created_at.desc()).all()
+    # Get pagination parameters from request args
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    if per_page not in [10, 20, 50, 100]:
+        per_page = 20
+
+    # Use the paginate() method on the query
+    from utils.pagination import apply_pagination
+    pagination = apply_pagination(query)
     
     # Get filter options
     agencies = []
@@ -71,7 +80,8 @@ def list_customers(current_agency_id=None):
         locations = Location.query.filter_by(agency_id=current_agency_id, is_active=True).all()
     
     return render_template('customer/list.html', 
-                         customers=customers,
+                         pagination=pagination,
+                         per_page=per_page,
                          agencies=agencies,
                          locations=locations,
                          filters={
@@ -467,14 +477,32 @@ def import_customers():
             flash('No file selected', 'error')
             return redirect(url_for('customer.import_customers'))
         
-        if not file.filename.lower().endswith('.csv'):
-            flash('Please upload a CSV file', 'error')
+        filename = file.filename.lower()
+        if not (filename.endswith('.csv') or filename.endswith('.xlsx') or filename.endswith('.xls')):
+            flash('Please upload a CSV or Excel file', 'error')
             return redirect(url_for('customer.import_customers'))
         
         try:
-            # Read CSV file
-            stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
-            csv_input = csv.DictReader(stream)
+            input_data = []
+            if filename.endswith('.csv'):
+                # Read CSV file
+                stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+                csv_reader = csv.DictReader(stream)
+                input_data = list(csv_reader)
+            else:
+                # Read Excel file
+                wb = openpyxl.load_workbook(file)
+                sheet = wb.active
+                headers = [cell.value for cell in sheet[1]]
+                
+                for row in sheet.iter_rows(min_row=2, values_only=True):
+                    if not any(row): continue
+                    row_dict = {}
+                    for i, header in enumerate(headers):
+                        if header and i < len(row):
+                            val = row[i]
+                            row_dict[str(header)] = str(val).strip() if val is not None else ''
+                    input_data.append(row_dict)
             
             user_role = session.get('role')
             current_agency_id = session.get('agency_id')
@@ -484,7 +512,7 @@ def import_customers():
             error_count = 0
             errors = []
             
-            for row_num, row in enumerate(csv_input, start=2):  # Start from 2 to account for header
+            for row_num, row in enumerate(input_data, start=2):  # Start from 2 to account for header
                 try:
                     # Validate required fields
                     customer_code = row.get('customer_code', '').strip().upper()
@@ -519,8 +547,32 @@ def import_customers():
 
                     # Determine location
                     if location_name:
-                        # If location name is provided, find it within the agency
-                        location = Location.query.filter_by(name=location_name, agency_id=agency.id, is_active=True).first()
+                        # Find existing location by name for this agency (active or inactive)
+                        location = Location.query.filter_by(name=location_name, agency_id=agency.id).first()
+                        
+                        if location:
+                            # If exists but inactive, reactivate it
+                            if not location.is_active:
+                                location.is_active = True
+                                db.session.add(location)
+                                flash(f"Row {row_num}: Reactivated location '{location_name}'.", 'info')
+                        else:
+                            # If absolutely doesn't exist, create it
+                            try:
+                                location = Location(
+                                    name=location_name,
+                                    agency_id=agency.id,
+                                    is_active=True,
+                                    address="Created via Bulk Import"
+                                )
+                                db.session.add(location)
+                                db.session.flush() # Get ID immediately
+                                flash(f"Row {row_num}: Created new location '{location_name}'.", 'info')
+                            except Exception as loc_err:
+                                errors.append(f"Row {row_num}: Failed to create location '{location_name}': {str(loc_err)}")
+                                error_count += 1
+                                continue
+
                     elif user_role != 'super_admin':
                         # If not provided for an agency user, find the first active location for that agency
                         location = Location.query.filter_by(agency_id=agency.id, is_active=True).first()
@@ -529,7 +581,7 @@ def import_customers():
 
                     # Final validation for location
                     if not location:
-                        errors.append(f"Row {row_num}: Location '{location_name}' not found for agency '{agency_code}' or inactive")
+                        errors.append(f"Row {row_num}: Location name required to create new location, or no default location found.")
                         error_count += 1
                         continue
                     
