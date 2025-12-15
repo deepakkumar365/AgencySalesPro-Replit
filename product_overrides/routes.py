@@ -1,5 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash, session, send_file
 import pandas as pd
+import re
 import io
 from extensions import db
 from auth.utils import login_required, permission_required
@@ -175,9 +176,51 @@ def bulk_upload_overrides(current_agency_id=None):
             categories = {c.name.lower(): c.id for c in Category.query.all()}
             uoms = {u.name.lower(): u.id for u in UOM.query.all()}
             tax_masters = {t.name.lower(): t.id for t in TaxMaster.query.all()}
+            
+            # Helper: Get or Create Masters (Returns: id, created_object_or_None)
+            # We return object so we can add to session, but we defer cache update til success.
+            def prepare_category(name):
+                if not name: return None, None
+                name_key = name.lower().strip()
+                if name_key in categories:
+                    return categories[name_key], None
+                
+                short_name = name[:3].upper()
+                new_cat = Category(name=name, short_name=short_name, is_active=True)
+                db.session.add(new_cat)
+                return None, new_cat # ID not available until flush
+
+            def prepare_uom(name):
+                if not name: return None, None
+                name_key = name.lower().strip()
+                if name_key in uoms:
+                    return uoms[name_key], None
+                
+                short_name = name[:4].upper().strip()
+                new_uom = UOM(name=name, short_name=short_name, is_active=True)
+                db.session.add(new_uom)
+                return None, new_uom
+
+            def prepare_tax(name):
+                if not name: return None, None
+                name_key = name.lower().strip()
+                if name_key in tax_masters:
+                    return tax_masters[name_key], None
+                
+                match = re.search(r'(\d+(\.\d+)?)', name)
+                rate = float(match.group(1)) if match else 0.0
+                tax_code = re.sub(r'[^a-zA-Z0-9]', '', name).upper()[:20]
+                if not tax_code: tax_code = f"TAX{len(tax_masters)}"
+                
+                new_tax = TaxMaster(name=name, tax_code=tax_code, tax_rate=rate, is_active=True)
+                db.session.add(new_tax)
+                return None, new_tax
 
             for index, row in df.iterrows():
                 try:
+                    # Start a nested transaction check or just rely on atomic commit per row
+                    # We will use simple commit per row for max safety
+                    
                     sku = str(row.get('sku', '')).strip().upper()
                     display_name = str(row.get('display_name', '')).strip()
 
@@ -186,20 +229,33 @@ def bulk_upload_overrides(current_agency_id=None):
                         error_count += 1
                         continue
 
+                    # Process Masters
+                    category_name = str(row.get('category_name', '')).strip()
+                    uom_name = str(row.get('uom_name', '')).strip()
+                    tax_name = str(row.get('tax_name', '')).strip()
+
+                    cat_id, new_cat = prepare_category(category_name)
+                    uom_id, new_uom = prepare_uom(uom_name)
+                    tax_id, new_tax = prepare_tax(tax_name)
+                    
+                    # We must flush to get IDs for new objects to use in Product
+                    if new_cat or new_uom or new_tax:
+                        db.session.flush()
+                        if new_cat: cat_id = new_cat.id
+                        if new_uom: uom_id = new_uom.id
+                        if new_tax: tax_id = new_tax.id
+
                     product = Product.query.filter_by(sku=sku).first()
 
                     if not product: # Product does not exist, create it
-                        # For new products, these are required
-                        category_name = str(row.get('category_name', '')).strip()
-                        uom_name = str(row.get('uom_name', '')).strip()
-                        tax_name = str(row.get('tax_name', '')).strip() # Optional
-                        hsn_code = str(row.get('hsn_code', '')).strip() if pd.notna(row.get('hsn_code')) else None
-                        item_code = str(row.get('item_code', '')).strip() if pd.notna(row.get('item_code')) else None
-
-                        if not all([category_name, uom_name]):
+                        if not cat_id or not uom_id:
                             errors.append(f"Row {index+2}: category_name and uom_name are required for new product '{sku}'.")
                             error_count += 1
+                            db.session.rollback() # Rolling back changes in this iteration (like new masters)
                             continue
+                        
+                        hsn_code = str(row.get('hsn_code', '')).strip() if pd.notna(row.get('hsn_code')) else None
+                        item_code = str(row.get('item_code', '')).strip() if pd.notna(row.get('item_code')) else None
                         
                         buy_price = float(row.get('buy_price', 0.0))
                         sell_price = float(row.get('sell_price', 0.0))
@@ -209,27 +265,24 @@ def bulk_upload_overrides(current_agency_id=None):
                         description = str(row.get('description', '')).strip() if pd.notna(row.get('description')) else None
                         
                         product = Product(
-                            name=display_name, # Use display_name as master name for new products
-                            description=description,  # Product description
+                            name=display_name,
+                            description=description,
                             sku=sku,
                             buy_price=buy_price,
                             sell_price=sell_price,
                             mrp_price=mrp_price,
                             margin=margin,
-                            category_id=categories.get(category_name.lower()),
-                            uom_id=uoms.get(uom_name.lower()),
-                            tax_master_id=tax_masters.get(tax_name.lower()) if tax_name else None,
+                            category_id=cat_id,
+                            uom_id=uom_id,
+                            tax_master_id=tax_id,
                             hsn_code=hsn_code,
                             item_code=item_code,
                             is_active=True
                         )
                         db.session.add(product)
-                        # Note: We'll flush in batches below instead of after each product
                         created_count += 1
                     else:
                         updated_count += 1
-                        
-                        # Update master Product fields for existing products if provided
                         if 'description' in row and pd.notna(row['description']):
                             product.description = str(row['description']).strip() or None
                         if 'hsn_code' in row and pd.notna(row['hsn_code']):
@@ -237,49 +290,42 @@ def bulk_upload_overrides(current_agency_id=None):
                         if 'item_code' in row and pd.notna(row['item_code']):
                             product.item_code = str(row['item_code']).strip() or None
 
-                    # Find or create the agency mapping
+                    # Agency Mapping
                     mapping = ProductAgency.query.filter_by(product_id=product.id, agency_id=agency_id).first()
                     if not mapping:
                         mapping = ProductAgency(product_id=product.id, agency_id=agency_id)
                         db.session.add(mapping)
 
-                    # Update mapping fields from the file if they exist in the row
-                    # For existing products, display_name is an override.
                     if 'display_name' in row and pd.notna(row['display_name']):
                         mapping.display_name = str(row['display_name'])
-
-                    # Prices are always overrides
                     if 'buy_price' in row and pd.notna(row['buy_price']): mapping.buy_price = float(row['buy_price'])
                     if 'sell_price' in row and pd.notna(row['sell_price']): mapping.sell_price = float(row['sell_price'])
                     if 'mrp_price' in row and pd.notna(row['mrp_price']): mapping.mrp_price = float(row['mrp_price'])
                     
-                    # is_active defaults to True for the mapping
                     is_active_val = row.get('is_active')
                     if pd.notna(is_active_val):
                         mapping.is_active = bool(is_active_val)
                     else:
                         mapping.is_active = True
 
-                    # Attribute overrides
-                    if 'category_name' in row and pd.notna(row['category_name']):
-                        mapping.category_id = categories.get(str(row['category_name']).lower())
-                    if 'uom_name' in row and pd.notna(row['uom_name']):
-                        mapping.uom_id = uoms.get(str(row['uom_name']).lower())
-                    if 'tax_name' in row and pd.notna(row['tax_name']):
-                        mapping.tax_master_id = tax_masters.get(str(row['tax_name']).lower())
+                    # Use resolved keys for mapping overrides
+                    if cat_id: mapping.category_id = cat_id
+                    if uom_id: mapping.uom_id = uom_id
+                    if tax_id: mapping.tax_master_id = tax_id
 
+                    # Commit THIS row
+                    db.session.commit()
                     success_count += 1
                     
-                    # Batch flush every N rows to prevent timeouts
-                    if success_count % batch_size == 0:
-                        db.session.flush()
+                    # Update cache on success
+                    if new_cat: categories[category_name.lower()] = new_cat.id
+                    if new_uom: uoms[uom_name.lower()] = new_uom.id
+                    if new_tax: tax_masters[tax_name.lower()] = new_tax.id
                 
                 except Exception as e:
+                    db.session.rollback()
                     errors.append(f"Row {index+2}: Error processing - {str(e)}")
                     error_count += 1
-                    db.session.rollback() # Rollback this row's transaction
-
-            db.session.commit()
             flash_msg = f'Bulk process finished. Products Created: {created_count}, Mappings Updated: {updated_count}, Failures: {error_count}.'
             flash(flash_msg, 'success')
             if errors:
