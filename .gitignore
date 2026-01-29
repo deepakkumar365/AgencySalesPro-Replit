@@ -7,3 +7,5 @@
 /venv311/
 /*.log
 *.log
+/client/.angular/cache/
+/client/node_modules/
